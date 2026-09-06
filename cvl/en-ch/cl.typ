@@ -8,6 +8,7 @@
 #import "/.agent/typst/line-contract.typ": line-contract-mode, measured-line, measured-paragraph
 #import "/.agent/typst/profile.typ": localized-profile, profile
 #import "/.agent/typst/letter/farewell.typ": closing as farewell-closing
+#import "/.agent/typst/letter/ink.typ": signature-image
 
 #let application-path = sys.inputs.at("application", default: "/cvl/en-ch/application.toml")
 #let application = toml(application-path)
@@ -129,7 +130,7 @@
 #let closing-content = block(breakable: false)[
   #closing
   #v(closing-before)
-  #image("/cvl/assets/signature.png", height: 31.5pt)
+  #signature-image("/cvl/assets/signature.png", 31.5)
   #v(closing-after)
   #profile.name
 ]
