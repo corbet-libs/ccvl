@@ -18,6 +18,7 @@ path = ".agent/src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
+cgreet = "0.2"
 clap = { version = "4.5", features = ["derive"] }
 ctypst = { version = "0.2.0", default-features = false, features = ["document-fonts", "format", "pdf"] }
 lopdf = { version = "0.44", default-features = false }

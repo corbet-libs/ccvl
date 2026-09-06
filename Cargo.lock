@@ -289,6 +289,7 @@ name = "ccvl"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cgreet",
  "clap",
  "ctypst",
  "lopdf",
@@ -308,6 +309,16 @@ name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+
+[[package]]
+name = "cgreet"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "750ff35a44bd868c88135fab6927e7989fd6920e8a71c14b1a42b1fc89e51af8"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "chacha20"

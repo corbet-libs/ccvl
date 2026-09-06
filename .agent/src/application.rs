@@ -242,6 +242,19 @@ pub fn validate_record(
             .and_then(Value::as_str)
             .with_context(|| format!("{location}.job.cl_recipient.{field} is missing"))?;
     }
+    // Non-blocking salutation advisories (cgreet): the letter still renders
+    // with the generic salutation, but a tailored opportunity should name a
+    // person with a parsable Herr/Frau honorific. German records only —
+    // cgreet currently implements the German correspondence norms.
+    if language.starts_with("de") {
+        let name = recipient.get("name").and_then(Value::as_str).unwrap_or("");
+        if let Some(warning) = cgreet::recipient_salutation_warning(location, name) {
+            eprintln!("{warning}");
+        }
+        if let Some(warning) = cgreet::de_honorific_warning(location, name) {
+            eprintln!("{warning}");
+        }
+    }
 
     let cv = object_at(application, "/cv")?;
     ensure_no_unknown(cv, &["summary", "allow_thin"], location)?;
@@ -559,6 +572,17 @@ mod tests {
         draft["options"]["generate_cl"] = json!(false);
         draft.as_object_mut().unwrap().remove("cl");
         validate_record(&workspace, &draft, "fixture", true).unwrap();
+    }
+
+    #[test]
+    fn honorific_free_german_recipient_validates_with_advisory() {
+        // Missing honorifics warn on stderr but never fail validation: the
+        // letter still renders with the generic salutation.
+        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
+        draft["job"]["cl_recipient"]["name"] = json!("Jane Doe");
+        validate_record(&workspace(), &draft, "fixture", true).unwrap();
+        draft["job"]["cl_recipient"]["name"] = json!("Frau Dr. Müller");
+        validate_record(&workspace(), &draft, "fixture", true).unwrap();
     }
 
     #[test]
