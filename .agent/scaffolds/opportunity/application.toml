@@ -10,6 +10,8 @@ language = ""
 pages = 4
 generate_cl = true
 application_date = ""
+# Render style: one entry from the `styles` section in ccvl.json.
+style = "harvard"
 
 [job]
 id = ""
@@ -24,6 +26,9 @@ company_context = ""
 notes = ""
 
 [job.cl_recipient]
+# Full address form for the locale-correct salutation, e.g. "Frau Dr. Müller"
+# or "Herr Müller" (see .agent/docs/cover-letter.md). Empty uses the generic
+# salutation and warns; the address itself is recorded but never printed.
 name = ""
 title = ""
 company = ""

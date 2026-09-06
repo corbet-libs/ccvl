@@ -12,12 +12,42 @@
 // (outcome, metric, scope, reference, ownership, or method) and ask for the
 // relevant fact instead of padding or weakening the wording.
 
-#import "/.agent/typst/styles/document.typ": document-style
+#import "/.agent/typst/styles/harvard.typ": document-style, load-style
 #import "/.agent/typst/application.typ": cv-contract, last-line-maximum, validate-application
 #import "/.agent/typst/line-contract.typ": measured-content-line, measured-lines, wrap-exact
 #import "/.agent/typst/profile.typ": localized-profile, profile
-#show: document-style.with(locale: "de-ch")
 #set document(title: "Curriculum Vitae | " + profile.name, author: (profile.name,))
+
+// Page count is selected at compile time: 2 = core, 3 = projects, 4 = competencies.
+#let cv-pages = int(sys.inputs.at("cv-pages", default: "4"))
+#assert(cv-pages >= 2 and cv-pages <= 4, message: "cv-pages must be 2, 3, or 4")
+#let application-path = sys.inputs.at("application", default: "/cvl/de-ch/application.toml")
+#let application = toml(application-path)
+#validate-application(application, expected-language: "de-CH", require-cv: true)
+
+// Style axis: the explicit `style` input injected by render.rs (resolved from
+// options.style) wins; a manual render without it falls back to the record,
+// then to the harvard default. Whitespace below comes from that style's TOML
+// knobs, never from forked literals.
+#let style-input = sys.inputs.at("style", default: "")
+#let style-name = if style-input != "" { style-input } else { application.options.at("style", default: "harvard") }
+#let style = load-style(style-name)
+#show: document-style.with(locale: "de-ch", style: style)
+
+// Style whitespace knobs from the active style's TOML; the element styles
+// below consume these instead of forked literals.
+#let cv-superheading-outer-spacing = style.cv.superheading_outer_spacing_pt * 1pt
+#let cv-compact-heading-spacing = style.cv.compact_heading_spacing_pt * 1pt
+#let cv-spacious-heading-spacing = style.cv.spacious_heading_spacing_pt * 1pt
+#let cv-entry-spacing = style.cv.entry_spacing_pt * 1pt
+#let cv-heading-after = style.cv.heading_after_pt * 1pt
+#let cv-subheading-after = style.cv.subheading_after_pt * 1pt
+#let cv-bullet-after = style.cv.bullet_after_pt * 1pt
+#let cv-competency-heading-after = style.cv.competency_heading_after_pt * 1pt
+#let cv-rule-gap = style.cv.rule_gap_pt * 1pt
+#let cv-superheading-inner = style.cv.superheading_inner_pt * 1pt
+#let cv-header-after = style.header.after_pt * 1pt
+#let cv-bullet-indent = style.cv.bullet_indent_pt * 1pt
 
 // Visible CV presentation: every element style and the letterhead live here
 // so editors never hunt below .agent/typst. Only page setup, measurement,
@@ -59,16 +89,11 @@
   max-fill,
 )
 // Bullet row. Override indent/gutter: #cv-b(indent: 12pt)[...]
-#let cv-b(indent: 10.5pt, gutter: 0pt, min-fill: 80, target-fill: 90, max-fill: 100, t) = grid(
+#let cv-b(indent: cv-bullet-indent, gutter: 0pt, min-fill: 80, target-fill: 90, max-fill: 100, t) = grid(
   columns: (indent, 1fr),
   gutter: gutter,
   cv-bullet(), measured-content-line("cv.bullet", "cv-bullet", t, min-fill, target-fill, max-fill),
 )
-
-#let cv-superheading-outer-spacing = 17.85pt
-#let cv-compact-heading-spacing = 9.45pt
-#let cv-spacious-heading-spacing = 19.35pt
-#let cv-entry-spacing = 11.75pt
 
 #let cv-entry-gap() = v(cv-entry-spacing)
 
@@ -77,9 +102,9 @@
   block(width: 100%, breakable: false, inset: (top: cv-superheading-outer-spacing))[
     #set par(spacing: 0pt)
     #line(length: 100%, stroke: 0.5pt + black)
-    #v(5.25pt)
+    #v(cv-superheading-inner)
     #align(center, text(size: 17pt, weight: "bold", upper(t)))
-    #v(5.25pt)
+    #v(cv-superheading-inner)
     #line(length: 100%, stroke: 0.5pt + black)
   ]
 }
@@ -89,7 +114,7 @@
   #v(spacing)
   #set par(spacing: 0pt)
   #text(size: 12pt, weight: "bold", upper(t))
-  #v(4.41pt)
+  #v(cv-rule-gap)
   #line(length: 100%, stroke: 0.5pt + black)
   #v(spacing)
 ]
@@ -105,13 +130,6 @@
   let actual = counter(page).final().first()
   assert(actual == expected, message: "CV rendered " + str(actual) + " pages; expected " + str(expected))
 }
-
-// Page count is selected at compile time: 2 = core, 3 = projects, 4 = competencies.
-#let cv-pages = int(sys.inputs.at("cv-pages", default: "4"))
-#assert(cv-pages >= 2 and cv-pages <= 4, message: "cv-pages must be 2, 3, or 4")
-#let application-path = sys.inputs.at("application", default: "/cvl/de-ch/application.toml")
-#let application = toml(application-path)
-#validate-application(application, expected-language: "de-CH", require-cv: true)
 
 #let brand(body) = box(body)
 #let cv-header() = {
@@ -130,7 +148,7 @@
   ).filter(item => item != none)
 
   align(center)[#text(size: 15.75pt, weight: "bold")[#profile.name]]
-  v(6.3pt)
+  v(cv-header-after)
   align(center)[
     #text(size: 9.03pt)[
       #contacts.join([ | ])
@@ -178,90 +196,90 @@
   #cv-compact-heading[Erfahrung]
   // ccvl-station: cenvion
   #cv-h[Infrastructure Investments & Asset Management: #brand[CENVION]]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Associate Intern | Infrastructure Investments · Jan 2026 – Mär 2026 (plus freie Mitarbeit) · Wollerau (CH)]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[#brand[Claude] für Investment Reporting eingeführt; GenAI in Analyse- und Berichtsworkflows des Teams integriert]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[RAG-basierte KI-Suche über Projekt- und Portfoliodaten entwickelt; internes Wissen durchsuchbar gemacht]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Excel-Projektfinanzierungsmodelle erstellt; Cashflows, Renditen und Finanzierungsszenarien analysiert]
   #cv-entry-gap()
   // ccvl-station: swisscom
   #cv-h[Cloud Strategy & Transformation: #brand[Swisscom Financial Services]]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Executive Assistant & Consultant | B2B & Infrastruktur · Jun 2024 – Mär 2025 · Bern + Zürich]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Achtstellige Infrastrukturinvestitionen im SteerCo präsentiert; Optionen mit Senior Stakeholdern diskutiert]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Lieferantenverhandlungen über CHF 10 Mio. begleitet; sofort CHF 100k+ Einsparpotenzial identifiziert]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Cloud-Ökonomie und 2× Rechendichte unter DC-Limits modelliert; für TOM-Workstream ausgewählt]
   #cv-entry-gap()
   // ccvl-station: airbus
   #cv-h[AI Engineering: #brand[AIRBUS Defence & Space]]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Risk & Compliance Analyst | KI/ML-Masterarbeit · Jul 2023 – Mär 2024 · Ingolstadt]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Sicherheitskritische Daten aus 20+ Jahren per ML ausgewertet & für Risiko- und Kostenanalysen genutzt]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Einzelfall: Sechsstelliges Einsparpotenzial p. a.; standortübergreifende achtstellige Investition ausgelöst]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[KI-Pilot von Grund auf für 3 Fachbereiche entwickelt; Stakeholder mit Business Case überzeugt]
   #cv-entry-gap()
   // ccvl-station: covendit
   #cv-h[M&A & Corporate Finance: #brand[COVENDIT]]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Investment Banking Analyst | Werkstudent · Apr 2022 – Jun 2022 · Frankfurt]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Live Buy-/Sell-Side-M&A-Mandate begleitet; DCF-/Multiples-Excel-Modelle, Teaser und IMs erstellt]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[KI-Longlisting vor ChatGPT entwickelt; Target-Screening automatisiert, Recherchezeit 80 % reduziert]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[PE-Kunden zu Targets beraten; Retainer gewonnen und Rückkehrangebot auf Associate-Level erhalten]
   #cv-entry-gap()
   // ccvl-station: nexgen
   #cv-h[Strategie- & Technologieberatung: #brand[NEXGEN Business Consultants]]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Junior Consultant (Werkstudent) | Banking-IT & Regulierung · Apr 2022 – Jun 2022 · Frankfurt]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[BAIT | MaRisk: Regeln für T+1-Settlement in Cloud-Migrationsleitfaden für Tier-1-Banking-IT übersetzt]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[ETL-Engpass für Kundenpitch diagnostiziert; Laufzeit um 99 % von 24 h auf 15 min reduziert]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Regulatorik- und IT-Analysen für Fachbeiträge und Kundenpitches aufbereitet; Mandatsakquise unterstützt]
   #cv-entry-gap()
   // ccvl-station: consulting-venture
   #cv-h[Management- & Technologieberatung: #brand[A Softer Space & Corbet Consulting]]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Head of Business Development | Management Consultant · Jan 2018 – Jun 2023 · CH, DE, IS, UK]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Über Trusted-Advisor-Vertrieb auf mittleren sechsstelligen Umsatz in vier europäischen Märkten skaliert]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Management- & IT-Mandate zu Leadership, Prozessen, Cloud und DLT von Analyse bis Umsetzung geführt]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Projekt-P&L ganzheitlich gesteuert: Akquise, Angebote, Pricing, Verträge, Budgets, Margen und Cashflow]
   #cv-entry-gap()
   // ccvl-station: student-consulting
   #cv-h[Studentische Unternehmens- & Innovationsberatung]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[GREEN Finance Consulting (BDSU) | Enactus | AIESEC · 2016 – 2023 · je 2 Semester · Frankfurt]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[GREEN: Stipendienabwicklung auf 10× Kapazität skaliert; Datenbanksystem für Roland Berger entwickelt]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[ENACTUS X: Social Venture für Wohnungslose mitaufgebaut; Jobs geschaffen und Medienresonanz erzielt]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[AIESEC: International Placements mit DAX-Unternehmen koordiniert; Talent-Prozesse per CRM digitalisiert]
   #cv-entry-gap()
   // ccvl-station: teaching-research-venture
   #cv-h[Lehre, Marktforschung & Unternehmertum]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Goethe-Universität Frankfurt | mehrere Arbeitgeber | selbstständig · Frankfurt]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Tutor (für 3 Jahre gewählt) & Nachhilfe: Angewandte Statistik (SPSS, Python, R) & Mathematik]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Marktforschung: 50+ CEOs interviewt und 1.000+ Gespräche analysiert, Auswertungen & Dashboards]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Eigene Nebentätigkeit über 16 Jahre aufgebaut und geführt; vom technischen Service bis zum eCommerce]
 ]
 
@@ -273,29 +291,29 @@
   #cv-entry-gap()
   // ccvl-station: executive-education
   #cv-h[Executive Education]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Collège des Ingénieurs (CDI) · Paris – München – Turin · 2024 – 2025 · Notenschnitt: A (GPA 4.0)]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Summer School: #brand[Schwarz Digits] als Junior Consultant zum EU AI Act beraten; Implikationen bewertet]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Case Studies: Projektfinanzierung (NPV/ROI), Szenarioanalyse & Kapitalallokation unter Unsicherheit]
   #cv-entry-gap()
   // ccvl-station: physics-degrees
   #cv-h[M.Sc. & B.Sc. Physik]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Goethe-Universität Frankfurt · Abschluss 2024 · Note: 1,0 (DE) | 6,0 (CH) | GPA 4.0]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Schwerpunkte: KI/ML (1,0) | High-Tech-IP (1,15) | Elektronik (1,3) | Biophysik (1,3) | Chemie (1,0)]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Forschung: Nahinfrarotspektroskopie | Terahertz-Bildgebung | Beschleunigerphysik (LINAC)]
   #cv-entry-gap()
   // ccvl-station: psychology-degree
   #cv-h[B.Sc. Psychologie]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Goethe-Universität Frankfurt · Abschluss 2017 · Note: 1,6 (DE) | 5,6 (CH) | GPA 3.7]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Schwerpunkte: KI/ML & Neurowissenschaften | AR/VR-Trainings | Klinische/Organisationspsychologie (1,0)]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[FIAS-Forschung (9 Mon.): Stereosehen & neuronale Abstimmung per ML modelliert; Empathie quantifiziert]
   #cv-entry-gap()
   #cv-hu[Matura (Abitur): *1,0 (DE) | 6,0 (CH) · Jahrgangsbester · Mathe-Olympiade · Schülerakademie*]
@@ -305,29 +323,29 @@
   #cv-compact-heading[Professional Development]
   // ccvl-station: certificates
   #cv-h[Zertifikate & Weiterbildung]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Finanzen | Datenanalyse | GenAI | Leadership]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[CFI-Zertifikatsprogramme (laufend): BIDA | CBCA | CMSA | FMVA; Trainings: Excel (VBA) | BI (Tableau)]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Weitere Trainings: GenAI | Automatisierung | Rhetorik | Verhandlung | Leadership | Kommunikation]
   #cv-entry-gap()
   // ccvl-station: consulting-finance-networks
   #cv-h[Consulting- & Finance-Netzwerke]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Marktnähe durch laufenden Austausch mit Praktikern und erfahrenen Sparringspartnern]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Im Studium: Bain Spark | BCG Emeralds | WFI Consulting Cup; BDSU- & Studienstiftung-Alumnus]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[SECA Young Member; vernetzt mit Praktikern aus Schweizer PE, VC und Corporate Development]
   #cv-entry-gap()
   // ccvl-station: technology-communities
   #cv-h[Tech-Communities & Konferenzen]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Am Puls neuer Technologien, Werkzeuge und praktischer Anwendungen]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Swiss Python Summit & Web Zurich (2025) mitorganisiert; AV-Betrieb und Sprecherkoordination]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Digitale Gesellschaft | LUG | digitalswitzerland | Impact Hub; Praxisfokus: GenAI & Digitale Souveränität]
 ]
 
@@ -335,20 +353,20 @@
   #cv-compact-heading[Engagement]
   // ccvl-station: crisis-support
   #cv-h[Harm Reduction & Krisenunterstützung]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s(min-fill: 20, target-fill: 35)[Krisenintervention & Akuthilfe]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Mehrfach lebensrettend eingegriffen; Ersthilfe geleistet und Übergabe an Rettungskräfte sichergestellt]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Akute psychosoziale Krisen deeskaliert; Betroffene stabilisiert, orientiert und an Fachstellen vermittelt]
   #cv-entry-gap()
   // ccvl-station: mentoring
   #cv-h[Beratung, Mentoring & Fachschaft]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Frühe digitale Jugendberatung | fachübergreifender Wissenstransfer]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Als einer von wenigen Männern bei Kids Hotline zu Identität, Körperbild & Selbstzweifeln beraten]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Psychologie-Mentoring für alle Jahrgänge mitentwickelt; Fachschaft Physik & Night of Science unterstützt]
 ]
 
@@ -356,20 +374,20 @@
   #cv-compact-heading[Persönliches]
   // ccvl-station: family-responsibility
   #cv-h[Bildungsaufstieg & Verantwortung]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[First Generation Academic | Bezugsperson für Geschwister (6 bzw. 12 Jahre jünger) | Pflegezeit 2025]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Geschwister persönlich & finanziell unterstützt: Abitur (1,0) | Medizinstudium | Unternehmensgründung]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[Pflegezeit 2025: Versorgung, Finanzierung & Langzeitpflege meiner Mutter geplant und organisiert]
   #cv-entry-gap()
   // ccvl-station: open-source-community
   #cv-h[Teilen & Mitgestalten]
-  #v(6.3pt)
+  #v(cv-heading-after)
   #cv-s[Interkulturelles Zusammenleben | internationale Zusammenarbeit an Open-Source-Software]
-  #v(7.35pt)
+  #v(cv-subheading-after)
   #cv-b[Mit 20+ Menschen aus 10+ Ländern zusammengelebt; interkulturellen Austausch aktiv gestaltet]
-  #v(8.4pt)
+  #v(cv-bullet-after)
   #cv-b[50+ Open-Source-Projekte veröffentlicht; an weiteren mitgewirkt, zuletzt oo7 (Cybersecurity)]
 ]
 
@@ -381,47 +399,47 @@
     #cv-spacious-heading[Laufend]
     // ccvl-project: product-innovation
     #cv-h[Produktinnovation & Engineering]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[Produktreleases 2026: Local-First-KI | Remote Development | Systems UX]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[cfetch: lokales KI-Gedächtnis (RAG) | bis zu 93,4 % weniger Kontextballast | \>15 % Tokeneinsparpotenzial]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[cterm: Remote-First-Terminal für KI-Coding | dotkeeper: P2P-Code-Sync | cbar: Cross-Machine App Matrix]
     #cv-entry-gap()
     // ccvl-project: declarative-systems-platform
     #cv-h[Deklarative Systemplattform]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[Produktreleases 2026: 50+ Systembausteine für NixOS, Arch & GCP]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[NixOS & Arch: Hosts, Storage, Netzwerk, Desktops & Apps in einer reproduzierbaren Plattform vereint]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[NixOS, k3s, Argo CD & OpenTofu auf GCP & Bare Metal ausgerollt | signierte Updates | Prüfung | Rollback]
     #cv-entry-gap()
     // ccvl-project: content-innovation
     #cv-h[Content-Innovation & KI-gestützte Medien]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[Neue Formate: 4K-Video, GenAI & ausfallsicheres Audio · seit 2025]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[4K-Mehrkamera-Videos für Swiss Python Summit, Winterkongress & CoSin (Chaos Singularity) produziert]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[ComfyUI für GenAI auf eigener GPU betrieben | caudio: 3-Host-Audio-Routing mit Failover & Recovery]
     #cv-entry-gap()
     // ccvl-project: careervector-jobcache
     #cv-h[CareerVector & JobCache]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[KI-native Karriereplattform & Jobdaten-Pipeline · live seit 2025]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[CareerVector: KI-native kollaborative Karriereplattform für Web, Desktop & Terminal mit Typst-Rendering]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[JobCache: 91 Rust-Adapter für kontinuierliche Erfassung & Deduplizierung von CH/EU-Stellenanzeigen]
     #cv-entry-gap()
     // ccvl-project: private-ai-cloud
     #cv-h[Private KI- & Cloud-Plattform]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[Digitale Souveränität im Produktivbetrieb für 10+ Nutzer · seit 2024]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[30+ Dienste und 100+ TB mit SSO, Monitoring, Backups & Disaster Recovery end-to-end betrieben]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Lokale LLMs & KI-Agenten auf eigener GPU-Infrastruktur betrieben | \>90 % günstiger als Public Cloud]
   ]
 
@@ -429,47 +447,47 @@
     #cv-spacious-heading[Realisiert]
     // ccvl-project: management-buy-in
     #cv-h[Management Buy-In: Deal Origination & Due Diligence]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[Indischer IT-Outsourcer · eigenständiges MBI bis zum Kaufentscheid · 2022]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[Indischen IT-Outsourcer als MBI-Ziel identifiziert und End-to-End Due Diligence eigenständig durchgeführt]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Akquisitionsthese entwickelt | strategischen Fit, Chancen & Risiken bis zum finalen Go/No-Go bewertet]
     #cv-entry-gap()
     // ccvl-project: solar-recovery
     #cv-h[Solar-KMU: Incident Recovery & Cloud-Migration]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[Betriebskritische Systeme für Vertrieb & Felddienst · 2022]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[Kernsystem am ersten Tag wiederhergestellt; Vertrieb und Felddienst bis zur Ablösung arbeitsfähig gehalten]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Cloud-Optionen gegen Betriebsanforderungen geprüft; sechs- bis siebenstellige Fehlinvestition vermieden]
     #cv-entry-gap()
     // ccvl-project: leadership-digital-pivot
     #cv-h[Leadership Advisory: Digitaler Pivot]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[Frankfurter Leadership-Marke · Hybridformat & neue Vertriebskanäle · 2022]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[Performance-Leadership-Angebot für hybride Delivery überarbeitet und On-Demand-Infrastruktur aufgebaut]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Funnel an Kundenpainpoints ausgerichtet; Umsatz diversifiziert und Kurse bei Haufe Akademie platziert]
     #cv-entry-gap()
     // ccvl-project: crypto-infrastructure
     #cv-h[Krypto-Infrastruktur: Business Case & Betrieb]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[Mining-Piloten vom Business Case bis zum Betrieb · mehrere Kunden · 2021]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[Pilot und Betriebsmodell dimensioniert und kalkuliert; Hardware beschafft und operative Risiken gesteuert]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Mining-Betrieb termingerecht, stabil und mit Monitoring aufgebaut; Hashrate via Custom-Firmware optimiert]
     #cv-entry-gap()
     // ccvl-project: it-services-ecommerce
     #cv-h[IT-Services & automatisierter eCommerce]
-    #v(6.3pt)
+    #v(cv-heading-after)
     #cv-s[Eigenes Geschäft · Exit zu 80 % des Buchwerts · 2009 – 2025]
-    #v(7.35pt)
+    #v(cv-subheading-after)
     #cv-b[Hardwarehandel, Diagnose, Custom Builds & Reparaturen für KMU/B2C-Kunden aufgebaut & betrieben]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Listing, Bestand, Tracking und Logistik des fünfstelligen eBay-Betriebs per Mini-ERP automatisiert]
   ]
 ]
@@ -487,83 +505,83 @@
     #cv-spacious-heading[AI, Software & Data]
     // ccvl-competency: ai-products-tooling
     #cv-h[AI-Produkte, Tooling & Modellökosysteme]
-    #v(7.35pt)
+    #v(cv-competency-heading-after)
     #cv-b[US AI Tooling: Anthropic Claude Code | Claude Desktop | OpenAI Codex | Codex App | ChatGPT Desktop]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Open Source AI Tooling: OpenCode | Ollama | vLLM | llama.cpp | Open WebUI | Hugging Face | Langfuse]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Models: GPT | Claude | Gemini | GLM | DeepSeek | Qwen | Kimi | MiniMax | MiMo | Llama | Mistral | Gemma]
     #cv-entry-gap()
     // ccvl-competency: applied-ai-data
     #cv-h[AI Engineering, Agents & Data Science]
-    #v(7.35pt)
+    #v(cv-competency-heading-after)
     #cv-b[LLM Engineering: Large Language Models (LLMs) | RAG | Embeddings | Vector Search | Evaluations]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Agentic Systems: AI Agents | Multi-Agent Systems | Model Context Protocol (MCP) | Agent SDKs | Tool Use]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Data Science & ML: Statistik | Machine Learning | Zeitreihen | Predictive Modelling | Experimente | R]
     #cv-entry-gap()
     // ccvl-competency: software-infrastructure
     #cv-h[Software Engineering, Web & Plattformen]
-    #v(7.35pt)
+    #v(cv-competency-heading-after)
     #cv-b[Engineering: Python | Rust | Go | Java | TypeScript | JavaScript | Bash | SQL | Git | CI/CD | Testing]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Web & Publishing: Svelte | Astro | HTML | CSS | REST | GraphQL | WebSockets | Markdown | Typst]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Cloud & Data Platforms: PostgreSQL | Data Pipelines | Linux | Nix/NixOS | Kubernetes | GitOps | OpenTofu]
     #cv-spacious-heading[Strategie, Innovation & Transformation]
     // ccvl-competency: innovation-management
     #cv-h[Innovationsmanagement & Emerging Technologies]
-    #v(7.35pt)
+    #v(cv-competency-heading-after)
     #cv-b[Innovation Management: Innovation Pipeline | Stage-Gate | Incremental Innovation | Disruptive Innovation]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Technology Scouting: Emerging Technologies | Trendanalyse | Horizon Scanning | Technologiebewertung]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Produktinnovation: Product Discovery | Prototyping | Proof of Concept (PoC) | MVP | Marktvalidierung]
     #cv-entry-gap()
     // ccvl-competency: strategy
     #cv-h[Unternehmens-, Wachstums- & Technologiestrategie]
-    #v(7.35pt)
+    #v(cv-competency-heading-after)
     #cv-b[Corporate Strategy: Strategische Planung | Szenarioplanung | Wettbewerbsanalyse | Decision Support]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Growth Strategy: Business Development | Markteintritt | Go-to-Market | Partnerschaften | Pricing | B2B]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Technology Strategy: AI Strategy | Roadmaps | Business Cases | Enterprise Architecture | TCO | FinOps]
     #cv-entry-gap()
     // ccvl-competency: transformation-governance
     #cv-h[Transformation, Operating Models & Governance]
-    #v(7.35pt)
+    #v(cv-competency-heading-after)
     #cv-b[Operating Models: Target Operating Model (TOM) | Organisationsdesign | Decision Rights | Rollendesign]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Change & Value Creation: AI Adoption | Change Management | Benefits Realisation | Cost Transformation]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[AI Governance: EU AI Act | Responsible AI | Model Risk | DORA | Operational Resilience | DSGVO]
     #cv-spacious-heading[Finanzen, Investments & Märkte]
     // ccvl-competency: finance-ma
     #cv-h[Finance Transformation, Corporate Finance & M&A]
-    #v(7.35pt)
+    #v(cv-competency-heading-after)
     #cv-b[CFO Agenda: Finance Platform | Finance Data Architecture | Planung & Forecasting | AI-enabled Finance]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Corporate Finance: Financial Modelling | Valuation | DCF | Multiples | Project Finance | NPV | IRR | DSCR]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[M&A: Target Screening | Financial Due Diligence | Synergy Assessment | Post-Merger Integration (PMI)]
     #cv-entry-gap()
     // ccvl-competency: private-markets
     #cv-h[Private Markets & Investment Management]
-    #v(7.35pt)
+    #v(cv-competency-heading-after)
     #cv-b[Private Markets: Private Equity | Private Credit | Infrastructure Investments | Real Estate | Secondaries]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Investment Strategies: Buyouts | Growth Equity | Direct Lending | Distressed Debt | Special Situations]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[CIO Office: Investment Strategy | Multi-Asset | Portfolio Construction | Strategic Asset Allocation (SAA)]
     #cv-entry-gap()
     // ccvl-competency: trading-risk
     #cv-h[Trading, Quantitative Finance & Risiko]
-    #v(7.35pt)
+    #v(cv-competency-heading-after)
     #cv-b[Energy & Commodity Markets: Power Trading | Day-Ahead | Intraday | Gas/LNG | Metals | Carbon | Freight]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Systematic Trading: Alpha Signals | Backtesting | Trade Execution | Futures | Swaps | Options | Hedging]
-    #v(8.4pt)
+    #v(cv-bullet-after)
     #cv-b[Quantitative Risk: PnL | Value at Risk (VaR) | Stress Testing | Monte Carlo | Optionsbewertung | Volatilität]
   ]
 ]

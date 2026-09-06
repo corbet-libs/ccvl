@@ -29,13 +29,17 @@
     "ccvl-upskill",
     "ccvl-outcome"
   ],
+  "styles": {
+    "default": "harvard",
+    "available": ["harvard", "harvard-compact"]
+  },
   "documents": {
     "cv": {
       "de-CH": "cvl/de-ch/cv.typ",
       "en-CH": "cvl/en-ch/cv.typ",
       "presets": [2, 3, 4],
       "summary_lines": 5,
-      "summary_fill": {"minimum": 60, "target": 82, "maximum": 100},
+      "summary_fill": {"minimum": 95, "target": 97, "maximum": 100},
       "layout_contract": {
         "definition": "A station, project, or competency block is one full CV entry with its own heading and supporting content. Compact standalone lines do not count.",
         "page_1": { "entries": { "minimum": 6, "target": 7, "maximum": 8 } },

@@ -1,0 +1,45 @@
+# harvard-compact: thin whitespace-only variant of the Harvard default.
+#
+# Proves the style plumbing: same templates, same line and vertical-rhythm
+# contracts, only vertical spacing tightened. Horizontal measure, type sizes,
+# and accents are identical to `harvard.toml` (a Rust test pins that
+# invariant), so every measured line keeps its fill and the gates pass
+# unchanged.
+
+[page]
+margin_top_mm = 12
+margin_bottom_mm = 12
+margin_left_mm = 15
+margin_right_mm = 15
+
+[text]
+size_pt = 10.5
+leading_em = 0.7
+
+[accents]
+link = "#1e3a5f"
+highlight_background = "#f8fafc"
+
+[header]
+after_pt = 5.5
+
+[cv]
+superheading_outer_spacing_pt = 15.0
+compact_heading_spacing_pt = 8.0
+spacious_heading_spacing_pt = 16.5
+entry_spacing_pt = 10.0
+heading_after_pt = 5.5
+subheading_after_pt = 6.5
+bullet_after_pt = 7.5
+competency_heading_after_pt = 6.5
+rule_gap_pt = 4.0
+superheading_inner_pt = 4.5
+bullet_indent_pt = 10.5
+
+[cover]
+subject_after_pt = 4.0
+highlight_inset_pt = 8
+highlight_gap_pt = 4.5
+highlight_number_width_mm = 6
+closing_before_pt = 4.5
+closing_after_pt = 2

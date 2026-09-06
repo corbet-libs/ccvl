@@ -6,7 +6,7 @@ use anyhow::{Context, Result, bail, ensure};
 use ctypst::{CompileRequest, Document, Engine, PageConstraint};
 use serde_json::Value;
 
-use crate::application::validate_record;
+use crate::application::{resolve_style, validate_record};
 use crate::opportunity;
 use crate::stations;
 use crate::workspace::Workspace;
@@ -162,6 +162,7 @@ pub fn cv_spec(
             ("application".to_owned(), workspace.typst_path(application)?),
             ("cv-pages".to_owned(), pages.to_string()),
             ("profile".to_owned(), workspace.typst_path(profile)?),
+            ("style".to_owned(), record_style(workspace, application)?),
         ]),
         expected_pages: pages,
     })
@@ -182,9 +183,20 @@ pub fn cl_spec(
         inputs: BTreeMap::from([
             ("application".to_owned(), workspace.typst_path(application)?),
             ("profile".to_owned(), workspace.typst_path(profile)?),
+            ("style".to_owned(), record_style(workspace, application)?),
         ]),
         expected_pages: 1,
     })
+}
+
+/// Resolve the render style for the record at `application` and surface it
+/// as the `style` Typst input. Unknown names fail here — before the Typst
+/// compile — with the available styles; records without `options.style`
+/// render with the manifest default (`harvard`).
+fn record_style(workspace: &Workspace, application: &Path) -> Result<String> {
+    let relative = workspace.relative(&workspace.existing_inside(application)?)?;
+    let document = workspace.read_toml_value(&relative)?;
+    resolve_style(workspace, &document, &relative.display().to_string())
 }
 
 pub fn render_cvl(workspace: &Workspace) -> Result<Vec<PathBuf>> {
@@ -269,6 +281,19 @@ fn opportunity_options(document: &Value) -> Result<OpportunityOptions> {
     })
 }
 
+/// Locale selected by one keyed opportunity record, without building its
+/// full render specs. Lets the opportunity watcher scope its digest to the
+/// record's own locale templates.
+pub fn opportunity_locale(
+    workspace: &Workspace,
+    organisation: &str,
+    position: &str,
+) -> Result<&'static str> {
+    let application = opportunity::record_path(workspace, organisation, position, true)?;
+    let document = workspace.read_toml_value(workspace.relative(&application)?)?;
+    Ok(opportunity_options(&document)?.locale)
+}
+
 pub fn render_opportunity(
     workspace: &Workspace,
     organisation: &str,
@@ -286,17 +311,104 @@ pub fn render_opportunity(
             .any(|spec| spec.kind == DocumentKind::CoverLetter),
     )?;
     let compiler = Compiler::new(workspace)?;
-    specs
-        .iter()
-        .map(|spec| compiler.render(workspace, spec))
-        .collect()
+    let mut outputs = Vec::new();
+    for spec in &specs {
+        outputs.push(compiler.render(workspace, spec)?);
+    }
+    // Emit the resolved customization copies beside the PDFs only after the
+    // PDFs render, so the .typ files always describe the PDFs next to them.
+    for spec in &specs {
+        outputs.push(emit_resolved_typ(workspace, spec, organisation, position)?);
+    }
+    Ok(outputs)
+}
+
+/// Write the resolved customization copy of one rendered opportunity
+/// document: the locale template with its `sys.inputs` defaults pointed at
+/// this opportunity's record, so the copy beside the PDFs compiles
+/// standalone and reproduces the neighbouring PDF.
+fn emit_resolved_typ(
+    workspace: &Workspace,
+    spec: &DocumentSpec,
+    organisation: &str,
+    position: &str,
+) -> Result<PathBuf> {
+    let template = fs::read_to_string(&spec.source)
+        .with_context(|| format!("cannot read {}", spec.source.display()))?;
+    let template_display = workspace.relative(&spec.source)?.display().to_string();
+    let text = resolved_typ_text(&template, spec, &template_display, organisation, position);
+    let name = match spec.kind {
+        DocumentKind::Cv => "cv.typ",
+        DocumentKind::CoverLetter => "cl.typ",
+    };
+    let destination = spec
+        .output
+        .parent()
+        .context("opportunity output has no parent")?
+        .join(name);
+    if let Some(parent) = destination.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("cannot create {}", parent.display()))?;
+    }
+    fs::write(&destination, text)
+        .with_context(|| format!("cannot write {}", destination.display()))?;
+    Ok(destination)
+}
+
+fn resolved_typ_text(
+    template: &str,
+    spec: &DocumentSpec,
+    template_display: &str,
+    organisation: &str,
+    position: &str,
+) -> String {
+    let mut resolved = template.to_owned();
+    for key in ["application", "profile", "cv-pages", "style"] {
+        if let Some(default) = spec.inputs.get(key) {
+            resolved = rewrite_input_default(&resolved, key, default);
+        }
+    }
+    let mut provenance = format!("Template: {template_display}");
+    for key in ["application", "profile", "cv-pages", "style"] {
+        if let Some(default) = spec.inputs.get(key) {
+            use std::fmt::Write as _;
+            let _ = write!(provenance, " | {key}: {default}");
+        }
+    }
+    format!(
+        "// Resolved customization copy emitted by `ccvl build-opportunity {organisation} {position}`.\n\
+         // {provenance}\n\
+         // Do not edit: this file is regenerated on every build. It compiles standalone and reproduces the neighbouring PDF.\n\
+         {resolved}"
+    )
+}
+
+/// Point one `sys.inputs.at("<key>", default: "<old>")` default at a resolved
+/// value so an emitted copy compiles without `--input` flags. Leaves the
+/// source untouched when the template no longer carries that input.
+fn rewrite_input_default(source: &str, key: &str, default: &str) -> String {
+    let marker = format!("sys.inputs.at(\"{key}\", default: \"");
+    let Some(start) = source.find(&marker) else {
+        return source.to_owned();
+    };
+    let value_start = start + marker.len();
+    let Some(value_end) = source[value_start..].find('"') else {
+        return source.to_owned();
+    };
+    let mut resolved = String::with_capacity(source.len());
+    resolved.push_str(&source[..value_start]);
+    resolved.push_str(default);
+    resolved.push_str(&source[value_start + value_end..]);
+    resolved
 }
 
 fn remove_stale_cover_letter(output_dir: &Path, cover_enabled: bool) -> Result<()> {
     if !cover_enabled {
-        let stale = output_dir.join("cl.pdf");
-        if stale.is_file() {
-            fs::remove_file(stale)?;
+        for stale in ["cl.pdf", "cl.typ"] {
+            let stale = output_dir.join(stale);
+            if stale.is_file() {
+                fs::remove_file(stale)?;
+            }
         }
     }
     Ok(())
@@ -345,13 +457,272 @@ mod tests {
     #[test]
     fn disabled_cover_letter_removes_stale_output() {
         let directory = tempdir().unwrap();
-        let stale = directory.path().join("cl.pdf");
-        fs::write(&stale, b"stale").unwrap();
+        let stale_pdf = directory.path().join("cl.pdf");
+        let stale_typ = directory.path().join("cl.typ");
+        fs::write(&stale_pdf, b"stale").unwrap();
+        fs::write(&stale_typ, b"stale").unwrap();
         remove_stale_cover_letter(directory.path(), false).unwrap();
-        assert!(!stale.exists());
+        assert!(!stale_pdf.exists());
+        assert!(!stale_typ.exists());
 
-        fs::write(&stale, b"current").unwrap();
+        fs::write(&stale_pdf, b"current").unwrap();
+        fs::write(&stale_typ, b"current").unwrap();
         remove_stale_cover_letter(directory.path(), true).unwrap();
-        assert!(stale.exists());
+        assert!(stale_pdf.exists());
+        assert!(stale_typ.exists());
+    }
+
+    #[test]
+    fn input_default_rewrite_points_copy_at_record() {
+        let cv = "#let cv-pages = int(sys.inputs.at(\"cv-pages\", default: \"4\"))\n\
+                  #let application-path = sys.inputs.at(\"application\", default: \"/cvl/en-ch/application.toml\")\n";
+        let resolved = rewrite_input_default(
+            cv,
+            "application",
+            "/opportunities/acme/lead/application.toml",
+        );
+        let resolved = rewrite_input_default(&resolved, "cv-pages", "3");
+        assert!(resolved.contains(
+            "sys.inputs.at(\"application\", default: \"/opportunities/acme/lead/application.toml\")"
+        ));
+        assert!(resolved.contains("sys.inputs.at(\"cv-pages\", default: \"3\")"));
+        assert!(!resolved.contains("/cvl/en-ch/application.toml"));
+
+        let cl = "#let application-path = sys.inputs.at(\"application\", default: \"/cvl/de-ch/application.toml\")\n";
+        let resolved = rewrite_input_default(
+            cl,
+            "application",
+            "/opportunities/acme/lead/application.toml",
+        );
+        assert!(resolved.contains(
+            "sys.inputs.at(\"application\", default: \"/opportunities/acme/lead/application.toml\")"
+        ));
+        let styled = "#let style-input = sys.inputs.at(\"style\", default: \"\")\n";
+        assert_eq!(
+            rewrite_input_default(styled, "style", "harvard"),
+            "#let style-input = sys.inputs.at(\"style\", default: \"harvard\")\n"
+        );
+        // A template that no longer carries the input survives unchanged.
+        assert_eq!(
+            rewrite_input_default("#let x = 1\n", "application", "/elsewhere.toml"),
+            "#let x = 1\n"
+        );
+    }
+
+    #[test]
+    fn resolved_copy_carries_provenance_and_record_defaults() {
+        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        let source = workspace.path("cvl/en-ch/cv.typ");
+        let output = tempdir().unwrap().path().join("output").join("cv.pdf");
+        let mut spec = cv_spec(
+            &workspace,
+            "en-ch",
+            3,
+            &workspace.path("cvl/en-ch/application.toml"),
+            &workspace.path("cvl/profile.toml"),
+            &output,
+        )
+        .unwrap();
+        spec.inputs.insert(
+            "application".to_owned(),
+            "/opportunities/acme/lead/application.toml".to_owned(),
+        );
+        let template = fs::read_to_string(&source).unwrap();
+        let text = resolved_typ_text(&template, &spec, "cvl/en-ch/cv.typ", "acme", "lead");
+        assert!(text.starts_with(
+            "// Resolved customization copy emitted by `ccvl build-opportunity acme lead`."
+        ));
+        assert!(text.contains("Template: cvl/en-ch/cv.typ"));
+        assert!(text.contains("application: /opportunities/acme/lead/application.toml"));
+        assert!(text.contains("cv-pages: 3"));
+        assert!(text.contains("| style: "));
+        assert!(!text.contains("sys.inputs.at(\"style\", default: \"\")"));
+        assert!(text.ends_with('\n'));
+        assert!(!text.contains("default: \"/cvl/en-ch/application.toml\""));
+        assert!(text.contains("sys.inputs.at(\"cv-pages\", default: \"3\")"));
+    }
+
+    #[test]
+    fn emitted_copy_compiles_inputs_standalone() {
+        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        let directory = tempdir().unwrap();
+        let output = directory.path().join("output").join("cv.pdf");
+        let spec = cv_spec(
+            &workspace,
+            "en-ch",
+            3,
+            &workspace.path("cvl/en-ch/application.toml"),
+            &workspace.path("cvl/profile.toml"),
+            &output,
+        )
+        .unwrap();
+        let typ = emit_resolved_typ(&workspace, &spec, "acme", "lead").unwrap();
+        assert_eq!(typ, directory.path().join("output").join("cv.typ"));
+        let text = fs::read_to_string(&typ).unwrap();
+        assert!(text.contains("| application: /cvl/en-ch/application.toml |"));
+        assert!(
+            !text
+                .lines()
+                .any(|line| line.ends_with(' ') || line.ends_with('\t'))
+        );
+    }
+
+    #[test]
+    fn cvl_specs_carry_the_resolved_default_style() {
+        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        for pages in [2, 3, 4] {
+            let spec = cvl_cv_spec(&workspace, "en-ch", pages).unwrap();
+            assert_eq!(
+                spec.inputs.get("style").map(String::as_str),
+                Some("harvard")
+            );
+        }
+        let spec = cvl_cl_spec(&workspace, "de-ch").unwrap();
+        assert_eq!(
+            spec.inputs.get("style").map(String::as_str),
+            Some("harvard")
+        );
+    }
+
+    #[test]
+    fn back_compat_shim_renders_the_harvard_default() {
+        // document.typ only re-exports harvard.typ, and harvard-compact.typ
+        // wraps the same renderer with compact defaults. A document going
+        // through either — defaulted or with an explicit named style — must
+        // compile to one page. Note: `style` travels by name everywhere;
+        // positional arguments cannot reach past a defaulted parameter.
+        let engine = ctypst::Engine::builder()
+            .root(Path::new(env!("CARGO_MANIFEST_DIR")))
+            .fonts(ctypst::fonts::documents())
+            .build()
+            .unwrap();
+        for (module, locale, style) in [
+            ("document", "de-ch", "harvard"),
+            ("harvard-compact", "en-ch", "harvard-compact"),
+        ] {
+            for with in [
+                format!("locale: \"{locale}\""),
+                format!("locale: \"{locale}\", style: load-style(\"{style}\")"),
+            ] {
+                let source = format!(
+                    "#import \"/.agent/typst/styles/{module}.typ\": document-style, load-style\n\
+                     #show: document-style.with({with})\n\
+                     Hello, Harvard.\n"
+                );
+                engine
+                    .compile(
+                        ctypst::CompileRequest::new("shim.typ")
+                            .source_file("shim.typ", source)
+                            .pages(ctypst::PageConstraint::Exactly(1)),
+                    )
+                    .unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn unknown_style_fails_with_a_clear_error() {
+        let engine = ctypst::Engine::builder()
+            .root(Path::new(env!("CARGO_MANIFEST_DIR")))
+            .fonts(ctypst::fonts::documents())
+            .build()
+            .unwrap();
+        let source =
+            "#import \"/.agent/typst/styles/harvard.typ\": load-style\n#load-style(\"nope\")\n";
+        let error = engine
+            .compile(
+                ctypst::CompileRequest::new("unknown-style.typ")
+                    .source_file("unknown-style.typ", source),
+            )
+            .err()
+            .expect("unknown style must fail")
+            .to_string();
+        assert!(error.contains("unknown style"), "unexpected error: {error}");
+        assert!(
+            error.contains("harvard-compact"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn harvard_compact_passes_the_same_measurement_gates() {
+        use crate::measure::{document_metrics, line_failure, summary_failures};
+
+        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        let compiler = Compiler::new(&workspace).unwrap();
+        // Two-page CV exercises pages 1-2; the cover letter exercises the
+        // vertical-rhythm gate. Both compile under an exact page constraint.
+        let mut cv = cvl_cv_spec(&workspace, "en-ch", 2).unwrap();
+        cv.inputs
+            .insert("line-contracts".to_owned(), "report".to_owned());
+        cv.inputs
+            .insert("style".to_owned(), "harvard-compact".to_owned());
+        let document = compiler.compile(&workspace, &cv).unwrap();
+        let metrics = document_metrics(&workspace, &cv, &document).unwrap();
+        assert!(
+            summary_failures(&workspace, &cv, &metrics)
+                .unwrap()
+                .is_empty()
+        );
+        for (index, metric) in metrics.iter().enumerate() {
+            assert!(
+                line_failure(&cv, index, metric).unwrap().is_none(),
+                "compact CV failure at #{index}: {metric}"
+            );
+        }
+
+        let mut cl = cvl_cl_spec(&workspace, "en-ch").unwrap();
+        cl.inputs
+            .insert("line-contracts".to_owned(), "report".to_owned());
+        cl.inputs
+            .insert("style".to_owned(), "harvard-compact".to_owned());
+        let document = compiler.compile(&workspace, &cl).unwrap();
+        let metrics = document_metrics(&workspace, &cl, &document).unwrap();
+        for (index, metric) in metrics.iter().enumerate() {
+            assert!(
+                line_failure(&cl, index, metric).unwrap().is_none(),
+                "compact cover-letter failure at #{index}: {metric}"
+            );
+        }
+    }
+
+    #[test]
+    fn compact_variant_keeps_horizontal_measure_and_accents() {
+        // Horizontal measure feeds every fill percentage, so the compact
+        // example may only tighten vertical whitespace. Pin the invariant in
+        // both knob files; the gates above prove the result still passes.
+        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        let harvard = workspace
+            .read_toml_value(".agent/typst/styles/harvard.toml")
+            .unwrap();
+        let compact = workspace
+            .read_toml_value(".agent/typst/styles/harvard-compact.toml")
+            .unwrap();
+        for pointer in ["/page", "/text", "/accents"] {
+            assert_eq!(
+                harvard.pointer(pointer),
+                compact.pointer(pointer),
+                "style-invariant section changed: {pointer}"
+            );
+        }
+        for pointer in [
+            "/cv/bullet_indent_pt",
+            "/cover/highlight_inset_pt",
+            "/cover/highlight_number_width_mm",
+        ] {
+            assert_eq!(
+                harvard.pointer(pointer),
+                compact.pointer(pointer),
+                "horizontal knob changed: {pointer}"
+            );
+        }
+        let fill = |style: &serde_json::Value, pointer: &str| {
+            style.pointer(pointer).and_then(serde_json::Value::as_f64)
+        };
+        assert!(
+            fill(&compact, "/cv/entry_spacing_pt") < fill(&harvard, "/cv/entry_spacing_pt"),
+            "compact must tighten vertical whitespace"
+        );
+        assert_ne!(harvard, compact);
     }
 }

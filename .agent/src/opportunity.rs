@@ -29,7 +29,12 @@ pub fn record_path(
     Ok(record)
 }
 
-pub fn create_record(workspace: &Workspace, organisation: &str, position: &str) -> Result<PathBuf> {
+pub fn create_record(
+    workspace: &Workspace,
+    organisation: &str,
+    position: &str,
+    cover_letter: bool,
+) -> Result<PathBuf> {
     let destination = record_path(workspace, organisation, position, false)?;
     if destination.exists() {
         bail!(
@@ -42,6 +47,15 @@ pub fn create_record(workspace: &Workspace, organisation: &str, position: &str) 
     )?)
     .context("invalid scaffold application.toml")?;
     document["job"]["id"] = toml::Value::String(format!("{organisation}--{position}"));
+    if !cover_letter {
+        // No letter needed: leave it out in the first place instead of
+        // writing a [cl] table the user must delete (validation rejects a
+        // disabled letter that retains hidden content).
+        document["options"]["generate_cl"] = toml::Value::Boolean(false);
+        if let Some(table) = document.as_table_mut() {
+            table.remove("cl");
+        }
+    }
     let parent = destination
         .parent()
         .context("opportunity path has no parent")?;
@@ -64,7 +78,7 @@ mod tests {
             directory
                 .path()
                 .join(".agent/scaffolds/opportunity/application.toml"),
-            "[job]\nid = \"\"\n",
+            "[job]\nid = \"\"\n\n[options]\ngenerate_cl = true\n\n[cl]\nhighlights = []\n",
         )
         .unwrap();
         let workspace = Workspace::at(directory.path()).unwrap();
@@ -86,16 +100,31 @@ mod tests {
     #[test]
     fn new_opportunity_is_keyed_and_never_overwritten() {
         let (_directory, workspace) = temporary_workspace();
-        let record = create_record(&workspace, "example_org", "strategy-lead").unwrap();
+        let record = create_record(&workspace, "example_org", "strategy-lead", true).unwrap();
         let text = fs::read_to_string(&record).unwrap();
         let document: toml::Value = toml::from_str(&text).unwrap();
         assert_eq!(
             document["job"]["id"].as_str(),
             Some("example_org--strategy-lead")
         );
-        let error = create_record(&workspace, "example_org", "strategy-lead")
+        assert_eq!(document["options"]["generate_cl"].as_bool(), Some(true));
+        assert!(document.get("cl").is_some());
+        let error = create_record(&workspace, "example_org", "strategy-lead", true)
             .unwrap_err()
             .to_string();
         assert!(error.contains("refusing to overwrite"));
+    }
+
+    #[test]
+    fn new_opportunity_without_cover_letter_omits_the_cl_table() {
+        let (_directory, workspace) = temporary_workspace();
+        let record = create_record(&workspace, "example_org", "cv-only-role", false).unwrap();
+        let text = fs::read_to_string(&record).unwrap();
+        let document: toml::Value = toml::from_str(&text).unwrap();
+        assert_eq!(document["options"]["generate_cl"].as_bool(), Some(false));
+        assert!(
+            document.get("cl").is_none(),
+            "a CV-only record must not contain a [cl] table to delete"
+        );
     }
 }

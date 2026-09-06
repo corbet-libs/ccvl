@@ -73,9 +73,60 @@ targets 56% of usable page height and must remain within 50–60%. A sparse or
 over-compressed page therefore fails deterministically even when every
 individual line fits.
 
-Both values come from the actual rendered Typst boxes. Recipient details and
-accepted line-budget variation may move the highlights slightly away from the
-geometric centre without abandoning the composition.
+Both values come from the actual rendered Typst boxes. Accepted line-budget
+variation may move the highlights slightly away from the geometric centre
+without abandoning the composition. The recipient record in
+`application.toml` is data-only provenance and is not printed; only the
+salutation uses the recipient name.
+
+## Salutation
+
+The `name` field of `job.cl_recipient` holds the full address form, e.g.
+`"Frau Dr. Müller"` or `"Herr Müller"`. Only the honorific, academic titles,
+and surname render; first names never appear in a formal salutation. The
+rules live in the `cgreet` library
+(`https://github.com/corbet-labs/cgreet`, re-exported
+for compatibility via `ccvl::application`) and are mirrored for the renderer
+in `.agent/typst/application.typ` (`salutation-honorific`,
+`salutation-titles`, `salutation-surname`, `de-salutation`); `en-ch`
+additionally uses `salutation-last-name` (`"Dr. Jane Doe"` renders
+`Dear Doe,`).
+
+German salutations are locale-correct per country norm:
+
+| Locale | Norm | Named | Generic | Comma |
+|---|---|---|---|---|
+| de-ch | SN 010130 | `Sehr geehrte Frau Dr. Müller` | `Sehr geehrte Damen und Herren` | none; next sentence starts uppercase |
+| de-li | SN 010130 (assumed) | same as de-ch | same as de-ch | none |
+| de-de | DIN 5008 | `Sehr geehrte Frau Dr. Müller,` | `Sehr geehrte Damen und Herren,` | comma; sentence continues lowercase |
+| de-at | DIN 5008 (ÖNORM A 1080 was withdrawn in 2018) | same as de-de | same as de-de | comma |
+
+Notes:
+
+- `Guten Tag` is informal and never used in a formal application; the
+  fallback is always `Sehr geehrte Damen und Herren`.
+- Abbreviations: the Anrede uses `Herr`, never the accusative `Herrn`
+  (which belongs only in the postal address) and never `Hr.`/`Fr.`
+  (unhöflich); `Frau` is never abbreviated. `Dr.` stays abbreviated,
+  `Prof.` normalises to the spelled-out `Professor`; `Dipl.-Ing.` and
+  `Mag.` survive. Protocol keeps only the highest title, so Professor
+  suppresses Dr.
+- Liechtenstein has no own correspondence norm on record; it renders
+  Swiss-style (no comma, `ss` spelling) given the customs and currency
+  union and Alemannic usage. Say so explicitly if a FL recipient asks.
+- A name without a parsable Herr/Frau honorific (or without a surname)
+  falls back to the generic salutation so the letter stays formally safe.
+- English (`en-ch`): the named form stays title-less by design (`Dear Doe,`)
+  to avoid misgendering from a surname alone; the generic form is
+  `Dear Hiring Manager,` (the hiring-process owner, stronger than a team
+  address and more current than `Dear Sir or Madam` / `To Whom It May
+  Concern`).
+
+The generic fallback stays valid for the target-neutral showcase, but
+`ccvl measure` (and `measure-opportunity`) reports an empty recipient — and,
+for German records, a name without Herr/Frau — as a non-blocking `WARN`,
+and `ccvl check` repeats it without failing. Provide a real address form
+such as `"Frau Dr. Müller"` for every tailored opportunity.
 
 ## Iteration contract
 

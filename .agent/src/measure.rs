@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anyhow::{Context, Result, ensure};
-use ctypst::Document;
-use serde_json::Value;
-
 use crate::render::{
     Compiler, DocumentKind, DocumentSpec, cvl_cl_spec, cvl_cv_spec, opportunity_specs,
 };
 use crate::workspace::Workspace;
+use anyhow::{Context, Result, ensure};
+use cgreet::recipient_salutation_warning;
+use ctypst::Document;
+use serde_json::Value;
 
 pub fn cvl_specs(workspace: &Workspace) -> Result<Vec<DocumentSpec>> {
     let mut specs = Vec::new();
@@ -411,9 +411,10 @@ fn paragraph_counts(spec: &DocumentSpec, metrics: &[Value]) -> Result<Vec<usize>
     Ok(counts)
 }
 
-/// Accepted-but-dispreferred line totals per cover-letter region. Spelled out
-/// as warnings rather than failures; the fused check gate calls this for its
-/// error propagation even when it discards the advisories.
+/// Accepted-but-dispreferred line totals per cover-letter region, plus the
+/// target-neutral salutation counsel. Spelled out as warnings rather than
+/// failures; the fused check gate calls this for its error propagation even
+/// when it discards the advisories.
 pub fn preference_warnings(
     workspace: &Workspace,
     spec: &DocumentSpec,
@@ -475,6 +476,54 @@ pub fn preference_warnings(
             "{}: paragraph 6 uses {} lines; accepted, but 3 is preferred to mirror paragraph 1",
             spec.name, counts[5]
         ));
+    }
+    warnings.extend(recipient_warnings(workspace, spec)?);
+    Ok(warnings)
+}
+
+/// Visible, non-blocking counsel when a cover letter has no recipient name.
+/// The Typst renderer falls back to the generic salutation ("Dear Hiring
+/// Manager," / "Sehr geehrte Damen und Herren"), which stays valid for the
+/// target-neutral showcase; a tailored opportunity should name a person.
+/// German records additionally warn when the name carries no parsable
+/// Herr/Frau honorific. Missing application inputs (unit fixtures) yield no
+/// warning so metric-set tests stay focused.
+pub fn recipient_warnings(workspace: &Workspace, spec: &DocumentSpec) -> Result<Vec<String>> {
+    use cgreet::de_honorific_warning;
+
+    if spec.kind != DocumentKind::CoverLetter {
+        return Ok(Vec::new());
+    }
+    let Some(typst_path) = spec.inputs.get("application") else {
+        return Ok(Vec::new());
+    };
+    let inside = workspace.existing_inside(typst_path.trim_start_matches('/'));
+    let Ok(resolved) = inside else {
+        return Ok(Vec::new());
+    };
+    let Ok(relative) = workspace.relative(&resolved) else {
+        return Ok(Vec::new());
+    };
+    let Ok(record) = workspace.read_toml_value(relative) else {
+        return Ok(Vec::new());
+    };
+    let name = record
+        .pointer("/job/cl_recipient/name")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let mut warnings = Vec::new();
+    if let Some(warning) = recipient_salutation_warning(&spec.name, name) {
+        warnings.push(warning);
+        return Ok(warnings);
+    }
+    let language = record
+        .pointer("/options/language")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if language.to_ascii_lowercase().starts_with("de")
+        && let Some(warning) = de_honorific_warning(&spec.name, name)
+    {
+        warnings.push(warning);
     }
     Ok(warnings)
 }
@@ -781,5 +830,91 @@ mod tests {
         let warnings =
             preference_warnings(&workspace, &repo_cv_spec(), &[summary_metric(82.0)]).unwrap();
         assert!(warnings.is_empty());
+    }
+
+    fn cover_letter_spec_with_application(application: &str) -> DocumentSpec {
+        let mut inputs = std::collections::BTreeMap::new();
+        inputs.insert("application".to_owned(), application.to_owned());
+        DocumentSpec {
+            name: "fixture".to_owned(),
+            kind: DocumentKind::CoverLetter,
+            source: PathBuf::from("fixture.typ"),
+            output: PathBuf::from("fixture.pdf"),
+            inputs,
+            expected_pages: 1,
+        }
+    }
+
+    #[test]
+    fn empty_recipient_name_warns_but_stays_valid() {
+        let workspace = workspace();
+        // Showcase records ship with an empty recipient: generic salutation
+        // stays valid, but measurement must surface a visible advisory.
+        for locale in ["cvl/de-ch/application.toml", "cvl/en-ch/application.toml"] {
+            let spec = cover_letter_spec_with_application(locale);
+            let warnings = recipient_warnings(&workspace, &spec).unwrap();
+            assert_eq!(warnings.len(), 1, "locale: {locale}");
+            assert!(warnings[0].contains("job.cl_recipient.name is empty"));
+            assert!(warnings[0].contains("generic salutation"));
+            let metrics = metric_set(&[3, 6, 6, 5, 5, 3]);
+            validate_metric_set(&workspace, &spec, &metrics).unwrap();
+            let warnings = preference_warnings(&workspace, &spec, &metrics).unwrap();
+            assert!(
+                warnings
+                    .iter()
+                    .any(|warning| warning.contains("generic salutation")),
+                "locale: {locale}"
+            );
+        }
+        // Fixtures without an application input stay silent so metric-set
+        // tests keep asserting exact warning counts.
+        assert!(
+            recipient_warnings(&workspace, &cover_letter_spec())
+                .unwrap()
+                .is_empty()
+        );
+        // CV specs never carry the salutation counsel.
+        assert!(
+            recipient_warnings(&workspace, &repo_cv_spec())
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn typst_salutation_helper_keeps_only_the_last_token() {
+        // Typst-level coverage for the shared helper: the same edge cases
+        // as the Rust mirror must hold inside the renderer.
+        let engine = ctypst::Engine::builder()
+            .root(std::path::Path::new(env!("CARGO_MANIFEST_DIR")))
+            .fonts(ctypst::fonts::documents())
+            .build()
+            .unwrap();
+        let source = "#import \"/.agent/typst/application.typ\": salutation-last-name, de-salutation\n\
+            #assert(salutation-last-name(\"Dr. Jane Doe\") == \"Doe\", message: \"title prefix\")\n\
+            #assert(salutation-last-name(\"Ms Test Person\") == \"Person\", message: \"multi-token\")\n\
+            #assert(salutation-last-name(\"Madonna\") == \"Madonna\", message: \"single token\")\n\
+            #assert(salutation-last-name(\"Anne-Marie Müller-Schmidt\") == \"Müller-Schmidt\", message: \"hyphenated\")\n\
+            #assert(salutation-last-name(\"  Jane   Doe  \") == \"Doe\", message: \"padded\")\n\
+            #assert(salutation-last-name(\"\") == \"\", message: \"empty\")\n\
+            #assert(salutation-last-name(\"   \") == \"\", message: \"whitespace\")\n\
+            #assert(de-salutation(\"Frau Dr. Müller\", region: \"ch\") == \"Sehr geehrte Frau Dr. Müller\", message: \"ch titled\")\n\
+            #assert(de-salutation(\"Herr Müller\", region: \"ch\") == \"Sehr geehrter Herr Müller\", message: \"ch plain\")\n\
+            #assert(de-salutation(\"Frau Müller\", region: \"li\") == \"Sehr geehrte Frau Müller\", message: \"li no comma\")\n\
+            #assert(de-salutation(\"Frau Müller\", region: \"de\") == \"Sehr geehrte Frau Müller,\", message: \"de comma\")\n\
+            #assert(de-salutation(\"Herr Müller\", region: \"at\") == \"Sehr geehrter Herr Müller,\", message: \"at comma\")\n\
+            #assert(de-salutation(\"Herr Prof. Dr. Müller\", region: \"ch\") == \"Sehr geehrter Herr Professor Müller\", message: \"professor wins\")\n\
+            #assert(de-salutation(\"\", region: \"ch\") == \"Sehr geehrte Damen und Herren\", message: \"ch generic\")\n\
+            #assert(de-salutation(\"\", region: \"de\") == \"Sehr geehrte Damen und Herren,\", message: \"de generic\")\n\
+            #assert(de-salutation(\"Jane Doe\", region: \"ch\") == \"Sehr geehrte Damen und Herren\", message: \"no honorific\")\n\
+            #assert(de-salutation(\"Hr. Müller\", region: \"ch\") == \"Sehr geehrte Damen und Herren\", message: \"abbreviation rejected\")\n\
+            Hello";
+        engine
+            .compile(
+                ctypst::CompileRequest::new("salutation.typ")
+                    .source_file("salutation.typ", source)
+                    .pages(ctypst::PageConstraint::Exactly(1)),
+            )
+            .unwrap();
     }
 }

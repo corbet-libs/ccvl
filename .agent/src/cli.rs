@@ -4,7 +4,7 @@ use std::process::ExitCode;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{Result, ensure};
+use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand};
 use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
@@ -77,6 +77,10 @@ enum Command {
     NewOpportunity {
         organisation_key: String,
         position_key: String,
+        /// Skip the cover letter: writes `generate_cl = false` and no `[cl]`
+        /// table, so there is nothing to delete afterwards.
+        #[arg(long)]
+        no_cover_letter: bool,
     },
     /// Build one CV.
     BuildCv {
@@ -110,6 +114,14 @@ enum Command {
         locale: String,
         #[arg(default_value_t = 4)]
         pages: usize,
+    },
+    /// Rebuild one cover letter whenever its inputs change.
+    WatchCl { locale: String },
+    /// Rebuild one keyed opportunity (PDFs plus resolved .typ copies)
+    /// whenever its template, record, or generated outputs change.
+    WatchOpportunity {
+        organisation_key: String,
+        position_key: String,
     },
     /// Format Typst sources with the embedded formatter.
     Fmt {
@@ -214,8 +226,14 @@ pub fn run() -> Result<ExitCode> {
         Command::NewOpportunity {
             organisation_key,
             position_key,
+            no_cover_letter,
         } => {
-            let path = opportunity::create_record(&workspace, &organisation_key, &position_key)?;
+            let path = opportunity::create_record(
+                &workspace,
+                &organisation_key,
+                &position_key,
+                !no_cover_letter,
+            )?;
             println!("Created {}", workspace.relative(&path)?.display());
         }
         Command::BuildCv {
@@ -270,6 +288,11 @@ pub fn run() -> Result<ExitCode> {
             &position_key,
         )?),
         Command::WatchCv { locale, pages } => watch_cv(&workspace, &locale, pages)?,
+        Command::WatchCl { locale } => watch_cl(&workspace, &locale)?,
+        Command::WatchOpportunity {
+            organisation_key,
+            position_key,
+        } => watch_opportunity(&workspace, &organisation_key, &position_key)?,
         Command::Fmt { check } => format::format_typst(&workspace, check)?,
         Command::SkillEval {
             cases,
@@ -330,33 +353,117 @@ fn doctor(workspace: &Workspace) -> Result<()> {
 
 fn watch_cv(workspace: &Workspace, locale: &str, pages: usize) -> Result<()> {
     let locale = render::normalize_locale(locale)?;
-    println!("Watching ccvl sources for {locale} {pages}-page CV. Press Ctrl-C to stop.");
+    watch_loop(
+        &format!("ccvl sources for {locale} {pages}-page CV"),
+        || cvl_digest(workspace),
+        || {
+            let spec = render::cvl_cv_spec(workspace, locale, pages)?;
+            Ok(vec![Compiler::new(workspace)?.render(workspace, &spec)?])
+        },
+    )
+}
+
+fn watch_cl(workspace: &Workspace, locale: &str) -> Result<()> {
+    let locale = render::normalize_locale(locale)?;
+    watch_loop(
+        &format!("ccvl sources for {locale} cover letter"),
+        || cvl_digest(workspace),
+        || {
+            let spec = render::cvl_cl_spec(workspace, locale)?;
+            Ok(vec![Compiler::new(workspace)?.render(workspace, &spec)?])
+        },
+    )
+}
+
+fn watch_opportunity(workspace: &Workspace, organisation: &str, position: &str) -> Result<()> {
+    // Fail fast on an unknown record instead of looping on the error.
+    opportunity::record_path(workspace, organisation, position, true)?;
+    watch_loop(
+        &format!("opportunity sources for {organisation}/{position}"),
+        || opportunity_digest(workspace, organisation, position),
+        || render::render_opportunity(workspace, organisation, position),
+    )
+}
+
+fn watch_loop(
+    label: &str,
+    digest: impl Fn() -> Result<Vec<u8>>,
+    render: impl Fn() -> Result<Vec<PathBuf>>,
+) -> Result<()> {
+    println!("Watching {label}. Press Ctrl-C to stop.");
     let mut previous = Vec::new();
     loop {
-        let current = source_digest(workspace)?;
+        let current = digest()?;
         if current != previous {
-            let spec = render::cvl_cv_spec(workspace, locale, pages)?;
-            Compiler::new(workspace)?.render(workspace, &spec)?;
-            println!("Rendered {}", spec.output.display());
-            previous = current;
+            print_outputs(render()?);
+            // Re-hash after rendering: built PDFs are excluded from the
+            // digest and resolved .typ copies are content-deterministic, so
+            // a quiet tree settles instead of rebuilding twice per change.
+            previous = digest()?;
         }
         thread::sleep(Duration::from_millis(500));
     }
 }
 
-fn source_digest(workspace: &Workspace) -> Result<Vec<u8>> {
+/// General CVL sources: locale templates and records, the shared Typst
+/// machinery and assets, plus the workspace contract. Built PDFs are
+/// excluded so a render never retriggers itself.
+fn cvl_digest(workspace: &Workspace) -> Result<Vec<u8>> {
+    digest_roots(&[
+        workspace.path("cvl"),
+        workspace.path(".agent/typst"),
+        workspace.path("ccvl.json"),
+    ])
+}
+
+/// Opportunity sources: the record's locale templates, the shared Typst
+/// machinery and assets, the profile and workspace contract, plus the keyed
+/// record directory including its generated output .typ copies.
+fn opportunity_digest(
+    workspace: &Workspace,
+    organisation: &str,
+    position: &str,
+) -> Result<Vec<u8>> {
+    let record = opportunity::record_path(workspace, organisation, position, true)?;
+    let directory = record
+        .parent()
+        .context("opportunity record has no parent")?
+        .to_path_buf();
+    let mut roots = vec![
+        workspace.path(".agent/typst"),
+        workspace.path("cvl/assets"),
+        workspace.path("cvl/profile.toml"),
+        workspace.path("ccvl.json"),
+        directory,
+    ];
+    match render::opportunity_locale(workspace, organisation, position) {
+        Ok(locale) => {
+            roots.push(workspace.path(format!("cvl/{locale}/cv.typ")));
+            roots.push(workspace.path(format!("cvl/{locale}/cl.typ")));
+        }
+        Err(_) => roots.push(workspace.path("cvl")),
+    }
+    digest_roots(&roots)
+}
+
+fn digest_roots(roots: &[PathBuf]) -> Result<Vec<u8>> {
     let mut paths = Vec::new();
-    for root in ["cvl", ".agent/typst"] {
+    for root in roots {
+        if root.is_file() {
+            if is_watched(root) {
+                paths.push(root.clone());
+            }
+            continue;
+        }
+        if !root.is_dir() {
+            continue;
+        }
         paths.extend(
-            WalkDir::new(workspace.path(root))
+            WalkDir::new(root)
                 .into_iter()
                 .filter_map(Result::ok)
                 .filter(|entry| entry.file_type().is_file())
-                .filter(|entry| {
-                    entry.path().extension().is_some_and(|extension| {
-                        extension == "typ" || extension == "json" || extension == "png"
-                    })
-                })
+                .filter(|entry| is_watched(entry.path()))
                 .map(walkdir::DirEntry::into_path),
         );
     }
@@ -364,9 +471,18 @@ fn source_digest(workspace: &Workspace) -> Result<Vec<u8>> {
     let mut digest = Sha256::new();
     for path in paths {
         digest.update(path.to_string_lossy().as_bytes());
-        digest.update(fs::read(path)?);
+        digest.update(fs::read(&path)?);
     }
     Ok(digest.finalize().to_vec())
+}
+
+/// Typst-relevant source extensions: templates, TOML records, JSON contracts,
+/// and generated customization copies plus raster assets. PDFs stay out so a
+/// render never retriggers its own watcher.
+fn is_watched(path: &Path) -> bool {
+    path.extension().is_some_and(|extension| {
+        extension == "typ" || extension == "toml" || extension == "json" || extension == "png"
+    })
 }
 
 fn print_outputs(outputs: Vec<PathBuf>) {
@@ -380,5 +496,100 @@ fn resolve(workspace: &Workspace, path: &Path) -> PathBuf {
         path.to_path_buf()
     } else {
         workspace.path(path)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn watched_workspace() -> (tempfile::TempDir, Workspace) {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        fs::create_dir_all(root.join("cvl/de-ch")).unwrap();
+        fs::create_dir_all(root.join(".agent/typst")).unwrap();
+        fs::create_dir_all(root.join("opportunities/acme/lead/output")).unwrap();
+        fs::write(root.join("ccvl.json"), "{}\n").unwrap();
+        fs::write(root.join("cvl/de-ch/cv.typ"), "#let x = 1\n").unwrap();
+        fs::write(
+            root.join("cvl/de-ch/application.toml"),
+            "language = \"en-CH\"\n",
+        )
+        .unwrap();
+        fs::write(root.join(".agent/typst/shared.typ"), "#let y = 2\n").unwrap();
+        fs::write(
+            root.join("opportunities/acme/lead/application.toml"),
+            "language = \"en-CH\"\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("opportunities/acme/lead/output/cv.typ"),
+            "#let x = 1\n",
+        )
+        .unwrap();
+        fs::write(root.join("opportunities/acme/lead/output/cv.pdf"), b"%PDF-").unwrap();
+        let workspace = Workspace::at(root).unwrap();
+        (directory, workspace)
+    }
+
+    fn fixture_digest(workspace: &Workspace) -> Vec<u8> {
+        digest_roots(&[
+            workspace.path("cvl"),
+            workspace.path(".agent/typst"),
+            workspace.path("ccvl.json"),
+            workspace.path("opportunities/acme/lead"),
+        ])
+        .unwrap()
+    }
+
+    #[test]
+    fn watched_extensions_cover_templates_records_and_generated_typs() {
+        for watched in ["cv.typ", "application.toml", "contract.json", "asset.png"] {
+            assert!(is_watched(Path::new(watched)), "{watched} was ignored");
+        }
+        for ignored in ["cv.pdf", "notes.md", "no-extension"] {
+            assert!(!is_watched(Path::new(ignored)), "{ignored} was watched");
+        }
+    }
+
+    #[test]
+    fn digest_reacts_to_templates_records_contracts_and_generated_typs() {
+        let (_directory, workspace) = watched_workspace();
+        let baseline = fixture_digest(&workspace);
+        // A rebuilt PDF alone must not retrigger the watcher.
+        fs::write(
+            workspace.path("opportunities/acme/lead/output/cv.pdf"),
+            b"%PDF-changed",
+        )
+        .unwrap();
+        assert_eq!(fixture_digest(&workspace), baseline);
+        // Untouched content hashes stably.
+        assert_eq!(fixture_digest(&workspace), baseline);
+        for relative in [
+            "cvl/de-ch/cv.typ",
+            "cvl/de-ch/application.toml",
+            ".agent/typst/shared.typ",
+            "ccvl.json",
+            "opportunities/acme/lead/application.toml",
+            "opportunities/acme/lead/output/cv.typ",
+        ] {
+            let path = workspace.path(relative);
+            let before = fs::read(&path).unwrap();
+            fs::write(&path, [before.clone(), b"changed\n".to_vec()].concat()).unwrap();
+            assert_ne!(
+                fixture_digest(&workspace),
+                baseline,
+                "{relative} was ignored"
+            );
+            fs::write(&path, before).unwrap();
+            assert_eq!(fixture_digest(&workspace), baseline);
+        }
+    }
+
+    #[test]
+    fn invalid_record_keys_are_rejected_before_watching() {
+        let (_directory, workspace) = watched_workspace();
+        assert!(opportunity::record_path(&workspace, "../acme", "lead", true).is_err());
+        assert!(opportunity::record_path(&workspace, "acme", "lead", true).is_ok());
     }
 }

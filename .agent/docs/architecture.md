@@ -53,6 +53,14 @@ Typst engine, shared measurement primitives, styles, fonts, and layout
 contracts live under `.agent/typst/`; they are mechanism, not a second CV
 data model.
 
+Each record selects a render style through `options.style`, defaulting to
+`harvard` when the field is absent. A style is one Typst renderer plus one
+TOML knob file below `.agent/typst/styles/` (see `.agent/typst/README.md`);
+the available names live in the `styles` section of `ccvl.json`. All styles
+share the same line and vertical-rhythm contracts, and horizontal measure
+stays identical across styles, so every style passes the same
+`measure`/`check` gates with the same content.
+
 ## `opportunities/`: keyed job packages
 
 One concrete role owns one directory and one canonical tailored record:

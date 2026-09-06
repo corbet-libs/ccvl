@@ -1,0 +1,50 @@
+# Harvard style knobs: the default ccvl visual style.
+#
+# Each style is one TOML file next to its Typst renderer below
+# `.agent/typst/styles/`, selected per record through `options.style`
+# (see the `styles` section in `ccvl.json`). Lengths are plain numbers
+# multiplied by their unit at the use site, so every value stays greppable.
+#
+# Horizontal measure (page margins, base text size, bullet indent, highlight
+# geometry) is style-invariant: changing it reflows every measured line, so
+# all styles keep Harvard's values and vary only vertical whitespace and
+# accents. All styles satisfy the same line and vertical-rhythm contracts in
+# `ccvl.json`.
+
+[page]
+margin_top_mm = 12
+margin_bottom_mm = 12
+margin_left_mm = 15
+margin_right_mm = 15
+
+[text]
+size_pt = 10.5
+leading_em = 0.7
+
+[accents]
+link = "#1e3a5f"
+highlight_background = "#f8fafc"
+
+[header]
+after_pt = 6.3
+
+[cv]
+superheading_outer_spacing_pt = 17.85
+compact_heading_spacing_pt = 9.45
+spacious_heading_spacing_pt = 19.35
+entry_spacing_pt = 11.75
+heading_after_pt = 6.3
+subheading_after_pt = 7.35
+bullet_after_pt = 8.4
+competency_heading_after_pt = 7.35
+rule_gap_pt = 4.41
+superheading_inner_pt = 5.25
+bullet_indent_pt = 10.5
+
+[cover]
+subject_after_pt = 4.41
+highlight_inset_pt = 8
+highlight_gap_pt = 5.25
+highlight_number_width_mm = 6
+closing_before_pt = 5.25
+closing_after_pt = 2

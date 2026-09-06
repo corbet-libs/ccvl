@@ -24,6 +24,13 @@ primitives, styles, and neutral scaffolds belong in `.agent/`; source
 documents, the rich profile, journal, and station allocation belong in
 `interview/`.
 
+Each `application.toml` selects a render style through `options.style`,
+defaulting to `harvard` when the field is absent. The available styles are
+listed in the `styles` section of `ccvl.json`, with whitespace and accent
+knobs below `.agent/typst/styles/`. All styles satisfy the same line and
+vertical-rhythm contracts, so switching styles never changes what the
+`measure`/`check` gates require of the content.
+
 A keyed opportunity supplies its own `application.toml` from
 `../opportunities/<organisation>/<position>/` while reusing this general CV
 body and render profile.

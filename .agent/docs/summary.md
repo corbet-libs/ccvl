@@ -6,8 +6,8 @@ wraps it to five explicit lines for measurement.
 
 ## The three layers
 
-- **Soll** (contract, `ccvl.json` + record): five lines; density target 82,
-  thin floor 60, closing-line maximum 102.
+- **Soll** (contract, `ccvl.json` + record): five lines; density target 97,
+  thin floor 95, closing-line maximum 102.
 - **Ist** (one measurement): a single compilation emits per-line metrics.
 - **Diagnose** (counsel, never silent): the count rule is hard; density only
   advises or fails narrow cases:

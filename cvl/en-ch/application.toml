@@ -6,6 +6,9 @@ language = "en-CH"
 pages = 4
 generate_cl = true
 application_date = "September 2026"
+# Render style: "harvard" (default) or another entry from the `styles`
+# section in ccvl.json. Records without this field render as harvard.
+style = "harvard"
 
 [job]
 id = "showcase-en-ch"
@@ -30,9 +33,7 @@ address_line_2 = ""
 # One flowing paragraph. It must typeset to exactly 5 lines; the checker
 # verifies instead of you counting. (The fifth sentence exposes the adaptation
 # formula for new users; a real application rewrites it target-specifically.)
-summary = """
-This CV is a working example, technical product demonstration and open application. I combine technology and innovation management with strategy and finance. Evidence: GenAI at CENVION | decision analysis for Swisscom and Airbus. I also bring M&A, banking and consulting experience across four markets. If that fits, let's talk – gladly about your mandates, goals and open questions, in Switzerland or remote. To adapt it: target profile | differentiation | two evidenced results | clear value for your team.
-"""
+summary = """This CV is working example, technical product demonstration and open application combining technology and innovation management with strategy and finance in regulated environments. Evidence: GenAI and RAG search at CENVION, decision analysis for Swisscom and Airbus including M&A, banking-sector and consulting across four markets. If that fits, let us speak – gladly about your mandates, goals and open questions across Switzerland or remote. To adapt it: target profile | differentiation | two evidenced results | clear value for your team."""
 
 [cl]
 # Five one-line highlights. Written first, rendered between paragraphs 3 and 4.

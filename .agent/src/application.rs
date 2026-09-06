@@ -53,6 +53,63 @@ const PROFILE_TOP: &[&str] = &[
     "localized",
 ];
 
+/// Greeting rules live in the `cgreet` library
+/// (`https://github.com/corbet-labs/cgreet`, mirrored for the renderer in
+/// `.agent/typst/application.typ`) and are re-exported here so existing paths
+/// keep working.
+pub use cgreet::{
+    Region, de_honorific_warning, de_salutation, recipient_salutation_warning,
+    salutation_honorific, salutation_last_name, salutation_surname, salutation_titles,
+};
+
+/// Resolve the render style for an application record.
+///
+/// `options.style` names one entry of the `styles` section in `ccvl.json`
+/// (one Typst renderer plus one TOML knob file below
+/// `.agent/typst/styles/`). Records written before styles existed omit the
+/// field — as does an empty string — and render with the manifest default
+/// (`harvard`). Unknown names fail with the available list.
+pub fn resolve_style(workspace: &Workspace, application: &Value, location: &str) -> Result<String> {
+    let manifest = workspace.read_json("ccvl.json")?;
+    let styles = manifest
+        .pointer("/styles")
+        .context("ccvl.json has no styles section")?;
+    let default = styles
+        .get("default")
+        .and_then(Value::as_str)
+        .context("ccvl.json styles.default is missing")?;
+    let available = styles
+        .get("available")
+        .and_then(Value::as_array)
+        .context("ccvl.json styles.available is missing")?;
+    let available = available
+        .iter()
+        .map(Value::as_str)
+        .collect::<Option<Vec<_>>>()
+        .context("ccvl.json styles.available must be style names")?;
+    ensure!(
+        !available.is_empty() && available.contains(&default),
+        "ccvl.json: default style {default:?} is not available"
+    );
+    if let Some(value) = application.pointer("/options/style") {
+        ensure!(
+            value.is_string(),
+            "{location}.options.style must be a style name"
+        );
+    }
+    let raw = application
+        .pointer("/options/style")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let resolved = if raw.is_empty() { default } else { raw };
+    ensure!(
+        available.contains(&resolved),
+        "{location}: unknown style {raw:?}; expected one of {} (set options.style in {location})",
+        available.join(", ")
+    );
+    Ok(resolved.to_owned())
+}
+
 pub fn validate_all(workspace: &Workspace) -> Result<()> {
     let mut candidates = vec![
         workspace.path(".agent/scaffolds/opportunity/application.toml"),
@@ -182,7 +239,13 @@ pub fn validate_record(
     let options = object_at(application, "/options")?;
     ensure_no_unknown(
         options,
-        &["language", "pages", "generate_cl", "application_date"],
+        &[
+            "language",
+            "pages",
+            "generate_cl",
+            "application_date",
+            "style",
+        ],
         location,
     )?;
     let language = options
@@ -209,6 +272,7 @@ pub fn validate_record(
         .get("application_date")
         .and_then(Value::as_str)
         .context("options.application_date is missing")?;
+    resolve_style(workspace, application, location)?;
 
     let job = object_at(application, "/job")?;
     let mut allowed = JOB_FIELDS.to_vec();
@@ -241,19 +305,6 @@ pub fn validate_record(
             .get(*field)
             .and_then(Value::as_str)
             .with_context(|| format!("{location}.job.cl_recipient.{field} is missing"))?;
-    }
-    // Non-blocking salutation advisories (cgreet): the letter still renders
-    // with the generic salutation, but a tailored opportunity should name a
-    // person with a parsable Herr/Frau honorific. German records only —
-    // cgreet currently implements the German correspondence norms.
-    if language.starts_with("de") {
-        let name = recipient.get("name").and_then(Value::as_str).unwrap_or("");
-        if let Some(warning) = cgreet::recipient_salutation_warning(location, name) {
-            eprintln!("{warning}");
-        }
-        if let Some(warning) = cgreet::de_honorific_warning(location, name) {
-            eprintln!("{warning}");
-        }
     }
 
     let cv = object_at(application, "/cv")?;
@@ -575,17 +626,6 @@ mod tests {
     }
 
     #[test]
-    fn honorific_free_german_recipient_validates_with_advisory() {
-        // Missing honorifics warn on stderr but never fail validation: the
-        // letter still renders with the generic salutation.
-        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
-        draft["job"]["cl_recipient"]["name"] = json!("Jane Doe");
-        validate_record(&workspace(), &draft, "fixture", true).unwrap();
-        draft["job"]["cl_recipient"]["name"] = json!("Frau Dr. Müller");
-        validate_record(&workspace(), &draft, "fixture", true).unwrap();
-    }
-
-    #[test]
     fn unknown_fields_are_rejected() {
         let mut draft = application(&[3, 6, 6, 5, 5, 3]);
         draft["job"]["smuggled"] = json!("nope");
@@ -609,5 +649,84 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("cannot be empty"));
+    }
+
+    #[test]
+    fn missing_recipient_name_warns_without_failing_validation() {
+        // Empty/whitespace names stay valid (showcase target-neutral letters)
+        // but produce a visible, non-blocking advisory.
+        let draft = application(&[3, 6, 6, 5, 5, 3]);
+        validate_record(&workspace(), &draft, "fixture", true).unwrap();
+        let warning = recipient_salutation_warning(
+            "fixture",
+            draft["job"]["cl_recipient"]["name"].as_str().unwrap(),
+        )
+        .expect("empty showcase recipient must warn");
+        assert!(warning.contains("job.cl_recipient.name is empty"));
+        assert!(warning.contains("generic salutation"));
+        assert!(recipient_salutation_warning("fixture", "Dr. Jane Doe").is_none());
+        assert!(recipient_salutation_warning("fixture", "   ").is_some());
+    }
+
+    #[test]
+    fn style_defaults_to_harvard_for_legacy_records() {
+        // The fixture carries no options.style, like records written before
+        // styles existed: validation accepts it and resolution yields the
+        // manifest default.
+        let workspace = workspace();
+        let draft = application(&[3, 6, 6, 5, 5, 3]);
+        validate_record(&workspace, &draft, "fixture", true).unwrap();
+        assert_eq!(
+            resolve_style(&workspace, &draft, "fixture").unwrap(),
+            "harvard"
+        );
+
+        let mut empty = draft.clone();
+        empty["options"]["style"] = json!("");
+        validate_record(&workspace, &empty, "fixture", true).unwrap();
+        assert_eq!(
+            resolve_style(&workspace, &empty, "fixture").unwrap(),
+            "harvard"
+        );
+
+        let mut compact = draft.clone();
+        compact["options"]["style"] = json!("harvard-compact");
+        validate_record(&workspace, &compact, "fixture", true).unwrap();
+        assert_eq!(
+            resolve_style(&workspace, &compact, "fixture").unwrap(),
+            "harvard-compact"
+        );
+    }
+
+    #[test]
+    fn unknown_style_fails_with_available_list() {
+        let workspace = workspace();
+        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
+        draft["options"]["style"] = json!("nope");
+        let error = validate_record(&workspace, &draft, "fixture", true)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("unknown style"), "unexpected error: {error}");
+        assert!(error.contains("harvard"), "unexpected error: {error}");
+        let error = resolve_style(&workspace, &draft, "fixture")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("harvard-compact"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn non_string_style_is_rejected() {
+        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
+        draft["options"]["style"] = json!(3);
+        let error = resolve_style(&workspace(), &draft, "fixture")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("options.style must be a style name"),
+            "unexpected error: {error}"
+        );
     }
 }

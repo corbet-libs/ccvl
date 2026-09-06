@@ -131,14 +131,41 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         manifest.pointer("/documents/cv/presets") == Some(&json!([2, 3, 4])),
         "ccvl.json: CV presets must be [2, 3, 4]"
     );
+    let styles = manifest
+        .pointer("/styles")
+        .context("ccvl.json has no styles section")?;
+    ensure!(
+        styles.get("default") == Some(&Value::String("harvard".to_owned())),
+        "ccvl.json: default style must be harvard"
+    );
+    let available = styles
+        .get("available")
+        .and_then(Value::as_array)
+        .context("ccvl.json styles.available is missing")?;
+    ensure!(
+        !available.is_empty() && available.contains(&Value::String("harvard".to_owned())),
+        "ccvl.json: styles.available must list harvard"
+    );
+    for name in available {
+        let name = name
+            .as_str()
+            .context("ccvl.json styles.available must be style names")?;
+        for extension in ["typ", "toml"] {
+            let relative = format!(".agent/typst/styles/{name}.{extension}");
+            ensure!(
+                workspace.path(&relative).is_file(),
+                "ccvl.json: style {name} is missing {relative}"
+            );
+        }
+    }
     ensure!(
         manifest.pointer("/documents/cv/summary_lines") == Some(&Value::from(5)),
         "ccvl.json: every CV Summary must render to exactly five lines"
     );
     ensure!(
         manifest.pointer("/documents/cv/summary_fill")
-            == Some(&json!({"minimum": 60, "target": 82, "maximum": 100})),
-        "ccvl.json: CV Summary fill defaults must be 60/82/100"
+            == Some(&json!({"minimum": 95, "target": 97, "maximum": 100})),
+        "ccvl.json: CV Summary fill defaults must be 95/97/100"
     );
     ensure!(
         manifest.pointer("/last_line_maximum") == Some(&Value::from(102)),
@@ -325,7 +352,10 @@ fn render_pair(
                 failures.push(failure);
             }
         }
-        let _advisories = measure::preference_warnings(workspace, &one, &metrics)?;
+        let advisories = measure::preference_warnings(workspace, &one, &metrics)?;
+        for advisory in &advisories {
+            println!("WARN {advisory}");
+        }
         ensure!(
             failures.is_empty(),
             "line measurement failed: {}",

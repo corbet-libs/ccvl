@@ -1,21 +1,37 @@
 // The real German cover letter: every block is visible and editable here.
 // Data comes from the TOML record; shared machinery (measurement, styles,
 // header chrome) stays below .agent/typst and carries no content.
-#import "/.agent/typst/styles/document.typ": document-style
-#import "/.agent/typst/application.typ": cover-letter-contract, last-line-maximum, validate-application
+#import "/.agent/typst/styles/harvard.typ": document-style, load-style
+#import "/.agent/typst/application.typ": cover-letter-contract, de-salutation, last-line-maximum, validate-application
 #import "/.agent/typst/line-contract.typ": line-contract-mode, measured-line, measured-paragraph
 #import "/.agent/typst/profile.typ": localized-profile, profile
-#show: document-style.with(locale: "de-ch")
 
 #let application-path = sys.inputs.at("application", default: "/cvl/de-ch/application.toml")
 #let application = toml(application-path)
 #validate-application(application, expected-language: "de-CH", require-cl: true)
+
+// Style axis: the explicit `style` input injected by render.rs (resolved from
+// options.style) wins; a manual render without it falls back to the record,
+// then to the harvard default. Whitespace and accents below come from that
+// style's TOML knobs, never from forked literals.
+#let style-input = sys.inputs.at("style", default: "")
+#let style-name = if style-input != "" { style-input } else { application.options.at("style", default: "harvard") }
+#let style = load-style(style-name)
+#let cover = style.cover
+#let header-after = style.header.after_pt * 1pt
+#let subject-after = cover.subject_after_pt * 1pt
+#let highlight-gap = cover.highlight_gap_pt * 1pt
+#let closing-before = cover.closing_before_pt * 1pt
+#let closing-after = cover.closing_after_pt * 1pt
+#show: document-style.with(locale: "de-ch", style: style)
 
 #set document(title: "Anschreiben | " + profile.name, author: (profile.name,))
 
 #let job = application.job
 #let letter = application.cl
 #let recipient = job.cl_recipient
+// Recipient address is recorded in application.toml (job.cl_recipient) for
+// provenance but intentionally not printed on the cover letter.
 
 #let body-fill = cover-letter-contract.line_fill.body
 #let highlight-fill = cover-letter-contract.line_fill.highlight
@@ -32,24 +48,12 @@
   max_fill: highlight-fill.maximum,
 )
 
-#let recipient-lines = (
-  recipient.name,
-  recipient.title,
-  recipient.company,
-  recipient.address_line_1,
-  recipient.address_line_2,
-).filter(line => line.trim() != "")
-
 #let subject = if job.organization.trim() == "" {
   [Offene Bewerbung | #job.title]
 } else {
   [Bewerbung als #job.title]
 }
-#let salutation = if recipient.name.trim() != "" {
-  [Guten Tag #recipient.name,]
-} else {
-  [Guten Tag,]
-}
+#let salutation = [#de-salutation(recipient.name, region: "ch")]
 #let closing = [Freundliche Grüsse]
 
 #let paragraph(index) = block(breakable: false)[
@@ -61,23 +65,23 @@
   )
 ]
 #let highlights = block(
-  fill: rgb("#f8fafc"),
-  stroke: (left: 2.5pt + rgb("#1e3a5f")),
-  inset: 8pt,
+  fill: rgb(style.accents.highlight_background),
+  stroke: (left: 2.5pt + rgb(style.accents.link)),
+  inset: cover.highlight_inset_pt * 1pt,
   radius: 2pt,
   width: 100%,
 )[
   #for index in range(cover-letter-contract.highlights.count) {
     grid(
-      columns: (6mm, 1fr),
-      [#text(weight: "bold", fill: rgb("#1e3a5f"))[#(index + 1)]],
+      columns: (cover.highlight_number_width_mm * 1mm, 1fr),
+      [#text(weight: "bold", fill: rgb(style.accents.link))[#(index + 1)]],
       [#measured-line(
         "cl.highlight." + str(index + 1),
         "cl-highlight",
         with-highlight-fill(letter.highlights.at(index)),
       )],
     )
-    if index < cover-letter-contract.highlights.count - 1 { v(5.25pt) }
+    if index < cover-letter-contract.highlights.count - 1 { v(highlight-gap) }
   }
 ]
 
@@ -97,7 +101,7 @@
   ).filter(item => item != none)
 
   align(center)[#text(size: 15.75pt, weight: "bold")[#profile.name]]
-  v(6.3pt)
+  v(header-after)
   align(center)[
     #text(size: 9.03pt)[
       #contacts.join([ | ])
@@ -110,19 +114,15 @@
     align: (left, right),
     text(size: 12pt, weight: "bold", subject), text(size: 10.5pt, application.options.application_date),
   )
-  #v(4.41pt)
+  #v(subject-after)
   #line(length: 100%, stroke: 0.5pt + black)
-  #if recipient-lines.len() > 0 {
-    v(13.125pt)
-    align(right)[#recipient-lines.join(linebreak())]
-  }
 ]
 #let salutation-content = [#salutation]
 #let closing-content = block(breakable: false)[
   #closing
-  #v(5.25pt)
+  #v(closing-before)
   #image("/cvl/assets/signature.png", height: 31.5pt)
-  #v(2pt)
+  #v(closing-after)
   #profile.name
 ]
 

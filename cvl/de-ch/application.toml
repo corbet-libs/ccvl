@@ -6,6 +6,9 @@ language = "de-CH"
 pages = 4
 generate_cl = true
 application_date = "September 2026"
+# Render style: "harvard" (default) or another entry from the `styles`
+# section in ccvl.json. Records without this field render as harvard.
+style = "harvard"
 
 [job]
 id = "showcase-de-ch"
@@ -30,9 +33,7 @@ address_line_2 = ""
 # One flowing paragraph. It must typeset to exactly 5 lines; the checker
 # verifies instead of you counting. (The fifth sentence exposes the adaptation
 # formula for new users; a real application rewrites it target-specifically.)
-summary = """
-Dieses CV ist Arbeitsbeispiel, technische Produktdemo und offene Bewerbung zugleich. Ich verbinde Technologie- und Innovationsmanagement mit Strategie und Finance. Belegt durch GenAI bei CENVION | Entscheidungsanalysen für Swisscom und Airbus. Dazu kommen M&A, Banking und Beratung. Passt das Profil, lassen Sie uns sprechen – gern über Ihre Mandate, Ziele und offenen Fragen. Für den eigenen CV: Zielprofil | Differenzierung | zwei belegte Resultate | klarer Mehrwert für Ihr Team.
-"""
+summary = """Dieses CV ist Arbeitsbeispiel, technische Produktdemonstration und offene Bewerbung zugleich und verbindet Technologie- und Innovationsmanagement mit Strategie und Finance. Belegt durch GenAI und RAG-Suche im Hause CENVION, Entscheidungsanalysen für Swisscom und Airbus sowie M&A, Banking und Beratung in vier Märkten. Passt das Profil, lassen Sie uns sprechen – gern über Ihre Mandate, Ziele und offenen Fragen. Anleitung für den eigenen CV: Zielprofil | Differenzierung | zwei belegte Resultate | klarer Mehrwert für Ihr Team."""
 
 [cl]
 # Five one-line highlights. Written first, rendered between paragraphs 3 and 4.
