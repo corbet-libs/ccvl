@@ -31,6 +31,7 @@ path = [
   ".agent/docs/**",
   ".agent/scaffolds/**",
   ".agent/typst/README.md",
+  ".agent/typst/letter/README.md",
   ".github/CONTRIBUTING.md",
   ".github/SECURITY.md",
   "README.md",
