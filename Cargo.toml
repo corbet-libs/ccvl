@@ -18,8 +18,11 @@ path = ".agent/src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
+cfarewell = "0.1"
 cgreet = "0.2"
+cink = "0.1"
 clap = { version = "4.5", features = ["derive"] }
+cletter = "0.1"
 ctypst = { version = "0.2.0", default-features = false, features = ["document-fonts", "format", "pdf"] }
 lopdf = { version = "0.44", default-features = false }
 regex = "1.12"

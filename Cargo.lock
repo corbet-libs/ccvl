@@ -289,8 +289,11 @@ name = "ccvl"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cfarewell",
  "cgreet",
+ "cink",
  "clap",
+ "cletter",
  "ctypst",
  "lopdf",
  "pretty_assertions",
@@ -302,6 +305,16 @@ dependencies = [
  "toml 1.1.4+spec-1.1.0",
  "ureq",
  "walkdir",
+]
+
+[[package]]
+name = "cfarewell"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "353ac4b556980bbf2ba01de24f34995cff741142b4421faf737886f62ae441cc"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -390,6 +403,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cink"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d8f64b54a681d2482c93953f46f315f48b69ae6507a96127bdfe59ea9596baf"
+dependencies = [
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cipher"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -449,6 +473,19 @@ name = "clap_lex"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
+
+[[package]]
+name = "cletter"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10cea787009828bacf5db55304c49442c68090305578670ea7c06e1a8d4b2ea8"
+dependencies = [
+ "cfarewell",
+ "cgreet",
+ "cink",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "cobs"
