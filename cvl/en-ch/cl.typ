@@ -7,6 +7,7 @@
 )
 #import "/.agent/typst/line-contract.typ": line-contract-mode, measured-line, measured-paragraph
 #import "/.agent/typst/profile.typ": localized-profile, profile
+#import "/.agent/typst/letter/farewell.typ": closing as farewell-closing
 
 #let application-path = sys.inputs.at("application", default: "/cvl/en-ch/application.toml")
 #let application = toml(application-path)
@@ -61,7 +62,7 @@
 } else {
   [Dear Hiring Manager,]
 }
-#let closing = [Yours sincerely,]
+#let closing = [#farewell-closing("en")]
 
 #let paragraph(index) = block(breakable: false)[
   #measured-paragraph(

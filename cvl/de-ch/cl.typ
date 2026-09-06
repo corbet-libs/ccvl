@@ -5,6 +5,7 @@
 #import "/.agent/typst/application.typ": cover-letter-contract, de-salutation, last-line-maximum, validate-application
 #import "/.agent/typst/line-contract.typ": line-contract-mode, measured-line, measured-paragraph
 #import "/.agent/typst/profile.typ": localized-profile, profile
+#import "/.agent/typst/letter/farewell.typ": closing as farewell-closing
 
 #let application-path = sys.inputs.at("application", default: "/cvl/de-ch/application.toml")
 #let application = toml(application-path)
@@ -54,7 +55,7 @@
   [Bewerbung als #job.title]
 }
 #let salutation = [#de-salutation(recipient.name, region: "ch")]
-#let closing = [Freundliche Grüsse]
+#let closing = [#farewell-closing("de-CH")]
 
 #let paragraph(index) = block(breakable: false)[
   #measured-paragraph(
