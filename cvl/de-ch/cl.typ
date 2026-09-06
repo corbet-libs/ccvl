@@ -58,7 +58,7 @@
 #let salutation = [#de-salutation(recipient.name, region: "ch")]
 #let closing = [#farewell-closing("de-CH")]
 
-#let paragraph(index) = block(breakable: false)[
+#let paragraph(index) = block(width: 100%, breakable: false)[
   #measured-paragraph(
     "cl.paragraph." + str(index + 1),
     "cl-body",

@@ -64,57 +64,57 @@
           "number": 2,
           "role": "primary-evidence",
           "purpose": "Prove the strongest relevant experience and results.",
-          "lines": { "minimum": 5, "target": 6, "maximum": 7 }
+          "lines": { "minimum": 5, "target": 5, "maximum": 5 }
         },
         {
           "number": 3,
           "role": "complementary-evidence",
           "purpose": "Add complementary evidence and the career-wide pattern.",
-          "lines": { "minimum": 5, "target": 6, "maximum": 7 }
+          "lines": { "minimum": 5, "target": 5, "maximum": 5 }
         },
         {
           "number": 4,
           "role": "differentiation",
           "purpose": "Explain the value created by the combined evidence.",
-          "lines": { "minimum": 5, "target": 6, "maximum": 7 }
+          "lines": { "minimum": 5, "target": 5, "maximum": 5 }
         },
         {
           "number": 5,
           "role": "target-fit",
           "purpose": "Connect that value to the specific organisation and opportunity.",
-          "lines": { "minimum": 5, "target": 6, "maximum": 7 }
+          "lines": { "minimum": 5, "target": 5, "maximum": 5 }
         },
         {
           "number": 6,
           "role": "warm-close",
           "purpose": "Close warmly with a low-friction invitation to talk.",
-          "lines": { "minimum": 2, "target": 3, "maximum": 3 }
+          "lines": { "minimum": 3, "target": 3, "maximum": 3 }
         }
       ],
       "paragraph_regions": [
         {
           "paragraphs": [2, 3],
           "minimum": 10,
-          "target": 12,
-          "maximum": 12,
-          "preferred_totals": [10, 12]
+          "target": 10,
+          "maximum": 10,
+          "preferred_totals": [10]
         },
         {
           "paragraphs": [4, 5],
           "minimum": 10,
-          "target": 12,
-          "maximum": 12,
-          "preferred_totals": [10, 12]
+          "target": 10,
+          "maximum": 10,
+          "preferred_totals": [10]
         },
         {
           "paragraphs": [2, 3, 4, 5],
           "minimum": 20,
-          "target": 22,
-          "maximum": 22,
-          "preferred_totals": [20, 21, 22]
+          "target": 20,
+          "maximum": 20,
+          "preferred_totals": [20]
         }
       ],
-      "body_lines": { "minimum": 25, "target": 28, "maximum": 28 },
+      "body_lines": { "minimum": 26, "target": 26, "maximum": 26 },
       "highlights": {
         "count": 5,
         "lines_each": 1,

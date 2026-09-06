@@ -14,7 +14,7 @@
 
 #import "/.agent/typst/styles/harvard.typ": document-style, load-style
 #import "/.agent/typst/application.typ": cv-contract, last-line-maximum, validate-application
-#import "/.agent/typst/line-contract.typ": measured-content-line, measured-lines, wrap-exact
+#import "/.agent/typst/line-contract.typ": measured-content-line, measured-paragraph, wrap-exact
 #import "/.agent/typst/profile.typ": localized-profile, profile
 #set document(title: "Curriculum Vitae | " + profile.name, author: (profile.name,))
 
@@ -162,7 +162,7 @@
 
 #cv-header()
 
-#block(breakable: false)[
+#block(width: 100%, breakable: false)[
   #cv-compact-heading[Summary]
   // The record holds one flowing paragraph; wrapping to exactly five lines
   // happens here so authors never count breaks by hand.
@@ -186,9 +186,11 @@
         max_fill: if index + 1 == lines.len() { last-line-maximum } else { fill.maximum },
       )
     })
-    // Pre-measured summary lines render at exact width so an approved
-    // closing-line spill stays invisibly in the margin instead of wrapping.
-    measured-lines("cv.summary", "cv-summary", mapped, exact-width: true)
+    // The five wrapped lines render as one justified paragraph with a
+    // left-bound closing line, exactly like a cover-letter paragraph. An
+    // approved closing-line spill keeps its fixed-width box so it extends
+    // invisibly into the margin instead of wrapping.
+    measured-paragraph("cv.summary", "cv-summary", mapped, justify: true)
   })
 ]
 

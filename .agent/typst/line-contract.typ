@@ -188,6 +188,15 @@
 
 // Render explicit lines as one justified paragraph while measuring their natural widths.
 // Manual line breaks and the caller's unbreakable block prevent widows and orphans.
+// Non-final lines are justified; the final line stays left-bound: Typst's plain
+// `linebreak()` always creates an unjustified break, so each inter-line break
+// opts into justification explicitly. The paragraph's closing line carries no
+// break and remains ragged by construction.
+//
+// Callers must place the paragraph in a full-width container (for example a
+// `block(width: 100%, breakable: false)`): an auto-width block does not
+// expand its children, so the paragraph would shrink-wrap to its widest line
+// and justify to that width instead of the column.
 #let measured-paragraph(id, kind, lines, justify: true) = layout(size => {
   [
     #for (index, line) in lines.enumerate() {
@@ -217,7 +226,7 @@
         text(line.text)
       }
       if index < lines.len() - 1 {
-        linebreak()
+        linebreak(justify: justify)
       }
     }
   ]

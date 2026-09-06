@@ -2,7 +2,10 @@
 
 Every Summary is one flowing paragraph that must typeset to exactly five
 lines — not four, not six. The author writes natural prose; the renderer
-wraps it to five explicit lines for measurement.
+wraps it to five explicit lines for measurement. The five lines render as
+one justified paragraph with a left-bound closing line, exactly like a
+cover-letter paragraph: non-final lines are flush on both sides while the
+final line stays ragged.
 
 ## The three layers
 
