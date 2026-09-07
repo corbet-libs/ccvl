@@ -23,7 +23,7 @@
 #assert(cv-pages >= 2 and cv-pages <= 4, message: "cv-pages must be 2, 3, or 4")
 #let application-path = sys.inputs.at("application", default: "/cvl/en-ch/application.toml")
 #let application = toml(application-path)
-#validate-application(application, expected-language: "en-CH", require-cv: true)
+#validate-application(application, expected-language: "en-ch", require-cv: true)
 
 // Style axis: the explicit `style` input injected by render.rs (resolved from
 // options.style) wins; a manual render without it falls back to the record,

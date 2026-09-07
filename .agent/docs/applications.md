@@ -64,10 +64,10 @@ On Windows:
 ```
 
 No locale or page argument is needed: the record owns both. The build writes
-`output/cv.pdf` and, when enabled, `output/cl.pdf` directly below the keyed
-opportunity. Alongside each PDF it emits a resolved customization copy of
-the template it rendered: `output/cv.typ` and, when enabled,
-`output/cl.typ`. Each copy is the locale template with its `sys.inputs`
+`pdfs/cv.pdf` and, when enabled, `pdfs/cl.pdf` below the keyed
+opportunity. Alongside them it emits a resolved customization copy of
+the template it rendered into `typst/`: `typst/cv.typ` and, when enabled,
+`typst/cl.typ`. Each copy is the locale template with its `sys.inputs`
 defaults resolved for the opportunity (application and profile paths, the
 record's page count for the CV, and the resolved style), so it compiles standalone and reproduces
 the neighbouring PDF. The copies are build artifacts: do not edit them by
@@ -85,7 +85,7 @@ just watch <organisation-key> <position-key>
 
 The watcher hashes the record's locale templates (`cvl/<locale>/*.typ`),
 the shared Typst machinery (`.agent/typst/**/*.typ`), `cvl/profile.toml`,
-`ccvl.json`, the opportunity record, and the generated `output/*.typ`
+`ccvl.json`, the opportunity record, and the generated `typst/*.typ`
 copies, then rebuilds the PDFs plus the resolved copies on change.
 `watch-cv` and `watch-cl` provide the same loop for one general locale
 document.

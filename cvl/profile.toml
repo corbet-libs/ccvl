@@ -8,10 +8,10 @@ languages = "DE: C2, EN: C1+"
 linkedin = "https://linkedin.com/in/julian-corbet"
 website = "https://cv.corbet.ch"
 
-[localized.de-CH]
+[localized.de-ch]
 nationality_and_permit = "Deutsch, Ausweis B"
 availability = "Verfügbar: Sofort"
 
-[localized.en-CH]
+[localized.en-ch]
 nationality_and_permit = "German, Permit B"
 availability = "Available: Now"

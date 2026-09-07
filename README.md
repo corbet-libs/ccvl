@@ -85,7 +85,9 @@ On native Windows, use the root dispatcher from Command Prompt or PowerShell:
 Generated general documents are written to
 `cvl/<locale>/output/cv-{2,3,4}.pdf` and `cvl/<locale>/output/cl.pdf`.
 Opportunity-specific documents are written beside their job record under
-`opportunities/<organisation>/<position>/output/`.
+`opportunities/<organisation>/<position>/pdfs/` (rendered PDFs) and
+`opportunities/<organisation>/<position>/typst/` (resolved standalone
+Typst copies).
 
 The same commands work in a downloaded source archive; Git knowledge is not
 required. On Linux x86_64/aarch64, macOS Intel/Apple Silicon, and Windows

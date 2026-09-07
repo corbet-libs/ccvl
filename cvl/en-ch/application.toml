@@ -2,7 +2,7 @@ schema_version = 4
 revision = 0
 
 [options]
-language = "en-CH"
+language = "en-ch"
 pages = 4
 generate_cl = true
 application_date = "September 2026"

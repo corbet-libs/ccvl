@@ -10,10 +10,20 @@ opportunities/<organisation-key>/<position-key>/
 ├── interview-<stage>.md       optional preparation
 ├── submission.md              optional observed submission
 ├── outcome.md                 optional observed outcome
-└── output/
+├── typst/
+│   ├── cv.typ                 resolved standalone copy (generated, do not edit)
+│   └── cl.typ                 only when the cover letter is enabled (generated)
+└── pdfs/
     ├── cv.pdf
     └── cl.pdf                 only when the cover letter is enabled
 ```
+
+The `typst/` copies are the locale templates with their `sys.inputs`
+defaults resolved for the record (application and profile paths, page
+count, style), so each compiles standalone and reproduces its neighbour
+PDF. They are build artifacts: editing `application.toml` regenerates
+both `typst/` and `pdfs/`; editing a locale template regenerates both as
+well. Do not hand-edit `typst/` — re-run `build-opportunity`.
 
 Both keys use lowercase ASCII letters, numbers, hyphens, or underscores. The
 single `application.toml` owns the options (language, pages, cover-letter

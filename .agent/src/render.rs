@@ -229,10 +229,10 @@ pub fn opportunity_specs(
     let locale = options.locale;
     let pages = options.pages;
     let cover_enabled = options.cover_letter;
-    let output = application
+    let parent = application
         .parent()
-        .context("application record has no parent")?
-        .join("output");
+        .context("application record has no parent")?;
+    let pdfs = parent.join("pdfs");
     let profile = workspace.path("cvl/profile.toml");
     let mut specs = vec![cv_spec(
         workspace,
@@ -240,7 +240,7 @@ pub fn opportunity_specs(
         pages,
         &application,
         &profile,
-        &output.join("cv.pdf"),
+        &pdfs.join("cv.pdf"),
     )?];
     specs[0].name = format!("CV {organisation}/{position}");
     if cover_enabled {
@@ -249,7 +249,7 @@ pub fn opportunity_specs(
             locale,
             &application,
             &profile,
-            &output.join("cl.pdf"),
+            &pdfs.join("cl.pdf"),
         )?;
         spec.name = format!("cover letter {organisation}/{position}");
         specs.push(spec);
@@ -300,12 +300,13 @@ pub fn render_opportunity(
     position: &str,
 ) -> Result<Vec<PathBuf>> {
     let specs = opportunity_specs(workspace, organisation, position)?;
-    let output_dir = opportunity::record_path(workspace, organisation, position, true)?
+    let parent = opportunity::record_path(workspace, organisation, position, true)?
         .parent()
         .context("record has no parent")?
-        .join("output");
+        .to_path_buf();
     remove_stale_cover_letter(
-        &output_dir,
+        &parent.join("pdfs"),
+        &parent.join("typst"),
         specs
             .iter()
             .any(|spec| spec.kind == DocumentKind::CoverLetter),
@@ -315,8 +316,9 @@ pub fn render_opportunity(
     for spec in &specs {
         outputs.push(compiler.render(workspace, spec)?);
     }
-    // Emit the resolved customization copies beside the PDFs only after the
-    // PDFs render, so the .typ files always describe the PDFs next to them.
+    // Emit the resolved customization copies in typst/ beside the PDFs only
+    // after the PDFs render, so the .typ files always describe the PDFs
+    // next to them.
     for spec in &specs {
         outputs.push(emit_resolved_typ(workspace, spec, organisation, position)?);
     }
@@ -341,11 +343,12 @@ fn emit_resolved_typ(
         DocumentKind::Cv => "cv.typ",
         DocumentKind::CoverLetter => "cl.typ",
     };
-    let destination = spec
+    let pdfs_dir = spec
         .output
         .parent()
-        .context("opportunity output has no parent")?
-        .join(name);
+        .context("opportunity output has no parent")?;
+    let parent = pdfs_dir.parent().context("pdfs dir has no parent")?;
+    let destination = parent.join("typst").join(name);
     if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("cannot create {}", parent.display()))?;
@@ -402,10 +405,9 @@ fn rewrite_input_default(source: &str, key: &str, default: &str) -> String {
     resolved
 }
 
-fn remove_stale_cover_letter(output_dir: &Path, cover_enabled: bool) -> Result<()> {
+fn remove_stale_cover_letter(pdfs_dir: &Path, typst_dir: &Path, cover_enabled: bool) -> Result<()> {
     if !cover_enabled {
-        for stale in ["cl.pdf", "cl.typ"] {
-            let stale = output_dir.join(stale);
+        for stale in [pdfs_dir.join("cl.pdf"), typst_dir.join("cl.typ")] {
             if stale.is_file() {
                 fs::remove_file(stale)?;
             }
@@ -440,7 +442,7 @@ mod tests {
         let mut document = workspace
             .read_toml_value("cvl/en-ch/application.toml")
             .unwrap();
-        document["options"]["language"] = "en-CH".into();
+        document["options"]["language"] = "en-ch".into();
         document["options"]["pages"] = 3.into();
         document["options"]["generate_cl"] = false.into();
         document.as_object_mut().unwrap().remove("cl");
@@ -457,17 +459,21 @@ mod tests {
     #[test]
     fn disabled_cover_letter_removes_stale_output() {
         let directory = tempdir().unwrap();
-        let stale_pdf = directory.path().join("cl.pdf");
-        let stale_typ = directory.path().join("cl.typ");
+        let pdfs = directory.path().join("pdfs");
+        let typst = directory.path().join("typst");
+        fs::create_dir_all(&pdfs).unwrap();
+        fs::create_dir_all(&typst).unwrap();
+        let stale_pdf = pdfs.join("cl.pdf");
+        let stale_typ = typst.join("cl.typ");
         fs::write(&stale_pdf, b"stale").unwrap();
         fs::write(&stale_typ, b"stale").unwrap();
-        remove_stale_cover_letter(directory.path(), false).unwrap();
+        remove_stale_cover_letter(&pdfs, &typst, false).unwrap();
         assert!(!stale_pdf.exists());
         assert!(!stale_typ.exists());
 
         fs::write(&stale_pdf, b"current").unwrap();
         fs::write(&stale_typ, b"current").unwrap();
-        remove_stale_cover_letter(directory.path(), true).unwrap();
+        remove_stale_cover_letter(&pdfs, &typst, true).unwrap();
         assert!(stale_pdf.exists());
         assert!(stale_typ.exists());
     }
@@ -513,7 +519,7 @@ mod tests {
     fn resolved_copy_carries_provenance_and_record_defaults() {
         let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
         let source = workspace.path("cvl/en-ch/cv.typ");
-        let output = tempdir().unwrap().path().join("output").join("cv.pdf");
+        let output = tempdir().unwrap().path().join("pdfs").join("cv.pdf");
         let mut spec = cv_spec(
             &workspace,
             "en-ch",
@@ -546,7 +552,7 @@ mod tests {
     fn emitted_copy_compiles_inputs_standalone() {
         let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
         let directory = tempdir().unwrap();
-        let output = directory.path().join("output").join("cv.pdf");
+        let output = directory.path().join("pdfs").join("cv.pdf");
         let spec = cv_spec(
             &workspace,
             "en-ch",
@@ -557,7 +563,7 @@ mod tests {
         )
         .unwrap();
         let typ = emit_resolved_typ(&workspace, &spec, "acme", "lead").unwrap();
-        assert_eq!(typ, directory.path().join("output").join("cv.typ"));
+        assert_eq!(typ, directory.path().join("typst").join("cv.typ"));
         let text = fs::read_to_string(&typ).unwrap();
         assert!(text.contains("| application: /cvl/en-ch/application.toml |"));
         assert!(

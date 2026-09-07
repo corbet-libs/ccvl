@@ -167,7 +167,8 @@ mod tests {
             "opportunities/<organisation-key>/<position-key>"
         );
         assert_eq!(groups["opportunities"]["record"], "application.toml");
-        assert_eq!(groups["opportunities"]["output"], "output");
+        assert_eq!(groups["opportunities"]["pdfs"], "pdfs");
+        assert_eq!(groups["opportunities"]["typst"], "typst");
     }
 
     #[test]

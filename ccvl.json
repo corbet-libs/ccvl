@@ -1,6 +1,6 @@
 {
   "format": "ccvl-workspace",
-  "schema_version": 5,
+  "schema_version": 6,
   "last_line_maximum": 102,
   "workspace_groups": {
     "interview": {
@@ -10,14 +10,15 @@
     "cvl": {
       "root": "cvl",
       "profile": "cvl/profile.toml",
-      "de-CH": "cvl/de-ch/application.toml",
-      "en-CH": "cvl/en-ch/application.toml"
+      "de-ch": "cvl/de-ch/application.toml",
+      "en-ch": "cvl/en-ch/application.toml"
     },
     "opportunities": {
       "root": "opportunities",
       "path": "opportunities/<organisation-key>/<position-key>",
       "record": "application.toml",
-      "output": "output"
+      "pdfs": "pdfs",
+      "typst": "typst"
     }
   },
   "skills": [
@@ -35,8 +36,8 @@
   },
   "documents": {
     "cv": {
-      "de-CH": "cvl/de-ch/cv.typ",
-      "en-CH": "cvl/en-ch/cv.typ",
+      "de-ch": "cvl/de-ch/cv.typ",
+      "en-ch": "cvl/en-ch/cv.typ",
       "presets": [2, 3, 4],
       "summary_lines": 5,
       "summary_fill": {"minimum": 95, "target": 97, "maximum": 100},
@@ -51,8 +52,8 @@
       }
     },
     "cover_letter": {
-      "de-CH": "cvl/de-ch/cl.typ",
-      "en-CH": "cvl/en-ch/cl.typ",
+      "de-ch": "cvl/de-ch/cl.typ",
+      "en-ch": "cvl/en-ch/cl.typ",
       "paragraphs": [
         {
           "number": 1,

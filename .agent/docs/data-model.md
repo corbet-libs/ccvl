@@ -50,8 +50,22 @@ opportunities/<organisation-key>/<position-key>/
 
 Keys use lowercase ASCII letters, numbers, hyphens, or underscores. There are
 no generic `companies/` or `positions/` levels. The canonical tailored record
-is `application.toml`; generated documents belong in the adjacent `output/`
-directory.
+is `application.toml`; rendered PDFs belong in the adjacent `pdfs/`
+directory and the resolved standalone Typst copies they were built from in
+the adjacent `typst/` directory.
+
+## Locale and language codes
+
+Locale and language codes are always lowercase: `de-ch`, never `de-CH`.
+This covers `options.language` in every `application.toml`, the locale keys
+in `ccvl.json` and `cvl/profile.toml`, the `expected-language` assertions in
+the Typst templates, and every locale argument passed to the correspondence
+libraries. The correspondence family (`cgreet`, `cfarewell`, `cink`,
+`cletter`) keeps canonical BCP 47 table keys internally but resolves inputs
+case-insensitively, so lowercase input yields exactly the same output.
+Rendered PDFs still carry canonical BCP 47 metadata (`/Lang(de-CH)`) because
+the Typst engine canonicalizes the `lang`/`region` text properties itself;
+that is engine output, not a code we write.
 
 The record owns:
 

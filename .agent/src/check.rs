@@ -31,26 +31,26 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
     let manifest = workspace.read_json("ccvl.json")?;
     ensure!(
         manifest.get("format") == Some(&Value::String("ccvl-workspace".to_owned()))
-            && manifest.get("schema_version") == Some(&Value::from(5)),
+            && manifest.get("schema_version") == Some(&Value::from(6)),
         "ccvl.json: unsupported workspace format or schema version"
     );
     let expected_groups = json!({
         "interview": {"root": "interview", "stations": "interview/stations.toml"},
-        "cvl": {"root": "cvl", "profile": "cvl/profile.toml", "de-CH": "cvl/de-ch/application.toml", "en-CH": "cvl/en-ch/application.toml"},
-        "opportunities": {"root": "opportunities", "path": "opportunities/<organisation-key>/<position-key>", "record": "application.toml", "output": "output"}
+        "cvl": {"root": "cvl", "profile": "cvl/profile.toml", "de-ch": "cvl/de-ch/application.toml", "en-ch": "cvl/en-ch/application.toml"},
+        "opportunities": {"root": "opportunities", "path": "opportunities/<organisation-key>/<position-key>", "record": "application.toml", "pdfs": "pdfs", "typst": "typst"}
     });
     ensure!(
         manifest.get("workspace_groups") == Some(&expected_groups),
         "ccvl.json: workspace groups must be interview, cvl, and keyed opportunities"
     );
     ensure!(
-        manifest.pointer("/documents/cv/de-CH")
+        manifest.pointer("/documents/cv/de-ch")
             == Some(&Value::String("cvl/de-ch/cv.typ".to_owned()))
-            && manifest.pointer("/documents/cv/en-CH")
+            && manifest.pointer("/documents/cv/en-ch")
                 == Some(&Value::String("cvl/en-ch/cv.typ".to_owned()))
-            && manifest.pointer("/documents/cover_letter/de-CH")
+            && manifest.pointer("/documents/cover_letter/de-ch")
                 == Some(&Value::String("cvl/de-ch/cl.typ".to_owned()))
-            && manifest.pointer("/documents/cover_letter/en-CH")
+            && manifest.pointer("/documents/cover_letter/en-ch")
                 == Some(&Value::String("cvl/en-ch/cl.typ".to_owned())),
         "ccvl.json: document entry points must live below cvl/<locale>"
     );

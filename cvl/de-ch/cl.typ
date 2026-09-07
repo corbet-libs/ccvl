@@ -10,7 +10,7 @@
 
 #let application-path = sys.inputs.at("application", default: "/cvl/de-ch/application.toml")
 #let application = toml(application-path)
-#validate-application(application, expected-language: "de-CH", require-cl: true)
+#validate-application(application, expected-language: "de-ch", require-cl: true)
 
 // Style axis: the explicit `style` input injected by render.rs (resolved from
 // options.style) wins; a manual render without it falls back to the record,
@@ -56,7 +56,7 @@
   [Bewerbung als #job.title]
 }
 #let salutation = [#de-salutation(recipient.name, region: "ch")]
-#let closing = [#farewell-closing("de-CH")]
+#let closing = [#farewell-closing("de-ch")]
 
 #let paragraph(index) = block(breakable: false)[
   #measured-paragraph(

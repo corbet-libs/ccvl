@@ -147,17 +147,17 @@ pub fn validate_all(workspace: &Workspace) -> Result<()> {
             && application
                 .pointer("/options/language")
                 .and_then(Value::as_str)
-                != Some("de-CH")
+                != Some("de-ch")
         {
-            bail!("{}: expected de-CH language", relative.display());
+            bail!("{}: expected de-ch language", relative.display());
         }
         if relative == std::path::Path::new("cvl/en-ch/application.toml")
             && application
                 .pointer("/options/language")
                 .and_then(Value::as_str)
-                != Some("en-CH")
+                != Some("en-ch")
         {
-            bail!("{}: expected en-CH language", relative.display());
+            bail!("{}: expected en-ch language", relative.display());
         }
     }
     Ok(())
@@ -185,8 +185,8 @@ fn validate_profile(profile: &Value, location: &str) -> Result<()> {
         string_at(profile, &format!("/{field}"), location)?;
     }
     let localized = object_at(profile, "/localized")?;
-    ensure_no_unknown(localized, &["de-CH", "en-CH"], location)?;
-    for locale in ["de-CH", "en-CH"] {
+    ensure_no_unknown(localized, &["de-ch", "en-ch"], location)?;
+    for locale in ["de-ch", "en-ch"] {
         let table = localized
             .get(locale)
             .and_then(Value::as_object)
@@ -253,8 +253,8 @@ pub fn validate_record(
         .and_then(Value::as_str)
         .context("options.language is missing")?;
     ensure!(
-        ["", "de-CH", "en-CH"].contains(&language),
-        "{location}.options.language: expected de-CH or en-CH"
+        ["", "de-ch", "en-ch"].contains(&language),
+        "{location}.options.language: expected de-ch or en-ch"
     );
     let pages = options
         .get("pages")
@@ -504,7 +504,7 @@ mod tests {
             "schema_version": 4,
             "revision": 0,
             "options": {
-                "language": "de-CH",
+                "language": "de-ch",
                 "pages": 4,
                 "generate_cl": true,
                 "application_date": "September 2026",

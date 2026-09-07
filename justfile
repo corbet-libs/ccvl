@@ -17,7 +17,8 @@ measure:
     bash ./ccvl measure
 
 # Rebuild one tailored opportunity on every change to its locale template,
-# record, or generated output typs.
+# record, or generated typst copies (PDFs stay out of the hash so a render
+# never retriggers itself).
 watch org pos:
     bash ./ccvl watch-opportunity {{org}} {{pos}}
 

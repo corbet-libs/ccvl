@@ -118,7 +118,7 @@ enum Command {
     /// Rebuild one cover letter whenever its inputs change.
     WatchCl { locale: String },
     /// Rebuild one keyed opportunity (PDFs plus resolved .typ copies)
-    /// whenever its template, record, or generated outputs change.
+    /// whenever its template, record, or generated typst outputs change.
     WatchOpportunity {
         organisation_key: String,
         position_key: String,
@@ -418,7 +418,8 @@ fn cvl_digest(workspace: &Workspace) -> Result<Vec<u8>> {
 
 /// Opportunity sources: the record's locale templates, the shared Typst
 /// machinery and assets, the profile and workspace contract, plus the keyed
-/// record directory including its generated output .typ copies.
+/// record directory including its generated typst/ copies. PDFs stay out so
+/// a render never retriggers its own watcher.
 fn opportunity_digest(
     workspace: &Workspace,
     organisation: &str,
@@ -508,26 +509,27 @@ mod tests {
         let root = directory.path();
         fs::create_dir_all(root.join("cvl/de-ch")).unwrap();
         fs::create_dir_all(root.join(".agent/typst")).unwrap();
-        fs::create_dir_all(root.join("opportunities/acme/lead/output")).unwrap();
+        fs::create_dir_all(root.join("opportunities/acme/lead/pdfs")).unwrap();
+        fs::create_dir_all(root.join("opportunities/acme/lead/typst")).unwrap();
         fs::write(root.join("ccvl.json"), "{}\n").unwrap();
         fs::write(root.join("cvl/de-ch/cv.typ"), "#let x = 1\n").unwrap();
         fs::write(
             root.join("cvl/de-ch/application.toml"),
-            "language = \"en-CH\"\n",
+            "language = \"en-ch\"\n",
         )
         .unwrap();
         fs::write(root.join(".agent/typst/shared.typ"), "#let y = 2\n").unwrap();
         fs::write(
             root.join("opportunities/acme/lead/application.toml"),
-            "language = \"en-CH\"\n",
+            "language = \"en-ch\"\n",
         )
         .unwrap();
         fs::write(
-            root.join("opportunities/acme/lead/output/cv.typ"),
+            root.join("opportunities/acme/lead/typst/cv.typ"),
             "#let x = 1\n",
         )
         .unwrap();
-        fs::write(root.join("opportunities/acme/lead/output/cv.pdf"), b"%PDF-").unwrap();
+        fs::write(root.join("opportunities/acme/lead/pdfs/cv.pdf"), b"%PDF-").unwrap();
         let workspace = Workspace::at(root).unwrap();
         (directory, workspace)
     }
@@ -558,7 +560,7 @@ mod tests {
         let baseline = fixture_digest(&workspace);
         // A rebuilt PDF alone must not retrigger the watcher.
         fs::write(
-            workspace.path("opportunities/acme/lead/output/cv.pdf"),
+            workspace.path("opportunities/acme/lead/pdfs/cv.pdf"),
             b"%PDF-changed",
         )
         .unwrap();
@@ -571,7 +573,7 @@ mod tests {
             ".agent/typst/shared.typ",
             "ccvl.json",
             "opportunities/acme/lead/application.toml",
-            "opportunities/acme/lead/output/cv.typ",
+            "opportunities/acme/lead/typst/cv.typ",
         ] {
             let path = workspace.path(relative);
             let before = fs::read(&path).unwrap();

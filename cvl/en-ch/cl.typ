@@ -12,7 +12,7 @@
 
 #let application-path = sys.inputs.at("application", default: "/cvl/en-ch/application.toml")
 #let application = toml(application-path)
-#validate-application(application, expected-language: "en-CH", require-cl: true)
+#validate-application(application, expected-language: "en-ch", require-cl: true)
 
 // Style axis: the explicit `style` input injected by render.rs (resolved from
 // options.style) wins; a manual render without it falls back to the record,

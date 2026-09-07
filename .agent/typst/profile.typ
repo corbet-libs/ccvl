@@ -16,11 +16,11 @@
 
 #let localized-profile = (
   "de-ch": (
-    nationality-and-permit: profile-data.localized.at("de-CH").nationality_and_permit,
-    availability: profile-data.localized.at("de-CH").availability,
+    nationality-and-permit: profile-data.localized.at("de-ch").nationality_and_permit,
+    availability: profile-data.localized.at("de-ch").availability,
   ),
   "en-ch": (
-    nationality-and-permit: profile-data.localized.at("en-CH").nationality_and_permit,
-    availability: profile-data.localized.at("en-CH").availability,
+    nationality-and-permit: profile-data.localized.at("en-ch").nationality_and_permit,
+    availability: profile-data.localized.at("en-ch").availability,
   ),
 )

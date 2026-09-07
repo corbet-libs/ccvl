@@ -1,5 +1,6 @@
 # Opportunity-specific generated output
-/opportunities/*/*/output/
+/opportunities/*/*/pdfs/
+/opportunities/*/*/typst/
 
 # Private user knowledge; only the public scaffold and station example ship.
 /interview/*

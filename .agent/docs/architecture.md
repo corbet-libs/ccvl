@@ -72,8 +72,9 @@ opportunities/<organisation-key>/<position-key>/application.toml
 The job directory owns the posting, attributable organisation and role
 research, fit analysis, tailored Summary, optional cover letter, interview
 preparation, submission record, and outcome. The application record selects
-its locale and CV page count. Generated `cv.pdf` and optional `cl.pdf` go in
-its local `output/` directory.
+its locale and CV page count. Rendered `cv.pdf` and optional `cl.pdf` go in
+its local `pdfs/` directory; the resolved standalone Typst copies they were
+built from go in its local `typst/` directory.
 
 There is no standalone market map. General preferences or durable facts
 learned about the user belong in `interview/`; research about a company or

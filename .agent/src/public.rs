@@ -182,7 +182,7 @@ pub fn validate_boundary(workspace: &Workspace) -> Result<()> {
         let is_output = relative.extension().is_some_and(|ext| ext == "pdf")
             && relative
                 .components()
-                .any(|part| part.as_os_str() == "output");
+                .any(|part| part.as_os_str() == "output" || part.as_os_str() == "pdfs");
         if relative != Path::new("cvl/assets/signature.png") && !is_font && !is_output {
             let text = String::from_utf8_lossy(&fs::read(&path)?).into_owned();
             ensure!(

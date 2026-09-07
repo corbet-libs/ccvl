@@ -34,7 +34,7 @@ and `bash ./ccvl watch-opportunity <organisation-key> <position-key>`
 rebuild on every change instead of exiting. The watcher hashes the locale
 templates, the shared `.agent/typst` machinery, `cvl/profile.toml`,
 `ccvl.json`, the relevant record, and the generated opportunity
-`output/*.typ` copies; any change re-renders the PDFs (plus the resolved
+`typst/*.typ` copies; any change re-renders the PDFs (plus the resolved
 `.typ` copies for opportunities). Built PDFs are excluded from the hash so a
 render never retriggers itself. The loop uses the embedded engine and a
 standard-library polling interval, so no extra runtime or file-watching
