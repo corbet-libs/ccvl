@@ -59,6 +59,40 @@ jobs:
       - name: Run Clippy with warnings denied
         run: cargo "+$RUST_TOOLCHAIN" clippy --locked --all-targets --all-features -- -D warnings
 
+  lint:
+    name: Workflow, shell, and license checks
+    if: github.repository == 'corbet-labs/ccvl'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install lint tools
+        env:
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          ACTIONLINT_VERSION: 1.7.12
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            --output "$RUNNER_TEMP/actionlint.tar.gz"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/bin" actionlint
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Check workflows and shell scripts
+        run: |
+          actionlint -shellcheck shellcheck
+          shellcheck .agent/scripts/*.sh .agent/tests/*.sh ccvl
+
+      - name: Check REUSE licensing
+        uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
+
   verify:
     name: Linux release and independent PDF verification
     if: github.repository == 'corbet-labs/ccvl'
@@ -87,34 +121,16 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           bash ./ccvl setup
 
-      - name: Install secondary test tools
-        env:
-          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
-          ACTIONLINT_VERSION: 1.7.12
+      - name: Install independent PDF tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes file poppler-utils qpdf shellcheck
-          mkdir -p "$RUNNER_TEMP/bin"
-          curl --fail --location --proto '=https' --tlsv1.2 \
-            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
-            --output "$RUNNER_TEMP/actionlint.tar.gz"
-          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
-          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/bin" actionlint
-          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-
-      - name: Check workflows and shell scripts
-        run: |
-          actionlint -shellcheck shellcheck
-          shellcheck .agent/scripts/*.sh .agent/tests/*.sh ccvl
+          sudo apt-get install --yes file poppler-utils qpdf
 
       - name: Run Linux-specific independent PDF checks
         run: bash .agent/scripts/check-linux-deep.sh
 
       - name: Run public release checks
         run: bash ./ccvl public-check
-
-      - name: Check REUSE licensing
-        uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
 
       - name: Record tool versions
         if: always()
@@ -124,7 +140,6 @@ jobs:
             echo
             echo '```text'
             bash ./ccvl doctor
-            actionlint --version
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -158,7 +173,7 @@ jobs:
 
   release:
     name: Publish all six verified platforms
-    needs: [binaries, rust-native, verify, archive]
+    needs: [binaries, rust-native, lint, verify, archive]
     if: github.repository == 'corbet-labs/ccvl' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
