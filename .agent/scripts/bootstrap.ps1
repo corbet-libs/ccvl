@@ -1,4 +1,5 @@
 param(
+    [Parameter(Position = 0)]
     [ValidateSet("plan", "install")]
     [string]$Mode = "plan",
     [Parameter(Position = 1)]

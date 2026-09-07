@@ -57,7 +57,8 @@ dependencies, keyed by OS, architecture, compiler, dependency lockfile, and
 build settings. Workspace executables are rebuilt and verified on each run;
 they are not trusted merely because a cache hit occurred. Test and release
 caches are separate, and debug information is disabled for the CI test build
-to reduce cache size. Only `main` saves caches.
+to reduce cache size. Only `main` saves caches. Successful dependency work is
+also retained when a later test fails, so fixes do not repeat a cold build.
 
 Release binaries are built once per platform per run and passed between jobs
 as artifacts. Packages have a three-day Actions retention period; published

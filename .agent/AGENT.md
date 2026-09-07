@@ -63,6 +63,12 @@ order instead of blending their data ownership:
 Run the platform `check` command before considering document work complete and
 the platform `public-check` command before publishing from the public upstream.
 
+Runtime and delivery changes are complete only when the exact main revision has
+passed CI and published all six compiled platform bundles. A source push alone
+is not delivery. Follow `.agent/docs/releases.md`; never skip the native build
+or publication gates, install a stale rolling binary, or silently compile on a
+normal user's machine. Developer source builds require `setup --from-source`.
+
 For a new or uncertain environment, route to `ccvl-install`. Use
 `bash ./ccvl bootstrap` on Linux/macOS or `.\ccvl.cmd bootstrap` on Windows;
 do not ask a novice to choose a package manager or learn Git first. For an
