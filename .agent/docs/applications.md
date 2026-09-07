@@ -40,10 +40,12 @@ contains:
 Line lengths are authored as plain text; fill defaults come from `ccvl.json`.
 Typst measures actual glyph width with the bundled font. The Summary must
 render to exactly five lines; thin Summary lines fail unless explicitly
-allowed, and a closing line may spill invisibly up to the uniform
-closing-line maximum (cover-letter paragraphs share the rule). Explicit
-cover-letter lines fail outside their bounds. Underfill and overflow past
-the maximum fail and prompt another evidence-backed rewrite.
+allowed, and its closing line may extend up to 102% of the measure.
+Cover-letter non-final body lines require 95–100% natural fill, targeting
+97%; paragraph closing lines permit 75–100%. Each highlight requires
+70–100%, targeting 82%. Underfill and overflow past these bounds fail and
+prompt another evidence-backed rewrite. Justification does not substitute
+for sufficient natural line width; see `.agent/docs/cover-letter.md`.
 
 The opportunity directory is the lifecycle unit. An archived posting,
 research, working rules, interview preparation, or outcome may sit beside the

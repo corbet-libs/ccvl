@@ -2,7 +2,7 @@
 // Data comes from the TOML record; shared machinery (measurement, styles,
 // header chrome) stays below .agent/typst and carries no content.
 #import "/.agent/typst/styles/harvard.typ": document-style, load-style
-#import "/.agent/typst/application.typ": cover-letter-contract, de-salutation, last-line-maximum, validate-application
+#import "/.agent/typst/application.typ": cover-letter-contract, de-salutation, validate-application
 #import "/.agent/typst/line-contract.typ": line-contract-mode, measured-line, measured-paragraph
 #import "/.agent/typst/profile.typ": localized-profile, profile
 #import "/.agent/typst/letter/farewell.typ": closing as farewell-closing
@@ -39,9 +39,14 @@
 #let highlight-fill = cover-letter-contract.line_fill.highlight
 #let with-body-fill(lines) = range(lines.len()).map(index => (
   text: lines.at(index),
-  min_fill: body-fill.minimum,
+  // A justified non-final line is stretched to the full measure, so a thin
+  // one buys ugly word spacing rather than safety; only the ragged closing
+  // line may legitimately fall back to the lower floor.
+  min_fill: if index + 1 == lines.len() { body-fill.minimum } else { body-fill.non_final_minimum },
   target_fill: body-fill.target,
-  max_fill: if index + 1 == lines.len() { last-line-maximum } else { body-fill.maximum },
+  // Unlike the CV Summary, no cover-letter line may spill past the measure:
+  // the closing line shares the same 100% ceiling as every other line.
+  max_fill: body-fill.maximum,
 ))
 #let with-highlight-fill(text) = (
   text: text,
@@ -66,17 +71,27 @@
     justify: cover-letter-contract.justify_body,
   )
 ]
+// Same triangle geometry and indent as the CV, using the panel's accent colour.
+#let highlight-bullet() = box(width: 10.5pt, height: 7.35pt, align(horizon, align(center, polygon(
+  fill: rgb(style.accents.link),
+  (0pt, 0pt),
+  (4.41pt, 2.75625pt),
+  (0pt, 5.5125pt),
+))))
 #let highlights = block(
   fill: rgb(style.accents.highlight_background),
   stroke: (left: 2.5pt + rgb(style.accents.link)),
-  inset: cover.highlight_inset_pt * 1pt,
+  // Keep bullet and text anchors on the CV column; only the panel paint
+  // extends into the margin to retain padding around the aligned content.
+  inset: (x: 0pt, y: cover.highlight_inset_pt * 1pt),
+  outset: (x: cover.highlight_inset_pt * 1pt, y: 0pt),
   radius: 2pt,
   width: 100%,
 )[
   #for index in range(cover-letter-contract.highlights.count) {
     grid(
-      columns: (cover.highlight_number_width_mm * 1mm, 1fr),
-      [#text(weight: "bold", fill: rgb(style.accents.link))[#(index + 1)]],
+      columns: (style.cv.bullet_indent_pt * 1pt, 1fr),
+      highlight-bullet(),
       [#measured-line(
         "cl.highlight." + str(index + 1),
         "cl-highlight",
@@ -147,9 +162,16 @@
   })
   let fixed-height = heights.fold(0pt, (total, height) => total + height)
   let gap-count = content-blocks.len() - 1
-  let gap-height = (size.height - fixed-height) / gap-count
+  let weights = cover.gap_weights
+  assert(weights.len() == gap-count and weights.all(weight => weight > 0))
+  let remaining-height = size.height - fixed-height
+  let total-weight = weights.fold(0, (total, weight) => total + weight)
+  let gaps = weights.map(weight => remaining-height * weight / total-weight)
+  let smallest-gap-pt = calc.round(10 * calc.min(..gaps) / 1pt) / 10
+  let largest-gap-pt = calc.round(10 * calc.max(..gaps) / 1pt) / 10
   let highlight-top = (
-    heights.slice(0, 6).fold(0pt, (total, height) => total + height) + 6 * gap-height
+    heights.slice(0, 6).fold(0pt, (total, height) => total + height)
+      + gaps.slice(0, 6).fold(0pt, (total, gap) => total + gap)
   )
   let highlight-center = (
     100 * (highlight-top + heights.at(6) / 2) / size.height
@@ -159,8 +181,10 @@
     (
       id: "cl.vertical-gap",
       kind: "cl-vertical-gap",
-      text: "equal distributed gap between cover-letter content blocks",
-      actual_fill: calc.round(10 * gap-height / 1pt) / 10,
+      text: "role-weighted gaps: " + str(smallest-gap-pt) + "–" + str(largest-gap-pt) + " pt",
+      // One range metric proves every gap is in bounds: report the smallest
+      // when it breaches the floor, otherwise the largest checks the ceiling.
+      actual_fill: if smallest-gap-pt < rhythm.gap_pt.minimum { smallest-gap-pt } else { largest-gap-pt },
       min_fill: rhythm.gap_pt.minimum,
       target_fill: rhythm.gap_pt.target,
       max_fill: rhythm.gap_pt.maximum,
@@ -205,29 +229,7 @@
   block(width: 100%, height: size.height)[
     #grid(
       columns: (1fr,),
-      rows: (
-        auto,
-        1fr,
-        auto,
-        1fr,
-        auto,
-        1fr,
-        auto,
-        1fr,
-        auto,
-        1fr,
-        auto,
-        1fr,
-        auto,
-        1fr,
-        auto,
-        1fr,
-        auto,
-        1fr,
-        auto,
-        1fr,
-        auto,
-      ),
+      rows: gaps.fold((), (rows, gap) => rows + (auto, gap)) + (auto,),
       align: (left, top),
       header-content,
       [],

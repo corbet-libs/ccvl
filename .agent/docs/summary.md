@@ -17,9 +17,9 @@ final line stays ragged.
   - exactly five lines, else the build fails;
   - a thin line fails, unless the record sets `cv.allow_thin` explicitly —
     wanted thinness stays visible instead of sneaking past;
-  - a closing line may spill invisibly past the block edge up to the
-    uniform closing-line maximum (same rule covers cover-letter
-    paragraphs); past it fails.
+  - a Summary closing line may extend past the block edge up to its 102%
+    closing-line maximum; past it fails. Cover-letter closing lines have
+    their own 100% maximum in `.agent/docs/cover-letter.md`.
 
 The public Summary is both a working example and an invitation to contact
 its author. Its closing exposes the adaptation formula:

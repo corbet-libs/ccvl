@@ -711,11 +711,7 @@ mod tests {
                 "style-invariant section changed: {pointer}"
             );
         }
-        for pointer in [
-            "/cv/bullet_indent_pt",
-            "/cover/highlight_inset_pt",
-            "/cover/highlight_number_width_mm",
-        ] {
+        for pointer in ["/cv/bullet_indent_pt", "/cover/highlight_inset_pt"] {
             assert_eq!(
                 harvard.pointer(pointer),
                 compact.pointer(pointer),

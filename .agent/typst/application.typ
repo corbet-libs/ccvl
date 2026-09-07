@@ -7,8 +7,8 @@
 #let cv-contract = workspace.documents.cv
 #let known-styles = workspace.styles.available
 #let default-style-name = workspace.styles.default
-// Uniform closing-line grace for every measured paragraph (summary and
-// cover letter alike): a closing line may spill invisibly past the block.
+// CV Summary closing-line allowance. Cover-letter paragraphs use their own
+// body maximum and do not inherit this allowance.
 #let last-line-maximum = workspace.at("last_line_maximum", default: 102)
 
 // Last whitespace-separated token of a recipient name for the salutation.

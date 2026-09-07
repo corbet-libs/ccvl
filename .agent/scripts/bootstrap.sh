@@ -204,9 +204,11 @@ host_packages=()
 append_unique() {
   local candidate="$1"
   local existing
-  for existing in "${host_packages[@]}"; do
-    [[ "$existing" == "$candidate" ]] && return 0
-  done
+  if [[ ${#host_packages[@]} -gt 0 ]]; then
+    for existing in "${host_packages[@]}"; do
+      [[ "$existing" == "$candidate" ]] && return 0
+    done
+  fi
   host_packages+=("$candidate")
 }
 
@@ -240,7 +242,7 @@ if [[ "$toolchain_state" == install && "$from_source" == 1 ]]; then
   esac
 fi
 
-if [[ "$platform" == Linux-* ]]; then
+if [[ "$platform" == Linux-* && ${#missing_bootstrap[@]} -gt 0 ]]; then
   for requirement in "${missing_bootstrap[@]}"; do
     case "$manager:$requirement" in
       apt:downloader | dnf:downloader | pacman:downloader) append_unique curl ;;

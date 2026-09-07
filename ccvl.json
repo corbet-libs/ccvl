@@ -123,8 +123,8 @@
         "purpose": "Provide a fast evidence index across the target's main selection dimensions."
       },
       "line_fill": {
-        "body": { "minimum": 75, "target": 90, "maximum": 100 },
-        "highlight": { "minimum": 60, "target": 82, "maximum": 100 }
+        "body": { "minimum": 75, "non_final_minimum": 95, "target": 97, "maximum": 100 },
+        "highlight": { "minimum": 70, "target": 82, "maximum": 100 }
       },
       "mirror_paragraphs": [1, 6],
       "keep_paragraphs_together": true,

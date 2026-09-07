@@ -37,22 +37,36 @@ totals:
 
 ## Justification and paragraph integrity
 
-Every body line is explicit and measured before justification. Its natural
-glyph width must cover at least 75% of the available measure, targets 90%,
-and may never exceed 100% — except a paragraph's closing line, which shares
-the uniform closing-line maximum of 102% with the CV Summary. This prevents
-a short stranded line from being hidden by extreme word spacing.
-Non-final lines are then justified; the final line stays
-ragged but remains subject to the same natural-width floor.
+Every body line is explicit. Typst measures its natural width with the actual
+font and container before justification adds word spacing. The minimum depends
+on where the line sits in its paragraph:
+
+| Line | Minimum natural fill | Target | Maximum natural fill |
+|---|---:|---:|---:|
+| Non-final body line | 95% | 97% | 100% |
+| Paragraph closing line | 75% | 97% | 100% |
+
+The target guides drafting; the minimum and maximum determine whether a line
+passes. A non-final line is justified to the full measure. Its 95% minimum
+limits the added word spacing and requires substantial content before that
+stretch. The paragraph's closing line stays ragged and may end naturally at
+75% or more. Every cover-letter body line is capped at 100%; the CV Summary
+has its own closing-line policy in `.agent/docs/summary.md`.
+
+For an underfilled line, add relevant, verified evidence or restructure the
+paragraph to distribute its argument more evenly. For overflow, tighten the
+wording. Repetition, generic praise, and invented claims are never acceptable
+ways to reach a width target.
+
 Justification is explicit per break — Typst's plain `linebreak()` always
 creates an unjustified break, so `measured-paragraph` passes
 `justify: true` to every inter-line break while the closing line, which
 carries no break, stays left-bound by construction.
 
 Each paragraph is an unbreakable Typst block. Manual line breaks, the one-page
-contract, and the 75% floor together permit zero widows, orphans, wrapped lines,
-or sparse paragraph endings. Underfill and overflow both fail the draft and
-prompt another evidence-backed rewrite.
+contract, and the two natural-width floors together permit zero widows,
+orphans, wrapped lines, or sparse paragraph endings. Underfill and overflow
+both fail the draft and prompt another evidence-backed rewrite.
 
 ## Five highlights
 
@@ -61,21 +75,40 @@ application. Each is exactly one measured line with a recognisable heading and
 concrete evidence. Together they cover the target's main selection dimensions
 without duplicating the prose verbatim.
 
+Use the same triangular bullet markers as the CV. Keep the five rows inside
+the existing shaded panel with its accent border and colour palette. Align
+each triangle and its text with the corresponding CV bullet positions. The
+panel extends into both side margins and keeps vertical padding around the
+rows. Separate the rows with about half a line of whitespace so each highlight
+is easy to scan; follow the CV's spacing rhythm throughout the letter.
+
+Each highlight is measured against its actual container before any visual
+spacing: minimum 70%, target 82%, maximum 100%. Add useful evidence to a thin
+highlight or tighten an overflowing one; never pad it merely to meet the
+minimum.
+
 ## Vertical rhythm
 
 The renderer places the header, subject, salutation, six paragraphs,
-highlights, and valediction/signature in one full-height A4 grid. Ten equal
-flexible gaps distribute the remaining height instead of collecting it in empty
-slabs. A gap targets 20 pt and must remain within 12–30 pt. The highlight centre
-targets 56% of usable page height and must remain within 50–60%. A sparse or
-over-compressed page therefore fails deterministically even when every
+highlights, and valediction/signature in one full-height A4 grid. Ten flexible
+gaps distribute the remaining height using style weights for each transition:
+tighter spacing joins the header, subject and salutation; paragraph gaps give
+the argument room; the largest gaps frame the highlights. The closing stays
+close to the final paragraph, and the signature block remains anchored at the
+foot of the page. The fixed line counts remain unchanged.
+
+Every rendered gap must remain within 12–30 pt; the 20 pt target guides the
+overall rhythm. Validation covers the actual gap range: the gap metric checks
+the minimum if it falls below the floor, and otherwise the maximum against the
+ceiling. The highlight centre targets 56% of usable page height and must remain
+within 50–60%. A sparse or over-compressed page therefore fails even when every
 individual line fits.
 
-Both values come from the actual rendered Typst boxes. Accepted line-budget
-variation may move the highlights slightly away from the geometric centre
-without abandoning the composition. The recipient record in
-`application.toml` is data-only provenance and is not printed; only the
-salutation uses the recipient name.
+Gap lengths and the highlight centre come from the actual rendered Typst
+boxes. The selected style's spacing and measured block heights may move the
+highlights slightly away from the geometric centre within those bounds. The
+recipient record in `application.toml` is data-only provenance and is not
+printed; only the salutation uses the recipient name.
 
 ## Salutation
 

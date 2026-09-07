@@ -118,9 +118,9 @@
 // what the renderer lays out. Unlike greedy filling (which strands runt
 // last lines), this packs with dynamic programming: among all exact-`count`
 // packings it keeps the one with the fullest thinnest line.
-// Non-final lines stay within 100%; the closing line may use `last-max`
-// (uniform closing-line grace for every measured paragraph). Anything
-// beyond is gross overflow and fails here.
+// Non-final lines stay within 100%; the closing line uses `last-max`,
+// supplied by the caller's contract (102% for the CV Summary). Anything
+// beyond that maximum fails here.
 #let wrap-exact(
   text,
   width,

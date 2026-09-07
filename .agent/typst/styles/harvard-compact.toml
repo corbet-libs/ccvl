@@ -37,9 +37,12 @@ superheading_inner_pt = 4.5
 bullet_indent_pt = 10.5
 
 [cover]
+# Header/subject, salutation, body, highlight panel, body, and farewell gaps.
+# Normalize these weights over the free page height; every gap keeps its bounds.
+gap_weights = [0.8, 0.8, 0.9, 1.05, 1.05, 1.1, 1.1, 1.05, 1.05, 0.9]
 subject_after_pt = 4.0
 highlight_inset_pt = 8
-highlight_gap_pt = 4.5
-highlight_number_width_mm = 6
+# Match the compact CV's bullet spacing.
+highlight_gap_pt = 7.5
 closing_before_pt = 4.5
 closing_after_pt = 2

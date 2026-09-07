@@ -580,6 +580,86 @@ mod tests {
     }
 
     #[test]
+    fn cover_letter_templates_enforce_body_closing_and_highlight_bounds() {
+        let engine = ctypst::Engine::builder()
+            .root(Path::new(env!("CARGO_MANIFEST_DIR")))
+            .fonts(ctypst::fonts::documents())
+            .build()
+            .unwrap();
+        let cases: [(&str, f64, &[Option<&str>]); 8] = [
+            ("cl-body", 85.0, &[Some("too short"), None]),
+            ("cl-body", 85.0, &[None]),
+            ("cl-body", 74.9, &[Some("too short")]),
+            ("cl-body", 95.0, &[None, None]),
+            ("cl-body", 100.0, &[None]),
+            ("cl-body", 101.0, &[Some("too long")]),
+            ("cl-highlight", 69.9, &[Some("too short")]),
+            ("cl-highlight", 70.0, &[None]),
+        ];
+        for locale in ["de-ch", "en-ch"] {
+            for (kind, fill, expected) in cases {
+                // Use the real locale template's contract assignment and a
+                // measured fixture width, independent of showcase wording.
+                // The same 85% line must fail before a break and pass as the
+                // paragraph close; the CV's 102% grace must not leak here.
+                let content = if kind == "cl-body" {
+                    format!(
+                        "measured-paragraph(\"fixture\", \"cl-body\", \
+                         with-body-fill(range({}).map(_ => evidence)))",
+                        expected.len()
+                    )
+                } else {
+                    "measured-line(\"fixture\", \"cl-highlight\", \
+                     with-highlight-fill(evidence))"
+                        .to_owned()
+                };
+                let source = format!(
+                    "#import \"/cvl/{locale}/cl.typ\": with-body-fill, with-highlight-fill\n\
+                     #import \"/.agent/typst/line-contract.typ\": measured-paragraph, measured-line\n\
+                     #set page(width: 200pt, height: 100pt, margin: 10pt)\n\
+                     #set text(font: \"Archivo\", size: 10pt, hyphenate: false)\n\
+                     #let evidence = \"Verified engineering work\"\n\
+                     #context {{\n\
+                       let width = measure(text(evidence)).width * 100 / {fill}\n\
+                       block(width: width)[#{content}]\n\
+                     }}"
+                );
+                let report = engine
+                    .compile(
+                        ctypst::CompileRequest::new("density.typ")
+                            .source_file("density.typ", source.clone())
+                            .inputs(std::collections::BTreeMap::from([(
+                                "line-contracts".to_owned(),
+                                "report".to_owned(),
+                            )]))
+                            .pages(ctypst::PageConstraint::Exactly(1)),
+                    )
+                    .unwrap();
+                let metrics = ctypst::query_json(&report.document, "ccvl-line").unwrap();
+                assert_eq!(metrics.len(), expected.len());
+                for (metric, expected_failure) in metrics.iter().zip(expected) {
+                    assert_eq!(
+                        violation(metric).unwrap(),
+                        *expected_failure,
+                        "{locale} {kind} at {fill}%: {metric}"
+                    );
+                }
+                let enforced = engine.compile(
+                    ctypst::CompileRequest::new("density.typ")
+                        .source_file("density.typ", source)
+                        .pages(ctypst::PageConstraint::Exactly(1)),
+                );
+                let failure = enforced.err().map(|error| error.to_string());
+                assert_eq!(
+                    failure.is_none(),
+                    expected.iter().all(Option::is_none),
+                    "{locale} {kind} at {fill}%: {failure:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn closing_line_spill_renders_without_wrapping() {
         // A closing line at 100.8% (inside the 102 maximum) must stay one
         // visual line: exact-width boxes spill into the margin instead of
@@ -622,8 +702,9 @@ mod tests {
 
     #[test]
     fn paragraph_closing_spill_renders_without_wrapping() {
-        // Cover-letter closing lines share the 102 maximum, so a spill
-        // with too few spaces to justify away must still stay one visual
+        // The generic paragraph helper supports callers that explicitly
+        // allow 102%; cover-letter templates now cap every line at 100%.
+        // A permitted spill with few spaces must still stay one visual
         // line: three paragraphs with a short line plus a 102.0% closing
         // line fit one 60mm page; with flowing text the closings re-wrap
         // to nine lines over two pages.

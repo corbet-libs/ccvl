@@ -209,6 +209,22 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         "ccvl.json: cover letter needs exactly five highlights"
     );
     ensure!(
+        cover.pointer("/line_fill/body")
+            == Some(&json!({
+                "minimum": 75,
+                "non_final_minimum": 95,
+                "target": 97,
+                "maximum": 100
+            })),
+        "ccvl.json: cover-letter body fill must stay 75/95/97/100; the higher \
+         non-final floor is the density gate and may not be weakened"
+    );
+    ensure!(
+        cover.pointer("/line_fill/highlight")
+            == Some(&json!({"minimum": 70, "target": 82, "maximum": 100})),
+        "ccvl.json: cover-letter highlight fill must stay 70/82/100"
+    );
+    ensure!(
         cover.pointer("/widow_or_orphan_lines") == Some(&Value::from(0)),
         "ccvl.json: widow/orphan rule changed"
     );
@@ -393,5 +409,60 @@ mod tests {
     fn checked_in_manifest_has_fixed_contract() {
         let workspace = Workspace::discover(None).unwrap();
         validate_manifest(&workspace).unwrap();
+    }
+
+    #[test]
+    fn cover_letter_manifest_rejects_weakened_density_and_closing_spill() {
+        let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        let manifest = repository.read_json("ccvl.json").unwrap();
+        let temporary = TempDir::new().unwrap();
+        // Manifest validation only needs these references to exist. Keep the
+        // fixture isolated from private records and local agent directories.
+        for relative in [
+            "cvl/profile.toml",
+            "interview/stations.toml",
+            "cvl/de-ch/application.toml",
+            "cvl/en-ch/application.toml",
+            "cvl/README.md",
+            "interview/README.md",
+            "opportunities/README.md",
+            "cvl/de-ch/cv.typ",
+            "cvl/en-ch/cv.typ",
+            "cvl/de-ch/cl.typ",
+            "cvl/en-ch/cl.typ",
+        ] {
+            let path = temporary.path().join(relative);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, "").unwrap();
+        }
+        for style in manifest["styles"]["available"].as_array().unwrap() {
+            for extension in ["typ", "toml"] {
+                let path = temporary.path().join(format!(
+                    ".agent/typst/styles/{}.{extension}",
+                    style.as_str().unwrap()
+                ));
+                fs::create_dir_all(path.parent().unwrap()).unwrap();
+                fs::write(path, "").unwrap();
+            }
+        }
+        let manifest_path = temporary.path().join("ccvl.json");
+        fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+        let workspace = Workspace::at(temporary.path()).unwrap();
+        validate_manifest(&workspace).unwrap();
+
+        for (field, weakened, message) in [
+            ("body/non_final_minimum", 75, "body fill"),
+            ("body/minimum", 60, "body fill"),
+            ("body/maximum", 102, "body fill"),
+            ("highlight/minimum", 60, "highlight fill"),
+        ] {
+            let mut altered = manifest.clone();
+            *altered
+                .pointer_mut(&format!("/documents/cover_letter/line_fill/{field}"))
+                .unwrap() = json!(weakened);
+            fs::write(&manifest_path, serde_json::to_vec(&altered).unwrap()).unwrap();
+            let error = validate_manifest(&workspace).unwrap_err().to_string();
+            assert!(error.contains(message), "{field}: {error}");
+        }
     }
 }
