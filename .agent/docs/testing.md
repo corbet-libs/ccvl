@@ -42,14 +42,18 @@ It verifies:
   only the PDF rendition identifier;
 - pixel identity of the two CV pages shared by every page preset.
 
-The same suite runs natively on Linux x86_64/aarch64, macOS x86_64/aarch64,
-and Windows x86_64/aarch64 in GitHub Actions. It also proves that the freshly
-rendered PDFs are byte-reproducible and semantically identical to the tracked
-outputs on every OS, excluding only the PDF rendition identifier. Linux CI adds
-the locked Rust unit suite plus independent Poppler, QPDF, and pixel comparisons.
-`public-check` adds private-root, symlink, secret-pattern, LFS-pointer, and
-private-workspace checks. Actions also runs ShellCheck, Actionlint, and REUSE
-licensing validation.
+Every CI run builds optimized release binaries natively on Linux
+x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64/arm64. Each binary passes
+`public-check` and tests proving that both the launcher and direct executable
+reject a mismatched workspace. Windows also exercises the PowerShell download
+installer. Linux performs the locked Rust unit suite, Clippy, and independent
+Poppler, QPDF, and pixel comparisons. A minimal Linux container extracts the
+actual download bundle and runs setup without Git, Rust, or a compiler.
+
+The same tested files become release assets; publication never rebuilds or
+fetches an older rolling binary. The CI workflow requires all six builds and
+all validation jobs before publication. It also runs ShellCheck, Actionlint,
+and REUSE. See [Releases](releases.md) for cache and identity details.
 
 The same line contract is available directly with `bash ./ccvl measure` or
 `.\ccvl.cmd measure`. It reports all violations in one pass so underfill or

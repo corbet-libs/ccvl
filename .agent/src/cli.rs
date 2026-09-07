@@ -35,6 +35,8 @@ struct Args {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Print the compiled runtime source identity without opening a workspace.
+    RuntimeId,
     /// Verify the self-contained binary and workspace.
     Setup,
     /// Show what the dependency-free setup requires.
@@ -147,9 +149,15 @@ enum Command {
 
 pub fn run() -> Result<ExitCode> {
     let args = Args::parse();
+    if matches!(args.command, Command::RuntimeId) {
+        println!("{}", crate::runtime::ID);
+        return Ok(ExitCode::SUCCESS);
+    }
     let workspace = Workspace::discover(args.root.as_deref())?;
+    crate::runtime::verify(workspace.root())?;
     let mut exit_code = ExitCode::SUCCESS;
     match args.command {
+        Command::RuntimeId => unreachable!("handled before workspace discovery"),
         Command::Setup => {
             doctor(&workspace)?;
             check::run(&workspace)?;

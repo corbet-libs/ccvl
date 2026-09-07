@@ -3,6 +3,7 @@ version = 1
 [[annotations]]
 path = [
   ".agent/AGENT.md",
+  ".agent/build.rs",
   ".agent/scripts/**",
   ".agent/skills/**",
   ".agent/src/**",

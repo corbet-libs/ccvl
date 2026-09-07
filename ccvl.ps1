@@ -24,6 +24,11 @@ switch ($Command.ToLowerInvariant()) {
         if (-not (Test-Path -LiteralPath $Binary -PathType Leaf)) {
             throw "ccvl is not set up. Run .\ccvl.cmd bootstrap, then .\ccvl.cmd setup."
         }
+        . (Join-Path $RepoRoot ".agent\scripts\runtime-id.ps1")
+        $RuntimeId = (& $Binary runtime-id 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or $RuntimeId -ne (Get-SourceFingerprint)) {
+            throw "The installed ccvl runtime is stale. Run .\ccvl.cmd setup to install the matching binary."
+        }
         Push-Location $RepoRoot
         try {
             & $Binary $Command @Arguments

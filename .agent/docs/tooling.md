@@ -5,16 +5,17 @@ ccvl uses one native runtime and a small verification toolchain:
 | Tool | Required for |
 |---|---|
 | ccvl Rust binary | schemas, compilation, formatting, PDF checks, ATS text, fonts, and reproducibility |
-| Rust 1.94.0 + Cargo | building the repository-local binary from `Cargo.lock` |
+| Rust 1.94.0 + Cargo | explicit developer builds with `setup --from-source` |
 | Poppler + QPDF | secondary Linux CI validation |
 
 Run `bash ./ccvl bootstrap` on Linux/macOS or `.\ccvl.cmd bootstrap` on Windows
-for a read-only setup plan. The matching `setup` command keeps the exact Rust
-toolchain and compiled `ccvl` binary below `.agent/cache/ccvl/`, then runs the complete
-check. It supports Linux and macOS on x86_64/aarch64 plus native Windows on
+for a read-only setup plan. The matching `setup` command installs only the precompiled runtime whose embedded
+source identity matches the workspace, then runs the complete check. Platform
+bundles already include this executable below `.agent/cache/ccvl/`. It supports Linux and macOS on x86_64/aarch64 plus native Windows on
 x86_64/ARM64.
 
-An experienced user may provide the exact Rust toolchain independently and run
+For development, `setup --from-source` builds using the exact Rust toolchain.
+An experienced user may provide that toolchain independently and run
 the platform `doctor` plus `check` commands. A matching global toolchain is
 reused; otherwise the repository-local path takes precedence only while ccvl
 runs.

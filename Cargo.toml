@@ -7,6 +7,7 @@ description = "Local-first, deterministic CV and cover-letter compiler"
 license = "FSL-1.1-ALv2"
 repository = "https://github.com/corbet-labs/ccvl"
 publish = false
+build = ".agent/build.rs"
 
 [lib]
 name = "ccvl"
@@ -33,6 +34,9 @@ walkdir = "2.5"
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+
+[build-dependencies]
+sha2 = "0.10"
 
 [profile.release]
 lto = "thin"

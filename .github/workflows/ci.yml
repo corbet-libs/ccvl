@@ -18,11 +18,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  binaries:
+    if: github.repository == 'corbet-labs/ccvl'
+    uses: ./.github/workflows/binaries.yml
+
   rust-native:
     name: Native Rust compiler and document contracts
     if: github.repository == 'corbet-labs/ccvl'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
+    env:
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
@@ -36,6 +43,13 @@ jobs:
             --component clippy,rustfmt
           test "$(rustc "+$RUST_TOOLCHAIN" --version | awk '{print $2}')" = "$RUST_TOOLCHAIN"
 
+      - name: Reuse compiled test dependencies
+        uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c
+        with:
+          shared-key: tests-linux-x86_64
+          cache-bin: false
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Check formatting
         run: cargo "+$RUST_TOOLCHAIN" fmt --all -- --check
 
@@ -45,158 +59,10 @@ jobs:
       - name: Run Clippy with warnings denied
         run: cargo "+$RUST_TOOLCHAIN" clippy --locked --all-targets --all-features -- -D warnings
 
-      - name: Verify native reproducibility and public boundary
-        run: cargo "+$RUST_TOOLCHAIN" run --quiet --locked -- public-check
-
-  bootstrap-clean:
-    name: Bootstrap from a minimal Linux archive
-    if: github.repository == 'corbet-labs/ccvl'
-    runs-on: ubuntu-24.04
-    container: ubuntu:24.04
-    timeout-minutes: 60
-    steps:
-      - name: Download source without assuming Git
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
-        with:
-          persist-credentials: false
-
-      - name: Install and verify from an archive-shaped workspace
-        env:
-          CCVL_BOOTSTRAP_FORCE_LOCAL: "1"
-        run: |
-          mkdir -p "$RUNNER_TEMP/ccvl-archive"
-          tar --exclude='./.git' -cf - . | tar -xf - -C "$RUNNER_TEMP/ccvl-archive"
-          cd "$RUNNER_TEMP/ccvl-archive"
-          test ! -e .git
-          if command -v git >/dev/null 2>&1; then
-            echo "::error::The minimal bootstrap job unexpectedly contains Git."
-            exit 1
-          fi
-          bash ./ccvl setup
-
-  linux-arm-native:
-    name: Native Linux (aarch64) bootstrap and documents
-    if: github.repository == 'corbet-labs/ccvl'
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 60
-    env:
-      CCVL_BOOTSTRAP_FORCE_LOCAL: "1"
-    steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
-        with:
-          persist-credentials: false
-
-      - name: Prove empty, complete, and partial bootstrap states
-        run: |
-          plan="$(bash ./ccvl bootstrap)"
-          printf '%s\n' "$plan"
-          grep -Fq 'Rust toolchain: install 1.94.0 with pinned rustup-init 1.29.1' <<<"$plan"
-          grep -Fq 'ccvl binary: install' <<<"$plan"
-          bash ./ccvl setup
-          complete="$(bash ./ccvl bootstrap)"
-          grep -Fq 'Rust toolchain: managed 1.94.0' <<<"$complete"
-          grep -Fq 'ccvl binary: ready' <<<"$complete"
-          mv .agent/cache/ccvl/bin/ccvl "$RUNNER_TEMP/ccvl"
-          partial="$(bash ./ccvl bootstrap)"
-          printf '%s\n' "$partial"
-          grep -Fq 'Rust toolchain: managed 1.94.0' <<<"$partial"
-          grep -Fq 'ccvl binary: install' <<<"$partial"
-          mv "$RUNNER_TEMP/ccvl" .agent/cache/ccvl/bin/ccvl
-          bash ./ccvl public-check
-
-  macos-native:
-    name: Native macOS (${{ matrix.arch }}) bootstrap and documents
-    if: github.repository == 'corbet-labs/ccvl'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: arm64
-            runner: macos-15
-          - arch: x86_64
-            runner: macos-15-intel
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
-    env:
-      CCVL_BOOTSTRAP_FORCE_LOCAL: "1"
-    steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
-        with:
-          persist-credentials: false
-
-      - name: Prove empty, complete, and partial bootstrap states
-        run: |
-          plan="$(bash ./ccvl bootstrap)"
-          printf '%s\n' "$plan"
-          grep -Fq 'Rust toolchain: install 1.94.0 with Homebrew rustup' <<<"$plan"
-          grep -Fq 'ccvl binary: install' <<<"$plan"
-          bash ./ccvl setup
-          complete="$(bash ./ccvl bootstrap)"
-          grep -Fq 'Rust toolchain: managed 1.94.0' <<<"$complete"
-          grep -Fq 'ccvl binary: ready' <<<"$complete"
-          mv .agent/cache/ccvl/bin/ccvl "$RUNNER_TEMP/ccvl"
-          partial="$(bash ./ccvl bootstrap)"
-          printf '%s\n' "$partial"
-          grep -Fq 'Rust toolchain: managed 1.94.0' <<<"$partial"
-          grep -Fq 'ccvl binary: install' <<<"$partial"
-          mv "$RUNNER_TEMP/ccvl" .agent/cache/ccvl/bin/ccvl
-          bash ./ccvl public-check
-
-  windows-native:
-    name: Native Windows (${{ matrix.arch }}) bootstrap and documents
-    if: github.repository == 'corbet-labs/ccvl'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x86_64
-            runner: windows-2025
-          - arch: arm64
-            runner: windows-11-arm
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
-    env:
-      CCVL_BOOTSTRAP_FORCE_LOCAL: "1"
-    defaults:
-      run:
-        shell: powershell
-    steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
-        with:
-          persist-credentials: false
-
-      - name: Prove empty, complete, and partial bootstrap states
-        run: |
-          $Plan = (& .\.agent\scripts\bootstrap.ps1 plan | Out-String)
-          Write-Host $Plan
-          if ((-not $Plan.Contains("Rust toolchain: install 1.94.0 with pinned rustup-init 1.29.1")) -or
-              (-not $Plan.Contains("ccvl binary: install"))) {
-            throw "empty Windows bootstrap plan was incomplete"
-          }
-          & .\ccvl.cmd setup
-          if ($LASTEXITCODE -ne 0) { throw "native Windows setup failed" }
-          $Complete = (& .\.agent\scripts\bootstrap.ps1 plan | Out-String)
-          if ((-not $Complete.Contains("Rust toolchain: managed 1.94.0")) -or
-              (-not $Complete.Contains("ccvl binary: ready"))) {
-            throw "complete Windows environment was not a no-op"
-          }
-          Move-Item .agent\cache\ccvl\bin\ccvl.exe "$env:RUNNER_TEMP\ccvl.exe"
-          $Partial = (& .\.agent\scripts\bootstrap.ps1 plan | Out-String)
-          Write-Host $Partial
-          if ((-not $Partial.Contains("Rust toolchain: managed 1.94.0")) -or
-              (-not $Partial.Contains("ccvl binary: install"))) {
-            throw "partial Windows environment was not detected"
-          }
-          Move-Item "$env:RUNNER_TEMP\ccvl.exe" .agent\cache\ccvl\bin\ccvl.exe
-          & .\ccvl.cmd public-check
-          if ($LASTEXITCODE -ne 0) { throw "native Windows public check failed" }
-
   verify:
     name: Linux release and independent PDF verification
     if: github.repository == 'corbet-labs/ccvl'
+    needs: [binaries]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -205,8 +71,21 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up the pinned native ccvl binary
-        run: bash ./ccvl setup
+      - name: Download the tested Linux release package
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: ccvl-linux-x86_64
+          path: ${{ runner.temp }}/binary
+
+      - name: Install the compiled runtime from this run
+        run: |
+          cd "$RUNNER_TEMP/binary"
+          sha256sum --check ccvl-linux-x86_64.sha256
+          mkdir -p "$GITHUB_WORKSPACE/.agent/cache/ccvl/bin"
+          cp ccvl-linux-x86_64 "$GITHUB_WORKSPACE/.agent/cache/ccvl/bin/ccvl"
+          chmod 0755 "$GITHUB_WORKSPACE/.agent/cache/ccvl/bin/ccvl"
+          cd "$GITHUB_WORKSPACE"
+          bash ./ccvl setup
 
       - name: Install secondary test tools
         env:
@@ -248,3 +127,57 @@ jobs:
             actionlint --version
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  archive:
+    name: Run the precompiled bundle without Git or Rust
+    if: github.repository == 'corbet-labs/ccvl'
+    needs: [binaries]
+    runs-on: ubuntu-24.04
+    container: ubuntu:24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download the current Linux bundle
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: ccvl-linux-x86_64
+          path: /tmp/ccvl-dist
+
+      - name: Verify the complete user download
+        run: |
+          cd /tmp/ccvl-dist
+          sha256sum --check ccvl-linux-x86_64.tar.gz.sha256
+          mkdir /tmp/ccvl-workspace
+          tar -xzf ccvl-linux-x86_64.tar.gz -C /tmp/ccvl-workspace
+          cd /tmp/ccvl-workspace
+          test ! -e .git
+          if command -v cargo || command -v rustc || command -v git; then
+            echo 'The user bundle test must have no development toolchain.' >&2
+            exit 1
+          fi
+          bash ./ccvl setup
+
+  release:
+    name: Publish all six verified platforms
+    needs: [binaries, rust-native, verify, archive]
+    if: github.repository == 'corbet-labs/ccvl' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the exact source for publication
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Download the verified packages from this run
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: ccvl-*
+          path: ${{ runner.temp }}/release
+          merge-multiple: true
+
+      - name: Publish the complete matching runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .agent/scripts/publish-release.sh "$RUNNER_TEMP/release"

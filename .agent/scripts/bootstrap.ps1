@@ -1,6 +1,9 @@
 param(
     [ValidateSet("plan", "install")]
-    [string]$Mode = "plan"
+    [string]$Mode = "plan",
+    [Parameter(Position = 1)]
+    [ValidateSet("--from-source")]
+    [string]$BuildOption
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,14 +22,7 @@ $CargoHome = Join-Path $CacheRoot "cargo"
 $RustupHome = Join-Path $CacheRoot "rustup"
 $TargetDir = Join-Path $CacheRoot "target"
 $Binary = Join-Path $LocalBin "ccvl.exe"
-$InstallStamp = Join-Path $CacheRoot "install.sha256"
-$PrebuiltStamp = Join-Path $CacheRoot "install-prebuilt.sha256"
-$ReleaseBase = if (Test-Path Env:CCVL_RELEASE_BASE) {
-    $env:CCVL_RELEASE_BASE
-}
-else {
-    "https://github.com/corbet-labs/ccvl/releases/download/continuous"
-}
+$FromSource = $BuildOption -eq "--from-source" -or $env:CCVL_BOOTSTRAP_FORCE_LOCAL -eq "1"
 $ToolchainFile = Get-Content -Raw (Join-Path $RepoRoot "rust-toolchain.toml")
 if ($ToolchainFile -notmatch '(?m)^\s*channel\s*=\s*"([^"]+)"') {
     throw "rust-toolchain.toml does not declare a Rust channel"
@@ -94,41 +90,14 @@ function Test-ManagedRust {
     return $null -ne (Invoke-ManagedRustup @("run", $RustVersion, "cargo", "--version"))
 }
 
-function Get-SourceFingerprint {
-    if ($env:CCVL_BOOTSTRAP_TESTING -eq "1") {
-        if (Test-Path Env:CCVL_BOOTSTRAP_TEST_FINGERPRINT) {
-            return $env:CCVL_BOOTSTRAP_TEST_FINGERPRINT
-        }
-        return "test-fingerprint"
-    }
-    $Files = @(
-        Get-Item -LiteralPath (Join-Path $RepoRoot "Cargo.toml")
-        Get-Item -LiteralPath (Join-Path $RepoRoot "Cargo.lock")
-        Get-Item -LiteralPath (Join-Path $RepoRoot "rust-toolchain.toml")
-        Get-ChildItem -LiteralPath (Join-Path $RepoRoot ".agent\src") -Recurse -File -Filter "*.rs" |
-            Sort-Object FullName
-    )
-    $Lines = foreach ($File in $Files) {
-        $Relative = $File.FullName.Substring($RepoRoot.Length + 1).Replace("\", "/")
-        $Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $File.FullName).Hash.ToLowerInvariant()
-        "$Relative $Hash"
-    }
-    $Bytes = [Text.UTF8Encoding]::new($false).GetBytes(($Lines -join "`n") + "`n")
-    $Hasher = [Security.Cryptography.SHA256]::Create()
-    try {
-        return ([BitConverter]::ToString($Hasher.ComputeHash($Bytes))).Replace("-", "").ToLowerInvariant()
-    }
-    finally {
-        $Hasher.Dispose()
-    }
-}
+. (Join-Path $PSScriptRoot "runtime-id.ps1")
 
 $Platform = Get-PlatformKey
 $ReleaseAsset = switch ($Platform) {
     "Windows-x86_64" { "ccvl-windows-x86_64.exe" }
     "Windows-aarch64" { "ccvl-windows-arm64.exe" }
 }
-$FetchEnabled = $null -ne $ReleaseAsset -and $env:CCVL_BOOTSTRAP_FORCE_LOCAL -ne "1"
+$FetchEnabled = $null -ne $ReleaseAsset -and -not $FromSource
 $Assets = @(Import-Csv (Join-Path $PSScriptRoot "tool-assets.csv") |
     Where-Object { $_.tool -eq "rustup-init" -and $_.platform -eq $Platform })
 if ($Assets.Count -ne 1) {
@@ -137,19 +106,13 @@ if ($Assets.Count -ne 1) {
 $Asset = $Assets[0]
 
 $Fingerprint = Get-SourceFingerprint
-$BinaryState = "install"
-if ((Test-Path -LiteralPath $Binary -PathType Leaf) -and
-    (Test-Path -LiteralPath $InstallStamp -PathType Leaf) -and
-    ((Get-Content -Raw -LiteralPath $InstallStamp).Trim() -eq $Fingerprint)) {
-    $BinaryState = "ready"
+$ReleaseBase = if (Test-Path Env:CCVL_RELEASE_BASE) { $env:CCVL_RELEASE_BASE } else {
+    "https://github.com/corbet-labs/ccvl/releases/download/runtime-$Fingerprint"
 }
-elseif ((Test-Path -LiteralPath $Binary -PathType Leaf) -and
-    (Test-Path -LiteralPath $PrebuiltStamp -PathType Leaf)) {
-    $PrebuiltRecord = ((Get-Content -Raw -LiteralPath $PrebuiltStamp).Trim() -split "\s+", 2)
-    if ($PrebuiltRecord.Count -eq 2 -and $PrebuiltRecord[1] -eq $Fingerprint -and
-        ((Get-FileHash -Algorithm SHA256 -LiteralPath $Binary).Hash.ToLowerInvariant() -eq $PrebuiltRecord[0])) {
-        $BinaryState = "ready"
-    }
+$BinaryState = "install"
+if (Test-Path -LiteralPath $Binary -PathType Leaf) {
+    $RuntimeId = Invoke-OutsideRepository $Binary @("runtime-id")
+    if ($RuntimeId -eq $Fingerprint) { $BinaryState = "ready" }
 }
 
 $SystemKind = "none"
@@ -189,6 +152,10 @@ elseif ($SystemKind -ne "none") {
 
 Write-Output "ccvl bootstrap plan"
 Write-Output "  platform: $Platform"
+if (-not $FromSource) {
+    Write-Output "  Rust toolchain: not required (precompiled runtime)"
+}
+else {
 switch ($ToolchainState) {
     "managed" { Write-Output "  Rust toolchain: managed $RustVersion" }
     "system" { Write-Output "  Rust toolchain: system $RustVersion" }
@@ -196,9 +163,10 @@ switch ($ToolchainState) {
         Write-Output "  Rust toolchain: install $RustVersion with pinned rustup-init $($Asset.version)"
     }
 }
+}
 Write-Output "  ccvl binary: $BinaryState"
 if ($BinaryState -eq "install" -and $FetchEnabled) {
-    Write-Output "  prebuilt binary: $ReleaseAsset (source build on fetch failure)"
+    Write-Output "  prebuilt binary: $ReleaseAsset (matching runtime required)"
 }
 Write-Output "  missing bootstrap commands: none"
 Write-Output "  host packages: none"
@@ -229,22 +197,18 @@ try {
                 throw "Checksum mismatch for $ReleaseAsset"
             }
             Unblock-File -LiteralPath $Staged
+            $RuntimeId = Invoke-OutsideRepository $Staged @("runtime-id")
+            if ($RuntimeId -ne $Fingerprint) { throw "Downloaded binary does not match this workspace runtime" }
             New-Item -ItemType Directory -Force -Path $LocalBin | Out-Null
             Copy-Item -LiteralPath $Staged -Destination $Binary -Force
-            $Fingerprint = Get-SourceFingerprint
-            [IO.File]::WriteAllText(
-                $PrebuiltStamp,
-                "$ActualHash $Fingerprint`n",
-                [Text.UTF8Encoding]::new($false)
-            )
             $FetchedBinary = $true
         }
         catch {
-            Write-Output "Prebuilt binary unavailable; falling back to a source build."
+            throw "Matching precompiled binary unavailable. Download a complete release, or use setup --from-source for development. $($_.Exception.Message)"
         }
     }
 
-    if ($ToolchainState -eq "install" -and -not $FetchedBinary) {
+    if ($BinaryState -eq "install" -and $ToolchainState -eq "install" -and -not $FetchedBinary) {
         New-Item -ItemType Directory -Force -Path $CargoHome, $RustupHome | Out-Null
         $Download = Join-Path $TemporaryRoot $Asset.asset
         Write-Output "Downloading pinned rustup-init $($Asset.version)"
@@ -319,11 +283,9 @@ try {
             throw "cargo install did not produce $Binary"
         }
         $Fingerprint = Get-SourceFingerprint
-        [IO.File]::WriteAllText(
-            $InstallStamp,
-            "$Fingerprint`n",
-            [Text.UTF8Encoding]::new($false)
-        )
+        if ((Invoke-OutsideRepository $Binary @("runtime-id")) -ne $Fingerprint) {
+            throw "Built runtime identity mismatch"
+        }
     }
 
     Push-Location $RepoRoot

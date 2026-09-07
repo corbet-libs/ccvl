@@ -53,8 +53,7 @@ Included are:
 
 ## Quick start
 
-No Git or Typst experience is required. [Download and extract the source
-archive](https://github.com/corbet-labs/ccvl/archive/refs/heads/main.zip), or
+No Git or Typst experience is required. [Download and extract your platform bundle](https://github.com/corbet-labs/ccvl/releases/latest), or
 clone the repository if you already use Git. Open the folder in a
 filesystem-capable coding agent and ask it to set up ccvl using `AGENTS.md`.
 The complete novice and terminal workflows are in [Getting
@@ -89,13 +88,20 @@ Opportunity-specific documents are written beside their job record under
 `opportunities/<organisation>/<position>/typst/` (resolved standalone
 Typst copies).
 
-The same commands work in a downloaded source archive; Git knowledge is not
-required. On Linux x86_64/aarch64, macOS Intel/Apple Silicon, and Windows
-x86_64/ARM64, setup fetches the checksum-verified prebuilt binary for the
-current platform, so first setup takes seconds. The same six binaries ride
-the rolling `continuous` release. Only when the fetch is unavailable does
-setup fall back to building a repository-local binary from the locked Rust
-dependency graph. Typst, Typstyle, and the font pack are embedded.
+The platform bundles include the tested, optimized executable and its matching
+workspace. Linux x86_64/aarch64, macOS Intel/Apple Silicon, and Windows
+x86_64/ARM64 are all compiled and verified before a release becomes available.
+Git, Rust, and an external Typst installation are unnecessary for normal use.
+
+For an existing checkout, setup downloads the checksum-verified runtime that
+matches its compiler source. It rejects older binaries, and every launcher
+checks the installed runtime again before executing a command. Personal CV,
+interview, and opportunity changes do not require recompilation. Developers
+can explicitly opt into a locked source build with `bash ./ccvl setup
+--from-source` or `.\ccvl.cmd setup --from-source`.
+
+The [release contract](.agent/docs/releases.md) describes the required native
+builds, shared artifacts, dependency caches, and publication gate.
 
 ## Make it yours
 

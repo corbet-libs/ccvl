@@ -8,9 +8,6 @@ cargo_home="$cache_root/cargo"
 rustup_home="$cache_root/rustup"
 target_dir="$cache_root/target"
 binary="$local_bin/ccvl"
-install_stamp="$cache_root/install.sha256"
-prebuilt_stamp="$cache_root/install-prebuilt.sha256"
-release_base="${CCVL_RELEASE_BASE:-https://github.com/corbet-labs/ccvl/releases/download/continuous}"
 rust_version="$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$repo_root/rust-toolchain.toml")"
 
 # shellcheck source=.agent/scripts/tool-versions.sh
@@ -21,11 +18,15 @@ usage() {
 Usage: .agent/scripts/bootstrap.sh [plan|install]
 
   plan     Report the exact build plan without changing anything. This is the default.
-  install  Prepare exact Rust locally when needed, build ccvl, and verify it.
+  install  Install the matching precompiled binary and verify it.
+           Add --from-source to explicitly build the runtime for development.
 EOF
 }
 
 mode="${1:-plan}"
+from_source="${CCVL_BOOTSTRAP_FORCE_LOCAL:-0}"
+if [[ "${2:-}" == --from-source ]]; then from_source=1; fi
+if [[ -n "${2:-}" && "${2:-}" != --from-source ]]; then usage >&2; exit 2; fi
 case "$mode" in
   plan | install) ;;
   -h | --help)
@@ -155,58 +156,16 @@ if [[ "${CCVL_BOOTSTRAP_FORCE_LOCAL:-0}" != 1 ]]; then
   fi
 fi
 
-hash_stream() {
-  if probe sha256sum >/dev/null; then
-    sha256sum | awk '{ print $1 }'
-  elif probe shasum >/dev/null; then
-    shasum -a 256 | awk '{ print $1 }'
-  else
-    return 1
-  fi
-}
-
-hash_file() {
-  local path="$1"
-  if probe sha256sum >/dev/null; then
-    sha256sum "$path" | awk '{ print $1 }'
-  elif probe shasum >/dev/null; then
-    shasum -a 256 "$path" | awk '{ print $1 }'
-  else
-    return 1
-  fi
-}
-
-source_fingerprint() {
-  if [[ "${CCVL_BOOTSTRAP_TESTING:-0}" == 1 ]]; then
-    printf '%s\n' "${CCVL_BOOTSTRAP_TEST_FINGERPRINT:-test-fingerprint}"
-    return 0
-  fi
-  {
-    for relative in Cargo.toml Cargo.lock rust-toolchain.toml; do
-      printf '%s %s\n' "$relative" "$(hash_file "$repo_root/$relative")"
-    done
-    find "$repo_root/.agent/src" -type f -name '*.rs' -print | LC_ALL=C sort | while IFS= read -r path; do
-      relative="${path#"$repo_root/"}"
-      printf '%s %s\n' "$relative" "$(hash_file "$path")"
-    done
-  } | hash_stream
-}
+# shellcheck source=.agent/scripts/runtime-id.sh
+source "$repo_root/.agent/scripts/runtime-id.sh"
 
 binary_state=install
 fingerprint="$(source_fingerprint 2>/dev/null)" || fingerprint=
-if [[ -x "$binary" && -n "$fingerprint" ]]; then
-  if [[ -f "$install_stamp" ]] && [[ "$(<"$install_stamp")" == "$fingerprint" ]]; then
-    binary_state=ready
-  elif [[ -f "$prebuilt_stamp" ]]; then
-    prebuilt_record="$(<"$prebuilt_stamp")"
-    prebuilt_bin="${prebuilt_record%% *}"
-    prebuilt_fp="${prebuilt_record#* }"
-    if [[ -n "$prebuilt_bin" && -n "$prebuilt_fp" && "$prebuilt_fp" == "$fingerprint" ]] \
-      && [[ "$(hash_file "$binary" 2>/dev/null)" == "$prebuilt_bin" ]]; then
-      binary_state=ready
-    fi
-  fi
+if [[ -x "$binary" && -n "$fingerprint" ]] \
+  && [[ "$("$binary" runtime-id 2>/dev/null)" == "$fingerprint" ]]; then
+  binary_state=ready
 fi
+release_base="${CCVL_RELEASE_BASE:-https://github.com/corbet-labs/ccvl/releases/download/runtime-$fingerprint}"
 
 toolchain_state=install
 if managed_rust_matches; then
@@ -218,9 +177,9 @@ fi
 # A prebuilt binary needs no toolchain and no compiler: it downloads in
 # seconds while a source build takes minutes. Fetch is the primary path
 # whenever the platform asset is known and a downloader plus checksum
-# verifier exist; the source build remains the offline fallback.
+# verifier exist. Source compilation requires an explicit developer option.
 fetch_enabled=0
-if [[ -n "$release_asset" && "${CCVL_BOOTSTRAP_FORCE_LOCAL:-0}" != 1 ]] \
+if [[ -n "$release_asset" && "$from_source" != 1 ]] \
   && { probe curl >/dev/null || probe wget >/dev/null; } \
   && { probe sha256sum >/dev/null || probe shasum >/dev/null; }; then
   fetch_enabled=1
@@ -251,22 +210,22 @@ append_unique() {
   host_packages+=("$candidate")
 }
 
-if [[ "$binary_state" == install || "$toolchain_state" == install ]]; then
+if [[ "$binary_state" == install ]]; then
   if ! probe sha256sum >/dev/null && ! probe shasum >/dev/null; then
     missing_bootstrap+=(checksum)
   fi
 fi
-if [[ "$binary_state" == install && "$fetch_enabled" == 0 ]]; then
+if [[ "$binary_state" == install && "$from_source" == 1 ]]; then
   if ! probe cc >/dev/null && [[ "$platform" != Darwin-* ]]; then
     missing_bootstrap+=(compiler)
   fi
 fi
 
-if [[ "$platform" == Linux-* && "$toolchain_state" == install ]] \
+if [[ "$platform" == Linux-* && "$binary_state" == install ]] \
   && ! probe curl >/dev/null && ! probe wget >/dev/null; then
   missing_bootstrap+=(downloader)
 fi
-if [[ "$toolchain_state" == install ]]; then
+if [[ "$toolchain_state" == install && "$from_source" == 1 ]]; then
   case "$platform" in
     Darwin-*)
       if ! find_brew >/dev/null; then
@@ -303,6 +262,9 @@ if ((${#host_packages[@]} > 0)); then host_packages_display="${host_packages[*]}
 
 printf 'ccvl bootstrap plan\n'
 printf '  platform: %s\n' "$platform"
+if [[ "$from_source" != 1 ]]; then
+  printf '  Rust toolchain: not required (precompiled runtime)\n'
+else
 case "$toolchain_state" in
   managed) printf '  Rust toolchain: managed %s\n' "$rust_version" ;;
   system) printf '  Rust toolchain: system %s\n' "$rust_version" ;;
@@ -315,14 +277,15 @@ case "$toolchain_state" in
     fi
     ;;
 esac
+fi
 printf '  ccvl binary: %s\n' "$binary_state"
 if [[ "$binary_state" == install && "$fetch_enabled" == 1 ]]; then
-  printf '  prebuilt binary: %s (source build on fetch failure)\n' "$release_asset"
+  printf '  prebuilt binary: %s (matching runtime required)\n' "$release_asset"
 fi
 printf '  missing bootstrap commands: %s\n' "$missing_display"
 printf '  package manager: %s\n' "${manager:-none}"
 printf '  host packages: %s\n' "$host_packages_display"
-if [[ "$toolchain_state" == install && "$platform" == Darwin-* ]]; then
+if [[ "$toolchain_state" == install && "$platform" == Darwin-* && "$from_source" == 1 ]]; then
   if ! find_brew >/dev/null; then
     # The literal command is shown for an exact, auditable plan; setup downloads it to a file.
     # shellcheck disable=SC2016
@@ -410,37 +373,42 @@ verify_sha256() {
 fetch_prebuilt() {
   local staged="$bootstrap_tmp/$release_asset"
   local staged_checksum="$staged.sha256"
-  local expected bin_sha current
+  local expected current
   fetch "$release_base/$release_asset" "$staged" || return 1
   fetch "$release_base/$release_asset.sha256" "$staged_checksum" || return 1
   expected="$(awk '{ print $1 }' "$staged_checksum")" || return 1
   [[ -n "$expected" ]] || return 1
   verify_sha256 "$expected" "$staged" || return 1
   chmod 0755 "$staged" || return 1
+  current="$(source_fingerprint)" || return 1
+  [[ "$("$staged" runtime-id 2>/dev/null)" == "$current" ]] || {
+    printf 'Downloaded binary does not match this workspace runtime.\n' >&2
+    return 1
+  }
   mkdir -p "$local_bin" || return 1
   cp "$staged" "$binary" || return 1
-  bin_sha="$(hash_file "$binary")" || return 1
-  current="$(source_fingerprint)" || return 1
-  printf '%s %s\n' "$bin_sha" "$current" > "$prebuilt_stamp" || return 1
 }
 
+fingerprint="$(source_fingerprint)"
+release_base="${CCVL_RELEASE_BASE:-https://github.com/corbet-labs/ccvl/releases/download/runtime-$fingerprint}"
 fetched_binary=0
-if [[ "$binary_state" == install && -n "$release_asset" && "${CCVL_BOOTSTRAP_FORCE_LOCAL:-0}" != 1 ]] \
+if [[ "$binary_state" == install && -n "$release_asset" && "$from_source" != 1 ]] \
   && { probe curl >/dev/null || probe wget >/dev/null; } \
   && { probe sha256sum >/dev/null || probe shasum >/dev/null; }; then
   if fetch_prebuilt; then
     fetched_binary=1
   else
-    printf 'Prebuilt binary unavailable; falling back to a source build.\n' >&2
-    if ! probe cc >/dev/null && [[ "$platform" != Darwin-* ]]; then
-      printf 'Source-build fallback needs a C compiler (cc).\n' >&2
-      printf 'Install a compiler or provide network access to %s.\n' "$release_base" >&2
-      exit 2
-    fi
+    printf 'Matching precompiled binary unavailable. Download a complete release, or use setup --from-source for development.\n' >&2
+    exit 2
   fi
 fi
 
-if [[ "$toolchain_state" == install && "$fetched_binary" == 0 ]]; then
+if [[ "$binary_state" == install && "$fetched_binary" == 0 && "$from_source" != 1 ]]; then
+  printf 'A downloader and SHA-256 verifier are required to install the matching precompiled runtime.\n' >&2
+  exit 2
+fi
+
+if [[ "$binary_state" == install && "$toolchain_state" == install && "$fetched_binary" == 0 ]]; then
   mkdir -p "$cargo_home" "$rustup_home"
   if [[ "$platform" == Darwin-* ]]; then
     brew="$(find_brew)" || brew=
@@ -517,7 +485,7 @@ if [[ "$binary_state" == install && "$fetched_binary" == 0 ]]; then
     exit 2
   }
   fingerprint="$(source_fingerprint)"
-  printf '%s\n' "$fingerprint" > "$install_stamp"
+  [[ "$("$binary" runtime-id)" == "$fingerprint" ]] || { printf 'Built runtime identity mismatch.\n' >&2; exit 2; }
 fi
 
 cd "$repo_root"

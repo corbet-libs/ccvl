@@ -1,23 +1,14 @@
 name: Binaries
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
-concurrency:
-  group: binaries-continuous
-  cancel-in-progress: true
-
 jobs:
   build:
     name: Release binary (${{ matrix.os }} ${{ matrix.arch }})
-    if: github.repository == 'corbet-labs/ccvl' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     strategy:
       fail-fast: false
       matrix:
@@ -50,12 +41,12 @@ jobs:
     timeout-minutes: 60
     env:
       RUST_TOOLCHAIN: 1.94.0
+      CARGO_INCREMENTAL: "0"
     steps:
-      - name: Check out the green source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+      - name: Check out the exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Install exact Rust toolchain
         shell: bash
@@ -63,61 +54,43 @@ jobs:
           rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
           test "$(rustc "+$RUST_TOOLCHAIN" --version | awk '{print $2}')" = "$RUST_TOOLCHAIN"
 
-      - name: Build locked release binary
+      - name: Reuse compiled dependencies
+        uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c
+        with:
+          shared-key: release-${{ runner.os }}-${{ runner.arch }}
+          cache-bin: false
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build the locked release binary once
         shell: bash
         run: cargo "+$RUST_TOOLCHAIN" build --locked --release
 
-      - name: Stage named binary and checksum
+      - name: Verify the compiled runtime and public documents
+        shell: bash
+        run: |
+          binary="$PWD/target/release/${{ matrix.exe }}"
+          "$binary" public-check
+          if [[ "${{ runner.os }}" != Windows ]]; then
+            bash .agent/tests/test_runtime.sh "$binary"
+          fi
+
+      - name: Verify native Windows bootstrap and launcher
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          & .\.agent\tests\test_runtime.ps1 -Binary "$PWD\target\release\ccvl.exe"
+
+      - name: Package that exact binary with its workspace
         shell: bash
         run: |
           name="ccvl-${{ matrix.os }}-${{ matrix.arch }}"
-          case "${{ matrix.exe }}" in
-            *.exe) name="$name.exe" ;;
-          esac
-          mkdir -p dist
-          cp "target/release/${{ matrix.exe }}" "dist/$name"
-          (cd dist && sha256sum "$name" > "$name.sha256")
+          case "${{ matrix.exe }}" in *.exe) name="$name.exe" ;; esac
+          bash .agent/scripts/package-release.sh "$name" "${{ matrix.exe }}" "$RUNNER_TEMP/dist"
 
-      - name: Upload platform binary
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - name: Upload the verified platform package
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: ccvl-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/*
+          path: ${{ runner.temp }}/dist/*
           if-no-files-found: error
-          retention-days: 7
-
-  release:
-    name: Attach binaries to the rolling release
-    if: github.repository == 'corbet-labs/ccvl'
-    needs: [build]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: write
-    steps:
-      - name: Check out main for release tagging
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
-        with:
-          persist-credentials: false
-
-      - name: Download all platform binaries
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          path: binaries
-          merge-multiple: true
-
-      - name: Replace the rolling release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          sha="${{ github.event.workflow_run.head_sha || github.sha }}"
-          ls binaries/
-          if gh release view continuous >/dev/null 2>&1; then
-            gh release delete continuous --cleanup-tag --yes
-          fi
-          gh release create continuous \
-            --prerelease \
-            --title "Continuous prebuilt binaries" \
-            --notes "Prebuilt ccvl binaries from green main at ${sha}. Download your platform, drop the binary next to a workspace checkout, and run setup." \
-            binaries/*
+          retention-days: 3

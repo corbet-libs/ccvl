@@ -19,6 +19,14 @@ case "$command_name" in
       printf 'ccvl is not set up. Run bash ./ccvl bootstrap, then bash ./ccvl setup.\n' >&2
       exit 2
     fi
+    probe() { command -v "$1" 2>/dev/null; }
+    # shellcheck source=.agent/scripts/runtime-id.sh
+    source "$repo_root/.agent/scripts/runtime-id.sh"
+    expected="$(source_fingerprint)"
+    if [[ -z "$expected" || "$("$binary" runtime-id 2>/dev/null)" != "$expected" ]]; then
+      printf 'The installed ccvl runtime is stale. Run bash ./ccvl setup to install the matching binary.\n' >&2
+      exit 2
+    fi
     cd "$repo_root"
     exec "$binary" "$command_name" "$@"
     ;;

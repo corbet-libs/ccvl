@@ -7,8 +7,7 @@ supported.
 
 ## With a coding agent
 
-[Download and extract the source
-archive](https://github.com/corbet-labs/ccvl/archive/refs/heads/main.zip), open
+[Download and extract your platform bundle](https://github.com/corbet-labs/ccvl/releases/latest), open
 the extracted folder in Codex or another filesystem-capable coding agent, and
 use this prompt:
 
@@ -27,19 +26,15 @@ plan. Because the prompt explicitly requests setup, it may then run the matching
 `setup` command. Setup:
 
 - detects empty, partial, and already complete environments on the current OS;
-- fetches the prebuilt `ccvl` binary for the current platform from the
-  rolling release and verifies its checksum, so first setup takes seconds;
-  only when the fetch is unavailable (offline, or forced local) does it
-  install the exact Rust 1.94.0 toolchain in the repository-local
-  `.agent/cache/ccvl/` through the checksum-pinned bootstrap and build from
-  `Cargo.lock`;
-- keeps the managed toolchain and binary repository-local and limits
-  host-level changes to bootstrap commands or compiler support reported
-  by the plan; the document compiler, formatter, and font pack are
-  embedded in the binary;
+- uses the compiled binary included in the platform bundle, or downloads the
+  checksum-verified runtime matching an existing source checkout;
+- checks the binary's embedded runtime identity before installation and refuses
+  stale or unavailable binaries; it never silently installs a compiler;
+- keeps the binary below `.agent/cache/ccvl/`; the document compiler,
+  formatter, and font pack are embedded;
 - runs the full deterministic suite before declaring success.
 
-Re-running setup is safe. If the exact toolchain and binary are already ready,
+Re-running setup is safe. If the matching binary is already ready,
 it makes no changes and performs the same verification.
 
 ## From a terminal
@@ -66,6 +61,9 @@ dependencies however you prefer and run:
 bash ./ccvl doctor
 bash ./ccvl check
 ```
+
+Developers who intentionally change compiler source can use `setup --from-source`
+to build with the pinned Rust toolchain. Normal users run the precompiled bundles.
 
 All product commands are available through `bash ./ccvl help` or
 `.\ccvl.cmd help`.

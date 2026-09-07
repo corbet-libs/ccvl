@@ -34,7 +34,7 @@ create_exact_rustup() {
 
 mark_binary_ready() {
   local cache_root="$1"
-  create_fake "$cache_root/bin" ccvl 'ccvl 0.1.0'
+  create_fake "$cache_root/bin" ccvl 'test-fingerprint'
   printf 'test-fingerprint\n' > "$cache_root/install.sha256"
 }
 
@@ -57,7 +57,7 @@ complete_output="$(
   CCVL_BOOTSTRAP_CACHE_ROOT="$complete_cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
   CCVL_BOOTSTRAP_TEST_MANAGER=apt \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$complete_output" == *'Rust toolchain: system 1.94.0'* ]]
 [[ "$complete_output" == *'ccvl binary: ready'* ]]
@@ -70,7 +70,7 @@ empty_output="$(
   CCVL_BOOTSTRAP_CACHE_ROOT="$empty_cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
   CCVL_BOOTSTRAP_TEST_MANAGER=apt \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$empty_output" == *'Rust toolchain: install 1.94.0 with pinned rustup-init 1.29.1'* ]]
 [[ "$empty_output" == *'ccvl binary: install'* ]]
@@ -86,11 +86,11 @@ ready_without_toolchain_output="$(
   CCVL_BOOTSTRAP_CACHE_ROOT="$ready_without_toolchain_cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
   CCVL_BOOTSTRAP_TEST_MANAGER=apt \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$ready_without_toolchain_output" == *'ccvl binary: ready'* ]]
-[[ "$ready_without_toolchain_output" == *'missing bootstrap commands: checksum downloader'* ]]
-[[ "$ready_without_toolchain_output" == *'host packages: coreutils curl'* ]]
+[[ "$ready_without_toolchain_output" == *'missing bootstrap commands: none'* ]]
+[[ "$ready_without_toolchain_output" == *'host packages: none'* ]]
 
 partial_cache="$scratch/partial-cache"
 partial_output="$(
@@ -98,7 +98,7 @@ partial_output="$(
   CCVL_BOOTSTRAP_CACHE_ROOT="$partial_cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-aarch64 \
   CCVL_BOOTSTRAP_TEST_MANAGER=apt \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$partial_output" == *'platform: Linux-aarch64'* ]]
 [[ "$partial_output" == *'Rust toolchain: install 1.94.0 with pinned rustup-init 1.29.1'* ]]
@@ -113,7 +113,7 @@ managed_output="$(
   CCVL_BOOTSTRAP_PROBE_PATH="$partial_bin" \
   CCVL_BOOTSTRAP_CACHE_ROOT="$managed_cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$managed_output" == *'Rust toolchain: managed 1.94.0'* ]]
 [[ "$managed_output" == *'ccvl binary: ready'* ]]
@@ -124,7 +124,7 @@ managed_partial_output="$(
   CCVL_BOOTSTRAP_PROBE_PATH="$partial_bin" \
   CCVL_BOOTSTRAP_CACHE_ROOT="$managed_cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$managed_partial_output" == *'Rust toolchain: managed 1.94.0'* ]]
 [[ "$managed_partial_output" == *'ccvl binary: install'* ]]
@@ -141,7 +141,7 @@ system_rustup_output="$(
   CCVL_BOOTSTRAP_PROBE_PATH="$system_rustup_bin" \
   CCVL_BOOTSTRAP_CACHE_ROOT="$system_rustup_cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$system_rustup_output" == *'Rust toolchain: system 1.94.0'* ]]
 [[ "$system_rustup_output" == *'ccvl binary: ready'* ]]
@@ -154,7 +154,7 @@ mac_empty_output="$(
   CCVL_BOOTSTRAP_PROBE_PATH="$mac_empty_bin" \
   CCVL_BOOTSTRAP_CACHE_ROOT="$scratch/mac-empty-cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Darwin-aarch64 \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$mac_empty_output" == *'Rust toolchain: install 1.94.0 with Homebrew rustup'* ]]
 [[ "$mac_empty_output" == *'missing bootstrap commands: homebrew rustup'* ]]
@@ -172,7 +172,7 @@ mac_partial_output="$(
   CCVL_BOOTSTRAP_PROBE_PATH="$mac_partial_bin" \
   CCVL_BOOTSTRAP_CACHE_ROOT="$scratch/mac-partial-cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Darwin-x86_64 \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$mac_partial_output" == *'missing bootstrap commands: rustup'* ]]
 [[ "$mac_partial_output" == *'host packages: rustup'* ]]
@@ -186,14 +186,14 @@ mac_complete_output="$(
   CCVL_BOOTSTRAP_PROBE_PATH="$mac_partial_bin" \
   CCVL_BOOTSTRAP_CACHE_ROOT="$mac_complete_cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Darwin-x86_64 \
-    bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$mac_complete_output" == *'Rust toolchain: managed 1.94.0'* ]]
 [[ "$mac_complete_output" == *'ccvl binary: ready'* ]]
 [[ "$mac_complete_output" == *'host packages: none'* ]]
 
 if CCVL_BOOTSTRAP_TEST_PLATFORM=Plan9-x86_64 \
-  bash "$repo_root/.agent/scripts/bootstrap.sh" plan >/dev/null 2>&1; then
+  bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source >/dev/null 2>&1; then
   printf 'Unsupported platforms must fail.\n' >&2
   exit 1
 fi
@@ -201,7 +201,7 @@ fi
 if CCVL_BOOTSTRAP_PROBE_PATH="$empty_bin" \
   CCVL_BOOTSTRAP_CACHE_ROOT="$scratch/managerless-cache" \
   CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
-  bash "$repo_root/.agent/scripts/bootstrap.sh" install >/dev/null 2>"$scratch/no-manager-error"; then
+  bash "$repo_root/.agent/scripts/bootstrap.sh" install --from-source >/dev/null 2>"$scratch/no-manager-error"; then
   printf 'Installation without a package manager must fail.\n' >&2
   exit 1
 fi
@@ -219,7 +219,7 @@ if command -v sha256sum >/dev/null 2>&1; then
 else
   ln -s "$(command -v shasum)" "$fetch_bin/shasum"
 fi
-printf '#!/bin/sh\nprintf "ccvl 0.1.0\\n"\n' > "$fetch_fixtures/ccvl-linux-x86_64"
+printf '#!/bin/sh\nprintf "test-fingerprint\\n"\n' > "$fetch_fixtures/ccvl-linux-x86_64"
 chmod 0755 "$fetch_fixtures/ccvl-linux-x86_64"
 if command -v sha256sum >/dev/null 2>&1; then
   fixture_hash="$(sha256sum "$fetch_fixtures/ccvl-linux-x86_64" | awk '{ print $1 }')"
@@ -248,14 +248,14 @@ fetch_plan="$(
     bash "$repo_root/.agent/scripts/bootstrap.sh" plan
 )"
 [[ "$fetch_plan" == *'ccvl binary: install'* ]]
-[[ "$fetch_plan" == *'prebuilt binary: ccvl-linux-x86_64 (source build on fetch failure)'* ]]
+[[ "$fetch_plan" == *'prebuilt binary: ccvl-linux-x86_64 (matching runtime required)'* ]]
 CCVL_BOOTSTRAP_PROBE_PATH="$fetch_bin" \
 CCVL_BOOTSTRAP_CACHE_ROOT="$fetch_cache" \
 CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
 CCVL_BOOTSTRAP_TEST_MANAGER=apt \
   bash "$repo_root/.agent/scripts/bootstrap.sh" install >/dev/null
 [[ -x "$fetch_cache/bin/ccvl" ]]
-[[ -f "$fetch_cache/install-prebuilt.sha256" ]]
+
 fetch_ready="$(
   CCVL_BOOTSTRAP_PROBE_PATH="$fetch_bin" \
   CCVL_BOOTSTRAP_CACHE_ROOT="$fetch_cache" \
@@ -264,5 +264,29 @@ fetch_ready="$(
     bash "$repo_root/.agent/scripts/bootstrap.sh" plan
 )"
 [[ "$fetch_ready" == *'ccvl binary: ready'* ]]
+
+# A checksum-valid binary from another runtime must not be installed, even
+# when an old cache stamp claims it belongs to this source tree.
+export CCVL_BOOTSTRAP_TEST_FINGERPRINT=changed-runtime
+if CCVL_BOOTSTRAP_PROBE_PATH="$fetch_bin" \
+  CCVL_BOOTSTRAP_CACHE_ROOT="$scratch/stale-cache" \
+  CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
+    bash "$repo_root/.agent/scripts/bootstrap.sh" install >"$scratch/stale-log" 2>&1; then
+  printf 'Stale prebuilt runtime must fail.\n' >&2
+  exit 1
+fi
+[[ ! -e "$scratch/stale-cache/bin/ccvl" ]]
+grep -Fq 'Downloaded binary does not match' "$scratch/stale-log"
+export CCVL_BOOTSTRAP_TEST_FINGERPRINT=test-fingerprint
+printf 'incorrect-checksum  ccvl-linux-x86_64\n' > "$fetch_fixtures/ccvl-linux-x86_64.sha256"
+if CCVL_BOOTSTRAP_PROBE_PATH="$fetch_bin" \
+  CCVL_BOOTSTRAP_CACHE_ROOT="$scratch/corrupt-cache" \
+  CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
+    bash "$repo_root/.agent/scripts/bootstrap.sh" install >"$scratch/corrupt-log" 2>&1; then
+  printf 'Corrupt prebuilt runtime must fail.\n' >&2
+  exit 1
+fi
+[[ ! -e "$scratch/corrupt-cache/bin/ccvl" ]]
+grep -Fq 'Checksum mismatch' "$scratch/corrupt-log"
 
 printf 'POSIX bootstrap handles Linux and macOS empty, partial, complete, unsupported, and manager-less states.\n'

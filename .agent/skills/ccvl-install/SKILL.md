@@ -18,8 +18,10 @@ rendering the checked-in general CVL.
    command and stop changing the environment.
 3. If the user explicitly requested setup or installation, run the matching
    platform `setup` command: it fetches the checksum-verified prebuilt
-   binary first and only builds from source (installing the toolchain)
-   when the fetch is unavailable. Otherwise show the plan before its changes.
+   binary matching the workspace runtime identity. A missing or mismatched
+   download must fail without a source-build fallback. Use `setup --from-source`
+   only for an explicitly requested developer build. Otherwise show the plan
+   before its changes.
 4. If the harness cannot support the platform, report its exact boundary and
    use `.agent/docs/tooling.md`; do not guess package names.
 5. Do not replace an existing package strategy or working global toolchain. The
