@@ -538,7 +538,7 @@ mod tests {
 
     #[test]
     fn cv_only_application_is_valid_without_hidden_cover_letter_content() {
-        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
+        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
         draft.as_object_mut().unwrap().remove("cl");
         draft["options"]["generate_cl"] = json!(false);
         validate_record(&workspace(), &draft, "fixture", true).unwrap();
@@ -551,30 +551,32 @@ mod tests {
     }
 
     #[test]
-    fn accepted_cover_letter_distributions_match_the_declared_regions() {
+    fn strict_cover_letter_line_budgets_are_enforced() {
+        // The strict 3|5|5|5|5|3 framework admits exactly one distribution:
+        // the valid letter passes while every off-by-one in any paragraph
+        // fails, which also implies the pair (10), central (20), and body
+        // (26) totals without a separate region test.
         let workspace = workspace();
-        for lengths in [
-            [3, 6, 6, 5, 5, 3],
-            [3, 5, 7, 5, 5, 3],
-            [3, 7, 5, 5, 5, 2],
-            [3, 5, 5, 5, 5, 2],
-            [3, 5, 6, 5, 5, 3],
-        ] {
-            validate_record(&workspace, &application(&lengths), "fixture", true).unwrap();
-        }
-    }
-
-    #[test]
-    fn fixed_individual_and_shared_line_budgets_are_enforced() {
-        let workspace = workspace();
+        validate_record(
+            &workspace,
+            &application(&[3, 5, 5, 5, 5, 3]),
+            "fixture",
+            true,
+        )
+        .unwrap();
         for (lengths, expected) in [
-            ([2, 6, 6, 5, 5, 3], "paragraphs[1]: expected 3–3 lines"),
-            ([3, 4, 6, 5, 5, 3], "paragraphs[2]: expected 5–7 lines"),
-            ([3, 6, 6, 5, 5, 4], "paragraphs[6]: expected 2–3 lines"),
-            (
-                [3, 5, 5, 6, 7, 2],
-                "paragraphs[4:5]: expected 10–12 shared lines",
-            ),
+            ([2, 5, 5, 5, 5, 3], "paragraphs[1]: expected 3–3 lines"),
+            ([4, 5, 5, 5, 5, 3], "paragraphs[1]: expected 3–3 lines"),
+            ([3, 4, 5, 5, 5, 3], "paragraphs[2]: expected 5–5 lines"),
+            ([3, 6, 5, 5, 5, 3], "paragraphs[2]: expected 5–5 lines"),
+            ([3, 5, 4, 5, 5, 3], "paragraphs[3]: expected 5–5 lines"),
+            ([3, 5, 6, 5, 5, 3], "paragraphs[3]: expected 5–5 lines"),
+            ([3, 5, 5, 4, 5, 3], "paragraphs[4]: expected 5–5 lines"),
+            ([3, 5, 5, 6, 5, 3], "paragraphs[4]: expected 5–5 lines"),
+            ([3, 5, 5, 5, 4, 3], "paragraphs[5]: expected 5–5 lines"),
+            ([3, 5, 5, 5, 6, 3], "paragraphs[5]: expected 5–5 lines"),
+            ([3, 5, 5, 5, 5, 2], "paragraphs[6]: expected 3–3 lines"),
+            ([3, 5, 5, 5, 5, 4], "paragraphs[6]: expected 3–3 lines"),
         ] {
             let error = validate_record(&workspace, &application(&lengths), "fixture", true)
                 .unwrap_err()
@@ -584,34 +586,9 @@ mod tests {
     }
 
     #[test]
-    fn every_middle_paragraph_distribution_obeys_all_declared_bounds() {
-        let workspace = workspace();
-        for second in 4..=8 {
-            for third in 4..=8 {
-                for fourth in 4..=8 {
-                    for fifth in 4..=8 {
-                        let middle = [second, third, fourth, fifth];
-                        let valid = middle.iter().all(|count| (5..=7).contains(count))
-                            && (10..=12).contains(&(second + third))
-                            && (10..=12).contains(&(fourth + fifth))
-                            && (20..=22).contains(&middle.iter().sum::<usize>());
-                        let lengths = [3, second, third, fourth, fifth, 3];
-                        assert_eq!(
-                            validate_record(&workspace, &application(&lengths), "fixture", true,)
-                                .is_ok(),
-                            valid,
-                            "unexpected result for {middle:?}"
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    #[test]
     fn german_flowing_summary_with_special_characters_validates() {
         let workspace = workspace();
-        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
+        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
         draft["cv"]["summary"] = json!(
             "Mittelstandsmandate verbinden Finanzen, Betrieb und Technologie. \
              Ich vereine Portfolioanalyse, Corporate Finance und Transformation mit \
@@ -627,7 +604,7 @@ mod tests {
 
     #[test]
     fn unknown_fields_are_rejected() {
-        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
+        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
         draft["job"]["smuggled"] = json!("nope");
         let error = validate_record(&workspace(), &draft, "fixture", true)
             .unwrap_err()
@@ -637,7 +614,7 @@ mod tests {
 
     #[test]
     fn empty_rendered_text_is_rejected() {
-        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
+        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
         draft["cv"]["summary"] = json!("  ");
         let error = validate_record(&workspace(), &draft, "fixture", true)
             .unwrap_err()
@@ -655,7 +632,7 @@ mod tests {
     fn missing_recipient_name_warns_without_failing_validation() {
         // Empty/whitespace names stay valid (showcase target-neutral letters)
         // but produce a visible, non-blocking advisory.
-        let draft = application(&[3, 6, 6, 5, 5, 3]);
+        let draft = application(&[3, 5, 5, 5, 5, 3]);
         validate_record(&workspace(), &draft, "fixture", true).unwrap();
         let warning = recipient_salutation_warning(
             "fixture",
@@ -674,7 +651,7 @@ mod tests {
         // styles existed: validation accepts it and resolution yields the
         // manifest default.
         let workspace = workspace();
-        let draft = application(&[3, 6, 6, 5, 5, 3]);
+        let draft = application(&[3, 5, 5, 5, 5, 3]);
         validate_record(&workspace, &draft, "fixture", true).unwrap();
         assert_eq!(
             resolve_style(&workspace, &draft, "fixture").unwrap(),
@@ -701,7 +678,7 @@ mod tests {
     #[test]
     fn unknown_style_fails_with_available_list() {
         let workspace = workspace();
-        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
+        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
         draft["options"]["style"] = json!("nope");
         let error = validate_record(&workspace, &draft, "fixture", true)
             .unwrap_err()
@@ -719,7 +696,7 @@ mod tests {
 
     #[test]
     fn non_string_style_is_rejected() {
-        let mut draft = application(&[3, 6, 6, 5, 5, 3]);
+        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
         draft["options"]["style"] = json!(3);
         let error = resolve_style(&workspace(), &draft, "fixture")
             .unwrap_err()

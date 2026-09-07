@@ -65,7 +65,7 @@
 }
 #let closing = [#farewell-closing("en")]
 
-#let paragraph(index) = block(breakable: false)[
+#let paragraph(index) = block(width: 100%, breakable: false)[
   #measured-paragraph(
     "cl.paragraph." + str(index + 1),
     "cl-body",

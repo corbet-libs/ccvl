@@ -325,8 +325,8 @@ fn validate_metric_set(
             }
             let body = counts.get("cl-body").copied().unwrap_or_default();
             ensure!(
-                (25..=28).contains(&body),
-                "{}: expected 25–28 body lines, found {body}",
+                body == 26,
+                "{}: expected 26 body lines, found {body}",
                 spec.name
             );
             ensure!(
@@ -411,10 +411,11 @@ fn paragraph_counts(spec: &DocumentSpec, metrics: &[Value]) -> Result<Vec<usize>
     Ok(counts)
 }
 
-/// Accepted-but-dispreferred line totals per cover-letter region, plus the
-/// target-neutral salutation counsel. Spelled out as warnings rather than
-/// failures; the fused check gate calls this for its error propagation even
-/// when it discards the advisories.
+/// Target-neutral salutation counsel for cover letters. The strict 3|5|5|5|5|3
+/// framework has no accepted-but-dispreferred line totals: every deviation
+/// from the exact paragraph, region, and body budgets fails validation, so
+/// there is nothing to warn about beyond the recipient. The fused check gate
+/// calls this for its error propagation even when it discards the advisories.
 pub fn preference_warnings(
     workspace: &Workspace,
     spec: &DocumentSpec,
@@ -426,59 +427,10 @@ pub fn preference_warnings(
     if spec.kind != DocumentKind::CoverLetter {
         return Ok(Vec::new());
     }
-    let counts = paragraph_counts(spec, metrics)?;
-    let contract = workspace.read_json("ccvl.json")?;
-    let contract = contract
-        .pointer("/documents/cover_letter")
-        .context("missing cover-letter contract")?;
-    let mut warnings = Vec::new();
-    for region in contract
-        .get("paragraph_regions")
-        .and_then(Value::as_array)
-        .context("missing paragraph regions")?
-    {
-        let numbers = region
-            .get("paragraphs")
-            .and_then(Value::as_array)
-            .context("missing region paragraphs")?
-            .iter()
-            .filter_map(Value::as_u64)
-            .map(usize::try_from)
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-        let total = numbers
-            .iter()
-            .map(|number| counts[number - 1])
-            .sum::<usize>();
-        let preferred = region
-            .get("preferred_totals")
-            .and_then(Value::as_array)
-            .context("missing preferred totals")?
-            .iter()
-            .filter_map(Value::as_u64)
-            .map(usize::try_from)
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-        if !preferred.contains(&total) {
-            warnings.push(format!(
-                "{}: paragraphs {}–{} use {total} lines; accepted, but {} is preferred",
-                spec.name,
-                numbers[0],
-                numbers[numbers.len() - 1],
-                preferred
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>()
-                    .join(" or ")
-            ));
-        }
-    }
-    if counts[5] != 3 {
-        warnings.push(format!(
-            "{}: paragraph 6 uses {} lines; accepted, but 3 is preferred to mirror paragraph 1",
-            spec.name, counts[5]
-        ));
-    }
-    warnings.extend(recipient_warnings(workspace, spec)?);
-    Ok(warnings)
+    // Validate the metric ids still reference known paragraphs so malformed
+    // inputs fail here with a location instead of silently yielding no counsel.
+    let _ = paragraph_counts(spec, metrics)?;
+    recipient_warnings(workspace, spec)
 }
 
 /// Visible, non-blocking counsel when a cover letter has no recipient name.
@@ -742,7 +694,7 @@ mod tests {
     fn cover_letter_metric_set_requires_structure_and_layout_metrics() {
         let workspace = workspace();
         let spec = cover_letter_spec();
-        let complete = metric_set(&[3, 6, 6, 5, 5, 3]);
+        let complete = metric_set(&[3, 5, 5, 5, 5, 3]);
         validate_metric_set(&workspace, &spec, &complete).unwrap();
         assert!(
             preference_warnings(&workspace, &spec, &complete)
@@ -750,20 +702,17 @@ mod tests {
                 .is_empty()
         );
 
-        let dispreferred = metric_set(&[3, 5, 6, 5, 5, 3]);
-        validate_metric_set(&workspace, &spec, &dispreferred).unwrap();
-        let warnings = preference_warnings(&workspace, &spec, &dispreferred).unwrap();
-        assert_eq!(warnings.len(), 1);
-        assert!(warnings[0].contains("paragraphs 2–3 use 11 lines"));
-
-        let shorter_close = metric_set(&[3, 5, 5, 5, 5, 2]);
-        validate_metric_set(&workspace, &spec, &shorter_close).unwrap();
-        assert_eq!(
-            preference_warnings(&workspace, &spec, &shorter_close).unwrap(),
-            [
-                "fixture: paragraph 6 uses 2 lines; accepted, but 3 is preferred to mirror paragraph 1"
-            ]
-        );
+        // The strict 3|5|5|5|5|3 framework has no dispreferred-but-valid
+        // totals: any deviation from exactly 5 central lines or a 3-line
+        // close fails validation instead of warning.
+        for invalid in [
+            metric_set(&[3, 6, 6, 5, 5, 3]),
+            metric_set(&[3, 5, 6, 5, 5, 3]),
+            metric_set(&[3, 5, 5, 5, 5, 2]),
+            metric_set(&[3, 4, 6, 5, 5, 3]),
+        ] {
+            validate_metric_set(&workspace, &spec, &invalid).unwrap_err();
+        }
 
         for missing_kind in ["cl-vertical-gap", "cl-highlight-center"] {
             let incomplete = complete
@@ -856,7 +805,7 @@ mod tests {
             assert_eq!(warnings.len(), 1, "locale: {locale}");
             assert!(warnings[0].contains("job.cl_recipient.name is empty"));
             assert!(warnings[0].contains("generic salutation"));
-            let metrics = metric_set(&[3, 6, 6, 5, 5, 3]);
+            let metrics = metric_set(&[3, 5, 5, 5, 5, 3]);
             validate_metric_set(&workspace, &spec, &metrics).unwrap();
             let warnings = preference_warnings(&workspace, &spec, &metrics).unwrap();
             assert!(

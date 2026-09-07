@@ -29,11 +29,10 @@ path and stable ID are deterministic; never overwrite an existing record.
    `.agent/docs/summary.md`). Set `options.generate_cl` explicitly; when
    enabled, add five one-line highlights before the paragraphs (they render
    between paragraphs 3 and 4).
-7. Follow `.agent/docs/cover-letter.md`: paragraph 1 uses exactly three lines;
-   paragraphs 2–3 and 4–5 each use 10–12, with 20–22 across all four;
-   paragraph 6 uses two or preferably three. Prefer pair totals of 10 or 12
-   over 11. Write paragraphs as plain-text line arrays; fill defaults apply
-   automatically.
+7. Follow `.agent/docs/cover-letter.md`: paragraphs 1 and 6 use exactly three
+   lines each; paragraphs 2, 3, 4, and 5 use exactly five lines each (10 per
+   pair, 20 central, 26 body). Write paragraphs as plain-text line arrays;
+   fill defaults apply automatically.
 8. Run a separate review pass for truth, target fit, plain language, repetition,
    tone, and missing evidence.
 9. Run `ccvl measure-opportunity <organisation-key> <position-key>`. Underfill

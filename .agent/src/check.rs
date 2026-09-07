@@ -201,7 +201,7 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         .pointer("/documents/cover_letter")
         .context("ccvl.json has no cover-letter contract")?;
     ensure!(
-        cover.pointer("/body_lines") == Some(&json!({"minimum": 25, "target": 28, "maximum": 28})),
+        cover.pointer("/body_lines") == Some(&json!({"minimum": 26, "target": 26, "maximum": 26})),
         "ccvl.json: cover-letter body contract changed"
     );
     ensure!(
