@@ -28,4 +28,3 @@ function Get-SourceFingerprint {
         $Hasher.Dispose()
     }
 }
-

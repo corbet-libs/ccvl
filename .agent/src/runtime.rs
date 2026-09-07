@@ -33,7 +33,11 @@ mod tests {
         fs::create_dir_all(directory.path().join("cvl")).unwrap();
         fs::write(directory.path().join("cvl/profile.toml"), "personal edit").unwrap();
         verify(directory.path()).unwrap();
-        fs::write(directory.path().join(".agent/src/new.rs"), "// new source\n").unwrap();
+        fs::write(
+            directory.path().join(".agent/src/new.rs"),
+            "// new source\n",
+        )
+        .unwrap();
         assert!(verify(directory.path()).is_err());
     }
 }
