@@ -5,8 +5,8 @@ description: Create or revise ccvl document styles, substyles, locale layouts an
 
 # Create a document style
 
-Read [the style interface](../../docs/styles.md) and
-[the defaults audit](../../docs/typst-defaults.md) before choosing settings.
+Read `.agent/docs/styles.md` for the interface and
+`.agent/docs/typst-defaults.md` before choosing presentation settings.
 Inspect the actual selected style and current `list-documents` output.
 
 ## Establish the design
