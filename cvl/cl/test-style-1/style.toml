@@ -1,0 +1,9 @@
+id = "test-style-1"
+api = 1
+documents = ["cl"]
+supports_locales = ["en-ch", "en-us"]
+pages = [1]
+default_pages = 1
+substyles = ["sidebar", "topbar"]
+default_substyle = "sidebar"
+defaults = "../../shared/test-style-1/defaults.toml"

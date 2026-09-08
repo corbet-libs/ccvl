@@ -26,6 +26,7 @@ substyle and locale it expects:
 <substyle>/substyle.toml
 <substyle>/<language>/<country>/content.toml
 <substyle>/<language>/<country>/strings.toml
+<substyle>/<language>/<country>/layout.toml   # optional engine input
 <substyle>/<language>/<country>/typst/cv.typ   # cl.typ for letters
 ```
 
@@ -37,7 +38,8 @@ internal arrangement. Neither a shared renderer nor `src/` is mandatory.
 
 The Typst entry point receives these `sys.inputs`: `application`, `profile`,
 `locale`, `pages`, `strings`, `substyle`; optionally `shared-defaults` and
-`contract` when the style supplies them. File values are absolute workspace
+`contract` when the style supplies them, plus `layout` when the leaf has a
+`layout.toml`. File values are absolute workspace
 paths. Use `sys.inputs.at("application", default: "/path/to/content.toml")`
 (and equivalent literal defaults for other inputs) to support generated
 opportunity copies that compile within the workspace without CLI inputs.
@@ -55,7 +57,9 @@ An optional `contract.toml` can declare:
   for emitted `ccvl-line` metrics. Metrics carry their own fill bounds.
 - `shared_pages`: page numbers that must remain identical across page presets.
 - `[pdf]`: optional `size_pt = [width, height]`, `font_pattern`,
-  `minimum_text_chars`, `required_profile_fields` and `require_image`.
+  `minimum_text_chars`, `required_profile_fields`, `require_image`, `version`
+  and `tagged`. Optional `[pdf.by_locale.<locale>]` overrides these per locale;
+  if supplied, it must cover every supported locale.
 
 Harvard additionally uses its summary and paragraph contracts and the
 `layout_contract` / `source_files` four-page station-marker protocol. Those
@@ -76,3 +80,21 @@ bash ./ccvl build-cl en-ch --style harvard --substyle frame
 
 Keep reusable style changes upstream in ccvl, then merge them into personal
 applications repositories. Private content stays downstream.
+
+## Shipped demonstrations
+
+`test-style-1` uses a root `layout.typ`, with `sidebar` and `topbar` portrait
+compositions. `test-style-2` uses `parts/composition.typ`, with `cards` and
+`timeline` landscape compositions. Both ship CV and CL entry points for
+`en-ch` A4 and `en-us` US Letter. Neither imports Harvard. They share only the
+optional neutral settings adapter, the profile, and the engine interface.
+
+See [the gallery](../../cvl/README.md) for PDFs and visible comparisons,
+[the defaults audit](typst-defaults.md) for settings and deliberate `auto`
+choices, and [ccvl-style](../skills/ccvl-style/SKILL.md) for style creation.
+
+```sh
+bash ./ccvl build-cv en-us --style test-style-1 --substyle sidebar
+bash ./ccvl build-cv en-us 2 --style test-style-2 --substyle cards
+bash ./ccvl build-cl en-ch --style test-style-2 --substyle timeline
+```

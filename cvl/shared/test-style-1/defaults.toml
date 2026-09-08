@@ -1,0 +1,68 @@
+# Explicit settings for test-style-1; deliberately independent of Harvard.
+[page]
+paper = "a4"
+flipped = false
+columns = 1
+margin_top_mm = 12
+margin_bottom_mm = 12
+margin_left_mm = 15
+margin_right_mm = 15
+bleed_mm = 0
+binding = "left"
+fill = "#ffffff"
+header_ascent_percent = 30
+footer_descent_percent = 30
+
+[text]
+font = "IBM Plex Serif"
+fallback = false
+style = "normal"
+weight = 400
+stretch_percent = 100
+size_pt = 11.5
+fill = "#000000"
+tracking_pt = 0
+spacing_percent = 100
+baseline_pt = 0
+cjk_latin_spacing = "auto"
+top_edge = "cap-height"
+bottom_edge = "baseline"
+direction = "ltr"
+script = "auto"
+hyphenate = false
+overhang = false
+kerning = true
+alternates = false
+ligatures = true
+discretionary_ligatures = false
+historical_ligatures = false
+number_type = "auto"
+number_width = "auto"
+slashed_zero = false
+fractions = false
+features = {}
+variations = {}
+smart_quotes = true
+cost_hyphenation_percent = 100
+cost_runt_percent = 100
+cost_widow_percent = 100
+cost_orphan_percent = 100
+
+[paragraph]
+leading_em = 0.7
+spacing_pt = 0
+justify = false
+linebreaks = "auto"
+first_line_indent_pt = 0
+indent_all = false
+hanging_indent_pt = 0
+word_spacing_min_percent = 66.66666666666667
+word_spacing_max_percent = 150
+tracking_min_pt = 0
+tracking_max_pt = 0
+
+[block]
+align = "left"
+above_pt = 0
+below_pt = 0
+breakable = true

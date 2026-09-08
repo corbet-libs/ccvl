@@ -1,0 +1,6 @@
+locale = "en-us"
+label = "TEST STYLE 1 / TOPBAR"
+notice = "Demonstration content. No career claims."
+paper_label = "US-LETTER / PORTRAIT"
+cv_label = "Curriculum vitae / style study"
+cl_label = "Cover letter / style study"

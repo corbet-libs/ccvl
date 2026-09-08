@@ -1,0 +1,8 @@
+[page]
+paper = "us-letter"
+flipped = false
+
+[text]
+lang = "en"
+region = "US"
+direction = "ltr"

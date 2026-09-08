@@ -1,13 +1,14 @@
 # Skill map
 
-ccvl declares seven canonical skills in `ccvl.json`. Together they
+ccvl declares eight canonical skills in `ccvl.json`. Together they
 cover the portable application lifecycle without creating another data domain.
 
 | Skill | Owns | Does not own |
 |---|---|---|
 | `ccvl-install` | environment diagnosis, local bootstrap, verification | profile or document edits |
 | `ccvl-profile` | source ingestion, conversational journal, claim states, preferences, station coverage | company or job research |
-| `ccvl-cv` | approved CV selection, wording, layout, ATS and render checks | unsupported claims |
+| `ccvl-style` | independent styles, substyles, explicit layout defaults, rendered examples and style contracts | candidate claims or private research |
+| `ccvl-cv` | approved CV selection, wording, ATS and rendering within an existing style | unsupported claims |
 | `ccvl-apply` | one concrete job, attributable research, fit decision, Summary, letter, review | submission authority |
 | `ccvl-interview` | opportunity-specific preparation and honest practice | general user profile or outcome history |
 | `ccvl-upskill` | evidenced gaps, learning priorities, proof plan | automatic enrolment or proficiency claims |

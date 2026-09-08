@@ -176,7 +176,7 @@ fn closing_line_spill_renders_without_wrapping() {
     let source = format!(
         "#import \"/.agent/typst/line-contract.typ\": measured-lines\n\
              #import \"/cvl/shared/harvard/style.typ\": document-style, merge-style\n\
-             #let cv-style = merge-style(toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\"))\n\
+             #let cv-style = merge-style(merge-style(toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\")), toml(\"/cvl/cv/harvard/standard/de/ch/layout.toml\"))\n\
              #show: document-style.with(locale: \"de-ch\", style: cv-style)\n\
              #set page(height: 60mm)\n\
              #set text(hyphenate: false)\n\
@@ -219,7 +219,7 @@ fn paragraph_closing_spill_renders_without_wrapping() {
     let source = format!(
         "#import \"/.agent/typst/line-contract.typ\": measured-paragraph\n\
              #import \"/cvl/shared/harvard/style.typ\": document-style, merge-style\n\
-             #let cv-style = merge-style(toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\"))\n\
+             #let cv-style = merge-style(merge-style(toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\")), toml(\"/cvl/cv/harvard/standard/de/ch/layout.toml\"))\n\
              #show: document-style.with(locale: \"de-ch\", style: cv-style)\n\
              #set page(height: 60mm)\n\
              #set text(hyphenate: false)\n\

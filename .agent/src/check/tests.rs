@@ -48,6 +48,7 @@ fn cover_letter_contract_rejects_weakened_density_and_closing_spill() {
         .unwrap()
         .into_iter()
         .chain(cl_leaves(&repository).unwrap())
+        .filter(|leaf| leaf.style == "harvard")
     {
         for relative in [
             repository.relative(&leaf.content()).unwrap(),

@@ -35,6 +35,13 @@ pub fn verify(
 ) -> Result<VerifiedPdf> {
     let document =
         Document::load(path).with_context(|| format!("cannot parse {}", path.display()))?;
+    if let Some(version) = policy.get("version").and_then(serde_json::Value::as_str) {
+        ensure!(
+            document.version == version,
+            "{}: expected PDF {version}",
+            path.display()
+        );
+    }
     ensure!(
         !document.trailer.has(b"Encrypt"),
         "{} is encrypted",
@@ -49,6 +56,13 @@ pub fn verify(
     );
     let catalog_id = document.trailer.get(b"Root")?.as_reference()?;
     let catalog = document.get_dictionary(catalog_id)?;
+    if let Some(tagged) = policy.get("tagged").and_then(serde_json::Value::as_bool) {
+        ensure!(
+            catalog.has(b"StructTreeRoot") == tagged,
+            "{}: PDF tagging differs from its contract",
+            path.display()
+        );
+    }
     for key in [b"AcroForm".as_slice(), b"OpenAction", b"AA"] {
         ensure!(
             !catalog.has(key),
@@ -167,9 +181,11 @@ pub fn verify(
         "{} has no usable text layer",
         path.display()
     );
+    let normalized_text = text.split_whitespace().collect::<Vec<_>>().join(" ");
     for contact in contacts {
+        let normalized_contact = contact.split_whitespace().collect::<Vec<_>>().join(" ");
         ensure!(
-            text.contains(contact),
+            normalized_text.contains(&normalized_contact),
             "{} is missing machine-readable contact text: {contact}",
             path.display()
         );

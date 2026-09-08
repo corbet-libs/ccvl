@@ -46,7 +46,7 @@ SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"
 SPDX-License-Identifier = "CC-BY-4.0"
 
 [[annotations]]
-path = "cvl/**/pdf/*.pdf"
+path = ["cvl/**/pdf/*.pdf", "cvl/**/preview/*.png"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"
 SPDX-License-Identifier = "LicenseRef-CCVL-Personal-Content"
@@ -86,6 +86,9 @@ path = [
   "justfile",
   "cvl/shared/**",
   "cvl/*/*/style.toml",
+  "cvl/*/*/layout.typ",
+  "cvl/*/*/parts/*.typ",
+  "cvl/*/*/*/*/*/layout.toml",
   "cvl/*/*/contract.toml",
   "cvl/*/*/scaffold.toml",
   "cvl/*/*/*/substyle.toml",

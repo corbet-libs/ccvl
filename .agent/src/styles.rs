@@ -314,6 +314,28 @@ fn validate_contract(value: &Value) -> Result<()> {
     }
     if let Some(policy) = value.get("pdf") {
         ensure!(policy.is_object(), "pdf must be a table");
+        if let Some(version) = policy.get("version") {
+            ensure!(
+                version.as_str().is_some_and(|v| !v.is_empty()),
+                "PDF version must be non-empty text"
+            );
+        }
+        if let Some(tagged) = policy.get("tagged") {
+            ensure!(tagged.is_boolean(), "PDF tagged must be a boolean");
+        }
+        if let Some(overrides) = policy.get("by_locale") {
+            for (locale, policy) in overrides.as_object().context("by_locale must be a table")? {
+                ensure!(
+                    normalize_locale(locale)? == *locale,
+                    "PDF locale must be canonical"
+                );
+                ensure!(
+                    policy.get("by_locale").is_none(),
+                    "nested PDF locale overrides are not supported"
+                );
+                validate_contract(&serde_json::json!({"pdf": policy}))?;
+            }
+        }
         if let Some(size) = policy.get("size_pt") {
             let size = size.as_array().context("size_pt must be an array")?;
             ensure!(
@@ -364,6 +386,19 @@ pub fn leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<Style
             )?;
             for locale in &style.supports_locales {
                 let (language, country) = locale.split_once('-').expect("validated locale");
+                let mut resolved_contract = contract.clone();
+                if let Some(overrides) = contract.pointer("/pdf/by_locale") {
+                    let policy = overrides
+                        .get(locale)
+                        .and_then(Value::as_object)
+                        .with_context(|| format!("missing PDF policy for {locale}"))?;
+                    let pdf = resolved_contract
+                        .get_mut("pdf")
+                        .and_then(Value::as_object_mut)
+                        .context("PDF policy must be a table")?;
+                    pdf.remove("by_locale");
+                    pdf.extend(policy.clone());
+                }
                 let leaf = StyleLeaf {
                     document,
                     style: style.id.clone(),
@@ -373,7 +408,7 @@ pub fn leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<Style
                     pages: style.pages.clone(),
                     default_pages: style.default_pages,
                     defaults: defaults.clone(),
-                    contract: contract.clone(),
+                    contract: resolved_contract,
                 };
                 for path in [leaf.content(), leaf.strings(), leaf.adapter()] {
                     workspace.existing_inside(&path).with_context(|| {

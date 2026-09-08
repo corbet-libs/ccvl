@@ -1,0 +1,9 @@
+id = "test-style-2"
+api = 1
+documents = ["cv"]
+supports_locales = ["en-ch", "en-us"]
+pages = [1, 2]
+default_pages = 2
+substyles = ["cards", "timeline"]
+default_substyle = "cards"
+defaults = "../../shared/test-style-2/defaults.toml"

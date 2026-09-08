@@ -1,7 +1,7 @@
 # Reusable Typst helpers
 
-This directory contains neutral profile and measurement adapters and the bundled
-font set. Each style chooses which helpers to import. Document geometry and
+This directory contains neutral profile, measurement and explicit-settings
+adapters and the bundled font set. Each style chooses which helpers to import. Document geometry and
 presentation code live under `cvl/<document>/<style>/`.
 
 The shipped Harvard styles share helpers in `cvl/shared/harvard/` and keep their
@@ -17,3 +17,9 @@ fonts. See [../docs/styles.md](../docs/styles.md) for the complete interface and
 Harvard's `standard`/`compact` CVs share a contract; `compact` changes vertical
 spacing. Its `left-rule`/`frame` letters share a contract; `frame` changes the
 highlight border. Other styles own different layouts and contracts.
+
+`document.typ` optionally applies style-owned page, text and paragraph values.
+It chooses no paper, font or locale. Shipped styles merge family defaults,
+substyle overrides and leaf `layout.toml`; independent styles can use a wholly
+different setup. See [the defaults audit](../docs/typst-defaults.md) for the
+pinned Typst baseline, deliberate automatic behavior and export limitations.

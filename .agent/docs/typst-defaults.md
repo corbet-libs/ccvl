@@ -1,0 +1,134 @@
+# Explicit document defaults
+
+This audit targets the pinned **Typst 0.15.1**, through **ctypst 0.2.0** in
+`Cargo.lock`. Revisit it when either dependency changes. It covers settings
+used by the shipped text documents, their components, and PDF export; it is
+not a universal schema for every possible Typst element.
+
+## Where choices live
+
+1. `cvl/shared/<style>/defaults.toml`: that family's base design, where its
+   CV and CL deliberately share settings.
+2. `cvl/<document>/<style>/<substyle>/substyle.toml`: substyle overrides.
+3. `<substyle>/<language>/<country>/layout.toml`: paper and locale overrides.
+4. The renderer: explicit component styling, such as heading size, grid
+   columns, borders, internal spacing and intentional per-region overrides.
+
+The shipped renderers deep-merge these files in that order. `layout` is an
+optional engine input; the entry point must pass it through. Locale strings
+remain in `strings.toml`, separate from geometry. The optional
+`.agent/typst/document.typ` adapter maps data to Typst settings without choosing
+a font, paper or language. A new style can implement a different settings
+schema, renderer arrangement or composition without using this adapter.
+
+**Language does not determine paper.** The examples explicitly choose A4 for
+`en-ch` and US Letter for `en-us`; these are style choices, not an engine
+country-to-paper rule. A US English A4 document is valid too: change its layout
+and geometry contract together. The short `en` CLI alias means `en-ch` and
+never implies US Letter. Orientation is a separate `flipped` setting.
+
+| Paper | Portrait millimetres | Portrait PDF points | Landscape PDF points |
+| --- | --- | --- | --- |
+| A4 | 210 × 297 | 595.2756 × 841.8898 | 841.8898 × 595.2756 |
+| US Letter | 215.9 × 279.4 | 612 × 792 | 792 × 612 |
+
+`paper = "custom"` in the adapter takes explicit `width_mm` and `height_mm`.
+A style's `[pdf.by_locale.<locale>].size_pt` checks the actual output dimensions;
+it does not set them. Every declared locale needs an override if this table
+is present. Do not hide overflow by changing a requested page count.
+
+## Page and text decisions
+
+The “Typst default” column records the library's baseline, not our design.
+The explicit values below are checked-in choices. See the official
+[page reference](https://typst.app/docs/reference/layout/page/) and
+[text reference](https://typst.app/docs/reference/text/text/).
+
+| Setting | Typst 0.15.1 default | Shipped choice / location |
+| --- | --- | --- |
+| Paper | A4 | Every locale layout declares A4 or `us-letter` |
+| Orientation / columns | Portrait / 1 | Harvard and style 1 portrait; style 2 landscape; 1 page column, renderer grids compose content |
+| Margins | `auto`, scaled from the shorter edge (25 mm on A4) | Explicit 12 mm top/bottom, 15 mm left/right |
+| Bleed / binding | 0 / auto from direction | 0 / left for these left-to-right documents |
+| Page fill | `auto` | Harvard deliberately retains auto; demos declare white |
+| Page furniture | No numbering; automatic header/footer | Adapter explicitly clears numbering, header/footer and background/foreground; demos draw their footer in flow |
+| Header/footer positioning | 30% ascent/descent | Explicit 30%; inactive while those fields are empty |
+| Font / size | Libertinus Serif / 11 pt | Harvard Archivo 10.5 pt; style 1 IBM Plex Serif 11.5 pt; style 2 EB Garamond 13 pt |
+| Fallback fonts | Enabled | Harvard retains enabled, but its PDF font contract rejects unexpected families; demos disable fallback |
+| Weight / style / stretch | 400 / normal / 100% | Explicit same baseline; components opt into bold and different sizes |
+| Text paint | Black fill, no stroke | Explicit black / none; components specify accent or white |
+| Language / region / direction | English / none / auto | Leaf declares language, CH or US region, and `ltr` |
+| Script | Auto from characters | Deliberate `auto`; language/direction are separately explicit |
+| Tracking / word spacing / baseline | 0 / 100% / 0 | Explicit same baseline; labels deliberately add tracking |
+| CJK–Latin spacing | Auto | Deliberate auto; not a claim of CJK support or suitable fonts |
+| Top/bottom edges | Cap height / baseline | Explicit same values; heading and box geometry depends on them |
+| Punctuation overhang | Enabled | Harvard retains true; demos choose false |
+| Hyphenation | Auto, follows justification | Harvard retains auto with existing local overrides; demos explicitly disable it |
+| Kerning / ordinary ligatures | Enabled | Explicit true |
+| Alternates / discretionary and historical ligatures | Disabled | Explicit false; no stylistic set |
+| Numeral form / width | Auto from font | Deliberate auto, so each selected font's own numerals apply |
+| Slashed zero / fractions | Disabled | Explicit false |
+| OpenType features / variable axes | Empty overrides | Explicit empty dictionaries; font defaults remain intentional |
+| Smart quotes | Enabled, locale-derived forms | Explicit enabled, alternative false, quote forms auto from the explicit locale |
+| Line-breaking costs | 100% hyphenation, runt, widow, orphan | Explicit 100% each; these are penalties, not guarantees of widow/orphan elimination |
+
+A defect found during the audit: Harvard's TOML declared paper and font, but
+its renderer still used literal A4 and Archivo. Its renderer now consumes the
+merged settings. All 16 Harvard PDFs retain their previously reviewed bytes.
+Typography defaults must reach the renderer; a declarative
+file that nothing reads cannot configure a document.
+
+## Paragraphs and components
+
+Typst's baseline paragraph leading is 0.65 em, spacing 1.2 em, justification
+false and line breaking auto. The latter chooses the optimized algorithm for
+justified paragraphs. The styles declare leading (Harvard 0.7 em before its
+compact override, style 1 0.7 em, style 2 0.6 em), zero paragraph spacing and
+no baseline justification. Intentional Harvard regions still opt into their
+established justification/spacing. All retain `linebreaks = "auto"` as an
+explicit algorithm choice. [Paragraph reference](https://typst.app/docs/reference/model/par/).
+
+First-line and hanging indents are explicitly zero; indent-all is false.
+Justification limits explicitly retain word spacing between two-thirds and
+1.5 times normal, with no additional tracking. Paragraph line numbering is
+explicitly absent. Base block alignment is left, above/below spacing zero,
+breakability true, and inset/outset/radius zero, with no paint/stroke/clip or
+sticky behavior. The demos explicitly override card and identity-panel insets,
+paint, radius and breakability. Grids declare their columns, gutters and
+alignment. These component dimensions belong to each renderer, not to the
+engine's interface.
+
+Do not generalize this text-document adapter into requirements for shapes,
+images, tables, math, lists, footnotes or a new graphical design. A style using
+those elements must choose the relevant settings and add suitable output
+checks. For example, images need explicit sizing/fit and alternative text;
+numbered lists need explicit marker and indentation decisions.
+
+## Export decisions and limits
+
+The ctypst PDF API accepts the document and an epoch. It supplies a UTC
+export timestamp, then uses pinned `typst_pdf::PdfOptions` defaults. It does
+not expose arbitrary PDF options. We record that boundary instead of
+pretending a TOML field configures an unsupported export feature.
+
+| Export setting | Current explicit policy |
+| --- | --- |
+| Timestamp | ccvl `SOURCE_DATE_EPOCH`, default **0**; reject negative/invalid values. Document date deliberately auto so the supplied epoch applies |
+| Title / author | Each renderer sets them from its document and approved profile |
+| Description / keywords | Adapter explicitly clears them; add only deliberately |
+| PDF version | Pinned exporter produces **1.7**; shipped contracts assert actual version |
+| Tagged structure | Pinned exporter enables tagging; shipped contracts assert a structure tree exists |
+| Pages | All rendered pages; contract checks requested count |
+| PDF/A or PDF/UA conformance | No additional standard requested; tagging alone does not certify accessibility |
+| Document identifier | Exporter auto, derived from document metadata; retained deliberately |
+| Creator | Exporter auto includes Typst version; retained deliberately |
+| Pretty printing | Disabled by pinned exporter |
+| Fonts / text | Check embedded fonts, Unicode maps, required identity fields, minimum usable text and each style's permitted families |
+
+Implementation sources:
+[Typst PDF options at v0.15.1](https://github.com/typst/typst/blob/v0.15.1/crates/typst-pdf/src/lib.rs),
+[ctypst 0.2.0 PDF adapter](https://docs.rs/crate/ctypst/0.2.0/source/src/pdf.rs).
+The native check validates PDF contracts, and Linux checks independently use
+qpdf/Poppler plus rendering and repeat-build comparisons. These are useful
+technical checks; visual review and accessible reading-order review still
+matter for each new design.

@@ -1,0 +1,8 @@
+[page]
+paper = "a4"
+flipped = false
+
+[text]
+lang = "en"
+region = "CH"
+direction = "ltr"

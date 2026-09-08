@@ -349,9 +349,98 @@ fn malformed_style_contracts_fail_instead_of_disabling_checks() {
         "shared_pages = [0]",
         "[pdf]\nsize_pt = \"A4\"",
         "[pdf]\nrequire_image = 1",
+        "[pdf]\nversion = 17",
+        "[pdf]\ntagged = \"yes\"",
         "[[metric_rules]]\nkind = \"title\"\nminimum = -1",
     ] {
         write(workspace.root(), "cvl/cv/orbit/contract.toml", invalid);
         assert!(contract(&workspace, "cv", "orbit").is_err(), "{invalid}");
+    }
+}
+
+#[test]
+fn pdf_geometry_is_selected_per_locale_and_missing_locale_fails() {
+    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let selected = selection(&workspace, "cv", Some("test-style-1"), Some("sidebar")).unwrap();
+    let swiss = leaf(&workspace, "cv", "en-ch", &selected).unwrap();
+    let american = leaf(&workspace, "cv", "en-us", &selected).unwrap();
+    assert_eq!(
+        swiss.contract.pointer("/pdf/size_pt"),
+        Some(&json!([595.2756, 841.8898]))
+    );
+    assert_eq!(
+        american.contract.pointer("/pdf/size_pt"),
+        Some(&json!([612, 792]))
+    );
+    assert!(
+        render::cvl_spec(&workspace, &american, 1).unwrap().inputs["layout"]
+            .ends_with("/en/us/layout.toml")
+    );
+    let (_temporary, isolated) = independent_workspace();
+    write(
+        isolated.root(),
+        "cvl/cv/orbit/contract.toml",
+        "[pdf.by_locale.en-ch]\nsize_pt = [612, 792]\n",
+    );
+    assert!(
+        leaves(&isolated, "cv")
+            .unwrap_err()
+            .to_string()
+            .contains("missing PDF policy for en-us")
+    );
+}
+
+#[test]
+fn layout_input_changes_exported_paper_and_font_and_pdf_policy_is_enforced() {
+    let (_temporary, workspace) = independent_workspace();
+    let original = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    for (source, destination) in [
+        (".agent/typst/document.typ", ".agent/typst/document.typ"),
+        ("cvl/shared/test-style-1/defaults.toml", "defaults.toml"),
+    ] {
+        write(
+            workspace.root(),
+            destination,
+            &fs::read_to_string(original.path(source)).unwrap(),
+        );
+    }
+    write(
+        workspace.root(),
+        "cvl/cv/orbit/standard/en/us/typst/cv.typ",
+        r#"
+#import "/.agent/typst/document.typ": apply-document-settings, merge-settings
+#let config = merge-settings(toml("/defaults.toml"), toml(sys.inputs.at("layout")))
+#show: apply-document-settings.with(config)
+Example#linebreak()Applicant
+
+Explicit settings must change the actual paper and embedded typeface.
+"#,
+    );
+    let selected = selection(&workspace, "cv", Some("orbit"), None).unwrap();
+    for (paper, font, size, pattern) in [
+        (
+            "a4",
+            "IBM Plex Serif",
+            json!([595.2756, 841.8898]),
+            "IBMPlexSerif",
+        ),
+        ("us-letter", "EB Garamond", json!([612, 792]), "EBGaramond"),
+    ] {
+        write(
+            workspace.root(),
+            "cvl/cv/orbit/standard/en/us/layout.toml",
+            &format!(
+                "[page]\npaper = {paper:?}\n[text]\nfont = {font:?}\nlang = \"en\"\nregion = \"US\"\n"
+            ),
+        );
+        let spec = render::cvl_cv_spec(&workspace, "en-us", 1, Some(&selected)).unwrap();
+        let compiler = render::Compiler::new(&workspace).unwrap();
+        let output = compiler.render(&workspace, &spec).unwrap();
+        let policy =
+            json!({"size_pt": size, "font_pattern": pattern, "version": "1.7", "tagged": true});
+        pdf::verify(&output, 1, &["Example Applicant".into()], &policy).unwrap();
+        assert!(pdf::verify(&output, 1, &["Different Applicant".into()], &policy).is_err());
+        assert!(pdf::verify(&output, 1, &[], &json!({"version": "2.0"})).is_err());
+        assert!(pdf::verify(&output, 1, &[], &json!({"tagged": false})).is_err());
     }
 }

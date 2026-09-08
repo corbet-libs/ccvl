@@ -12,12 +12,13 @@
   strings-path: none,
   substyle-path: none,
   shared-defaults-path: none,
+  layout-path: none,
 ) = {
   let (profile, localized-profile) = load-profile(profile-path)
   // Merge the shared base knobs with this leaf's substyle delta (a standard
   // leaf merges an empty delta). Whitespace below comes from cv-style, never
   // from forked literals.
-  let cv-style = merge-style(toml(shared-defaults-path), toml(substyle-path))
+  let cv-style = merge-style(merge-style(toml(shared-defaults-path), toml(substyle-path)), toml(layout-path))
   let cv-strings = toml(strings-path)
   // Locale comes from the leaf's strings file and is cross-checked against
   // the record below: a de-ch record through en-ch strings fails here.

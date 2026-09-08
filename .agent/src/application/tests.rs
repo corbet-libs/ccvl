@@ -247,7 +247,11 @@ fn unknown_substyle_fails_with_available_list() {
 #[test]
 fn style_leaves_cover_every_substyle_and_locale() {
     let workspace = workspace();
-    let cv = cv_leaves(&workspace).unwrap();
+    let cv = cv_leaves(&workspace)
+        .unwrap()
+        .into_iter()
+        .filter(|leaf| leaf.style == "harvard")
+        .collect::<Vec<_>>();
     assert_eq!(cv.len(), 4);
     for (substyle, locale) in [
         ("standard", "de-ch"),
@@ -264,7 +268,11 @@ fn style_leaves_cover_every_substyle_and_locale() {
         assert!(leaf.adapter().is_file());
         assert!(leaf.substyle_file().is_file());
     }
-    let cl = cl_leaves(&workspace).unwrap();
+    let cl = cl_leaves(&workspace)
+        .unwrap()
+        .into_iter()
+        .filter(|leaf| leaf.style == "harvard")
+        .collect::<Vec<_>>();
     assert_eq!(cl.len(), 4);
     for (substyle, locale) in [
         ("left-rule", "de-ch"),

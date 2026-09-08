@@ -244,6 +244,10 @@ fn document_spec(
     if let Some(path) = &leaf.defaults {
         inputs.insert("shared-defaults".to_owned(), workspace.typst_path(path)?);
     }
+    let layout = leaf.dir.join("layout.toml");
+    if layout.is_file() {
+        inputs.insert("layout".to_owned(), workspace.typst_path(&layout)?);
+    }
     let contract_path = leaf.style_dir().join("contract.toml");
     if contract_path.is_file() {
         inputs.insert("contract".to_owned(), workspace.typst_path(&contract_path)?);

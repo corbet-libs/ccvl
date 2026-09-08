@@ -14,33 +14,33 @@ bash ./ccvl check
 
 On Windows, run `.\ccvl.cmd check` instead.
 
-It verifies:
+It verifies the workspace manifest, schemas, application/profile data, declared
+skills and evaluation cases, local Markdown links, Typst formatting, Git
+whitespace, and bundled font integrity. It discovers **36 PDF variants / 68
+pages** from the style definitions, including both A4 and US Letter demos.
 
-- the workspace manifest, JSON schemas, applications, profile, canonical
-  skills, AI cases, and local Markdown links;
-- the Rust-native evaluator and workspace contracts, embedded Typst formatting,
-  and clean Git whitespace;
-- binary asset integrity and all four bundled Archivo variants;
-- all 12 CV variants and four cover letters with zero Typst diagnostics;
-- exactly five Summary lines, six cover-letter paragraphs with 26 body
-  lines, and five one-line highlights per locale;
-- 6–8 verified full stations on CV page 1; exactly 10 two-bullet stations on
-  page 2; exactly 10 two-bullet projects on page 3; and three groups of three
-  three-line competency blocks on page 4, with stable source markers and
-  identical assignments across locales;
-- measured minimum and maximum fill for CV headings, subtitles, bullets,
-  Summary lines, cover-letter body lines, and highlights;
-- bounded vertical gaps and highlight position so the cover letter fills A4
-  with distributed rhythm rather than large elastic whitespace blocks;
-- explicit paragraph-role budgets, justified prose, and zero paragraph splits;
-- exact A4 page counts, usable text layers, embedded, subsetted, and
-  Unicode-mapped Archivo fonts;
-- unencrypted PDFs without forms, JavaScript, attachments, or fallback fonts;
-- machine-readable showcase contact details and rendered cover-letter signatures;
-- byte-for-byte reproducibility across two independent renders;
-- semantic equality between fresh builds and the checked-in PDFs, excluding
-  only the PDF rendition identifier;
-- pixel identity of the two CV pages shared by every page preset.
+For every style it checks the requested page count, valid PDF geometry,
+usable text, embedded Unicode-mapped fonts, repeat-render reproducibility and
+semantic equality with checked-in outputs. Contracts optionally require exact
+dimensions (including per-locale overrides), font families, contact fields,
+images, PDF version and tagged structure. Contact matching accepts whitespace
+and line breaks; incorrect or missing names still fail. PDFs must be
+unencrypted and free of forms, JavaScript and attachments.
+
+Harvard opts into its five-line Summary, measured headings/bullets, six letter
+paragraphs, five highlights, fixed station allocation and paragraph-role
+budgets. Its 2/3/4-page CV presets require identical shared pages. These are
+Harvard rules, not assumptions about every document style. The independent
+styles own different fields and page geometry and do not need Harvard metrics.
+`public-check` adds the public/private boundary and secret checks. Linux's
+`check-linux-deep.sh` independently uses Poppler, QPDF and page images.
+
+Regression fixtures verify a complete workspace without Harvard; selected
+style/content/page defaults; actual paper and font changes through layout
+inputs; locale-specific geometry; incorrect PDF policy rejection; and wrapped
+contact names. All newly added or affected pages also need visual review.
+`render-previews.sh` regenerates the [gallery](../../cvl/README.md) from the
+registered PDFs; thumbnails complement full-resolution page inspection.
 
 Every CI run builds optimized release binaries natively on Linux
 x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64/arm64. Each binary passes
@@ -64,7 +64,7 @@ overflow causes an editorial iteration instead of a one-error-at-a-time loop.
 The `Skill evaluation` workflow sends its generic decision cases to
 Groq's free-tier `openai/gpt-oss-20b` model. Cases are deterministically batched
 by canonical skill, with the complete matching skill and the descriptions of
-all seven skills supplied to each low-context call. Both the
+all declared skills supplied to each low-context call. Both the
 expected routing and answer key are withheld. A deterministic evaluator then
 requires the correct skill, every expected action, no forbidden action, and a
 valid response structure. It publishes all decisions, concise reasons, provider

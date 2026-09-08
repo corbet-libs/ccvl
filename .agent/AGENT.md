@@ -53,7 +53,8 @@ order instead of blending their data ownership:
 
 - environment setup or missing tools: `ccvl-install`;
 - profile ingestion or claim reconciliation: `ccvl-profile`;
-- CV wording, structure, rendering, or ATS work: `ccvl-cv`;
+- a new style, substyle, locale layout or presentation defaults: `ccvl-style`;
+- CV wording, content structure, rendering, or ATS work in an existing style: `ccvl-cv`;
 - a concrete vacancy, its company research, or application package:
   `ccvl-apply`;
 - preparation for an interview attached to an opportunity: `ccvl-interview`;

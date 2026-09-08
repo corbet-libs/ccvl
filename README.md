@@ -38,15 +38,15 @@ the concrete job in `opportunities/`.
 
 Included are:
 
-- German and English CVs with exact two-, three-, and four-page variants and
-  an always-five-line Summary;
-- a deterministic layout gate for every fixed CV page;
-- a target-neutral cover letter with six measured paragraphs and five
-  highlights;
+- Harvard German and English CVs with checked two-, three-, and four-page
+  variants, a five-line Summary, and a measured target-neutral cover letter;
+- two independent demonstration styles with four substyles, portrait and
+  landscape compositions, and explicit A4 / US Letter layouts;
+- [a rendered gallery and full folder overview](cvl/README.md);
 - one validated `application.toml` per concrete opportunity;
 - a shared Rust and Typst engine with bundled fonts and reproducible PDF
   output;
-- seven agent skills for setup, evidence-backed profiles, CV work,
+- eight agent skills for setup, evidence-backed profiles, style creation, CV work,
   applications, interview preparation, upskilling, and outcome tracking;
 - privacy and provenance rules for keeping personal application data in a
   private downstream repository.
@@ -140,6 +140,7 @@ Canonical skills live under `.agent/skills/`:
 
 - `ccvl-install`
 - `ccvl-profile`
+- `ccvl-style`
 - `ccvl-cv`
 - `ccvl-apply`
 - `ccvl-interview`

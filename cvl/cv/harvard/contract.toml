@@ -40,6 +40,8 @@ entries_per_group = 3
 bullets_per_entry = 3
 
 [pdf]
+version = "1.7"
+tagged = true
 size_pt = [595.2756, 841.8898]
 font_pattern = "^[A-Z]{6}\\+Archivo-(Bold|Italic|Medium|Regular)$"
 required_profile_fields = ["name", "email", "phone_label"]
