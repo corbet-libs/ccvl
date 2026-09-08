@@ -4,6 +4,8 @@
 # ccvl shortcuts. Every recipe delegates to the checked-in `bash ./ccvl`
 # dispatcher (embedded engine only); just adds tab-completion, nothing more.
 
+set positional-arguments
+
 default:
     @just --list
 
@@ -22,8 +24,9 @@ measure:
 watch org pos:
     bash ./ccvl watch-opportunity {{org}} {{pos}}
 
-watch-cv locale pages="4" substyle="standard":
-    bash ./ccvl watch-cv {{locale}} {{pages}} --substyle {{substyle}}
+# Optional arguments use the same syntax as the CLI, including --style/--substyle.
+watch-cv locale *args:
+    bash ./ccvl watch-cv "$@"
 
-watch-cl locale substyle="left-rule":
-    bash ./ccvl watch-cl {{locale}} --substyle {{substyle}}
+watch-cl locale *args:
+    bash ./ccvl watch-cl "$@"

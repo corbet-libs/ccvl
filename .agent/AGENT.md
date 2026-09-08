@@ -41,9 +41,9 @@ while company and role research belongs to its concrete opportunity.
   declaration without an explicit instruction for that exact external action.
 - Preserve the requested locale and page variant. A successful compile is not
   enough: verify exact page count, a usable PDF text layer, and rendered layout.
-- Profile onboarding is not complete while the station gate is underfilled or
-  overcrowded. Keep an inspectable journal, ask one question at a time, and
-  allocate every fact exactly once.
+- Follow the selected style’s declared layout contract. For Harvard, profile
+  onboarding is not complete while its station gate is underfilled or overcrowded.
+  Keep an inspectable journal, ask one question at a time, and allocate each fact once.
 
 ## Skill routing
 

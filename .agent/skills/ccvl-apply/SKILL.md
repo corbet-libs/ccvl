@@ -1,6 +1,6 @@
 ---
 name: ccvl-apply
-description: Evaluate a concrete vacancy and create its evidence-backed application.toml, tailored CV Summary, six cover-letter paragraphs, and five highlights.
+description: Evaluate a concrete vacancy and create its evidence-backed application.toml, tailored CV and cover letter using the selected styles.
 ---
 
 # Build an application
@@ -81,22 +81,24 @@ introductory exposure alone.
 5. Draft by default. The user chose the vacancy; do not re-open that choice.
    If a fit concern needs the user's attention, state it once outside the
    documents, in one sentence, then deliver the full package.
-6. Require the `interview/stations.toml` plan to pass
+6. Resolve the record’s style and substyle for each document and read their
+   contracts. For Harvard, require the `interview/stations.toml` plan to pass
    `ccvl profile-status --verify-sources`. If it is underfilled, return to the
    profile interview rather than tailoring a visibly sparse foundation.
 7. Preserve an explicitly requested page variant; otherwise select
    `options.pages` for the reader, not for completeness. Choose the supported
    page set that strengthens the target case. For a finance or leadership
    role, weigh each technical appendix against its relevance to that reader.
-   Then write the target-specific CV Summary as one flowing paragraph that
+   For Harvard, write the target-specific CV Summary as one flowing paragraph that
    typesets to exactly five lines (see
    `.agent/docs/summary.md`). Set `options.generate_cl` explicitly; when
    enabled, add five one-line highlights before the paragraphs (they render
    between paragraphs 3 and 4).
-8. Follow `.agent/docs/cover-letter.md`: paragraphs 1 and 6 use exactly three
+8. For Harvard letters, follow `.agent/docs/cover-letter.md`: paragraphs 1 and 6 use exactly three
    lines each; paragraphs 2, 3, 4, and 5 use exactly five lines each (10 per
    pair, 20 central, 26 body). Write paragraphs as plain-text line arrays;
-   fill defaults apply automatically.
+   fill defaults apply automatically. Other styles use their own content and layout
+   contracts; do not impose Harvard’s counts or structure on them.
 9. Run a separate review pass for truth, target fit, plain language,
    repetition, tone, and unspent lines.
 10. Run `ccvl measure-opportunity <organisation-key> <position-key>`. Underfill

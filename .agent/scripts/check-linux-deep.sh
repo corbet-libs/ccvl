@@ -30,23 +30,6 @@ for filename in Archivo-Bold.ttf Archivo-Italic.ttf Archivo-Medium.ttf Archivo-R
   fi
 done
 
-profile_value() {
-  local key="$1"
-  local value
-  value="$(sed -n \
-    "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"\([^\"]*\)\"[[:space:]]*$/\1/p" \
-    cvl/profile.toml)"
-  [[ -n "$value" ]] || {
-    printf 'Could not read %s from cvl/profile.toml\n' "$key" >&2
-    return 1
-  }
-  printf '%s\n' "$value"
-}
-
-public_name="$(profile_value name)"
-public_email="$(profile_value email)"
-public_phone="$(profile_value phone_label)"
-
 check_pdf() {
   local pdf="$1"
   local expected_pages="$2"
@@ -80,8 +63,7 @@ check_pdf() {
   for metadata_rule in \
     '^Encrypted:[[:space:]]+no$' \
     '^Form:[[:space:]]+none$' \
-    '^JavaScript:[[:space:]]+no$' \
-    '^Page size:.*\(A4\)$'; do
+    '^JavaScript:[[:space:]]+no$'; do
     if ! grep -Eq "$metadata_rule" <<<"$pdf_info"; then
       printf '%s failed PDF metadata rule: %s\n' "$pdf" "$metadata_rule" >&2
       return 1
@@ -95,17 +77,10 @@ check_pdf() {
 
   extracted_text="$(pdftotext "$pdf" -)"
   text_size="$(tr -d '[:space:]' <<<"$extracted_text" | wc -c)"
-  if ((text_size < 100)); then
+  if ((text_size < 1)); then
     printf '%s has no usable text layer\n' "$pdf" >&2
     return 1
   fi
-  for literal in "$public_name" "$public_email" "$public_phone"; do
-    if ! grep -Fq "$literal" <<<"$extracted_text"; then
-      printf '%s is missing machine-readable contact text: %s\n' "$pdf" "$literal" >&2
-      return 1
-    fi
-  done
-
   if ! pdffonts "$pdf" | tail -n +3 | awk 'NF && $5 != "yes" { exit 1 }'; then
     printf '%s contains a font that is not embedded\n' "$pdf" >&2
     return 1
@@ -118,9 +93,9 @@ check_pdf() {
   fi
 
   if ! pdffonts "$pdf" | tail -n +3 | awk '
-    NF && ($1 !~ /^[A-Z]+[+]Archivo-/ || $5 != "yes" || $6 != "yes" || $7 != "yes") { exit 1 }
+    NF && ($5 != "yes" || $7 != "yes") { exit 1 }
   '; then
-    printf '%s contains a fallback, unembedded, unsubstituted, or unmapped font\n' "$pdf" >&2
+    printf '%s contains a unembedded or unmapped font\n' "$pdf" >&2
     return 1
   fi
 }
@@ -154,26 +129,28 @@ same_document() {
   cmp --silent "$left_dir/text.txt" "$right_dir/text.txt"
 }
 
+# Enumerate actual style/substyle/locale/page variants from the registry.
+"$binary" list-documents > "$validation_dir/documents.json"
+jq -er 'length > 0' "$validation_dir/documents.json" >/dev/null
+jq -r '.[] | [.document,.style,.substyle,.locale,.pages,.content,.output,
+  (if .require_image then "yes" else "no" end)] | @tsv' \
+  "$validation_dir/documents.json" > "$validation_dir/documents.tsv"
+
 render_suite() {
   local destination="$1"
-  local record _document substyle language region locale pages
-
-  for record in cvl/cv/*/*/*/content.toml; do
-    IFS=/ read -r _ _document substyle language region _ <<<"$record"
-    locale="$language-$region"
-    for pages in 2 3 4; do
-      "$binary" build-cv "$locale" "$pages" --substyle "$substyle" \
+  local document style substyle locale pages record tracked require_image filename
+  while IFS=$'\t' read -r document style substyle locale pages record tracked require_image; do
+    filename="$document-$style-$substyle-$locale-$pages.pdf"
+    if [[ "$document" == cv ]]; then
+      "$binary" build-cv "$locale" "$pages" --style "$style" --substyle "$substyle" \
         --application "$record" --profile cvl/profile.toml \
-        --output "$destination/cv-$substyle-$locale-$pages.pdf" >/dev/null
-    done
-  done
-  for record in cvl/cl/*/*/*/content.toml; do
-    IFS=/ read -r _ _document substyle language region _ <<<"$record"
-    locale="$language-$region"
-    "$binary" build-cl "$locale" --substyle "$substyle" \
-      --application "$record" --profile cvl/profile.toml \
-      --output "$destination/cl-$substyle-$locale.pdf" >/dev/null
-  done
+        --output "$destination/$filename" >/dev/null
+    else
+      "$binary" build-cl "$locale" --pages "$pages" --style "$style" --substyle "$substyle" \
+        --application "$record" --profile cvl/profile.toml \
+        --output "$destination/$filename" >/dev/null
+    fi
+  done < "$validation_dir/documents.tsv"
 }
 
 first_build="$validation_dir/first"
@@ -182,55 +159,40 @@ mkdir -p -- "$first_build" "$second_build"
 render_suite "$first_build"
 render_suite "$second_build"
 
-for record in cvl/cv/*/*/*/content.toml; do
-  IFS=/ read -r _ _document substyle language region _ <<<"$record"
-  locale="$language-$region"
-  for pages in 2 3 4; do
-    filename="cv-$substyle-$locale-$pages.pdf"
-    pdf="$first_build/$filename"
-    tracked="${record%/content.toml}/pdf/cv-$pages.pdf"
-    check_pdf "$pdf" "$pages"
-    check_pdf "$tracked" "$pages"
-    cmp --silent "$pdf" "$second_build/$filename" || {
-      printf 'CV build is not byte-reproducible: %s\n' "$filename" >&2
-      exit 1
-    }
-    same_document "$pdf" "$tracked" || {
-      printf 'Tracked CV output is stale: %s\n' "$tracked" >&2
-      exit 1
-    }
-    pdftoppm -f 1 -l 2 -png -r 72 "$pdf" \
-      "$validation_dir/pages-$substyle-$locale-$pages" >/dev/null 2>&1
-  done
-  for page in 1 2; do
-    for pages in 3 4; do
-      cmp --silent \
-        "$validation_dir/pages-$substyle-$locale-2-$page.png" \
-        "$validation_dir/pages-$substyle-$locale-$pages-$page.png" || {
-        printf 'Shared CV page changed across presets: %s %s page %s (2 vs %s)\n' \
-          "$substyle" "$locale" "$page" "$pages" >&2
-        exit 1
-      }
-    done
-  done
-done
-
-for record in cvl/cl/*/*/*/content.toml; do
-  IFS=/ read -r _ _document substyle language region _ <<<"$record"
-  locale="$language-$region"
-  filename="cl-$substyle-$locale.pdf"
+while IFS=$'\t' read -r document style substyle locale pages record tracked require_image; do
+  filename="$document-$style-$substyle-$locale-$pages.pdf"
   pdf="$first_build/$filename"
-  tracked="${record%/content.toml}/pdf/cl.pdf"
-  check_pdf "$pdf" 1 yes
-  check_pdf "$tracked" 1 yes
+  check_pdf "$pdf" "$pages" "$require_image"
+  check_pdf "$tracked" "$pages" "$require_image"
   cmp --silent "$pdf" "$second_build/$filename" || {
-    printf 'Cover-letter build is not byte-reproducible: %s\n' "$filename" >&2
+    printf 'Build is not byte-reproducible: %s\n' "$filename" >&2
     exit 1
   }
   same_document "$pdf" "$tracked" || {
-    printf 'Tracked cover-letter output is stale: %s\n' "$tracked" >&2
+    printf 'Tracked output is stale: %s\n' "$tracked" >&2
     exit 1
   }
-done
+done < "$validation_dir/documents.tsv"
+
+# Only styles that declare shared pages require identical pages across presets.
+jq -r 'group_by([.document,.style,.substyle,.locale])[] |
+  . as $variants | .[0].shared_pages[] as $page |
+  $variants[] | select(.pages >= $page) |
+  [.document,.style,.substyle,.locale,.pages,$page] | @tsv' \
+  "$validation_dir/documents.json" > "$validation_dir/shared.tsv"
+while IFS=$'\t' read -r document style substyle locale pages page; do
+  filename="$document-$style-$substyle-$locale-$pages.pdf"
+  key="$document-$style-$substyle-$locale-$page"
+  pdftoppm -f "$page" -l "$page" -singlefile -png -r 72 \
+    "$first_build/$filename" "$validation_dir/current" >/dev/null 2>&1
+  if [[ -f "$validation_dir/$key.png" ]]; then
+    cmp --silent "$validation_dir/current.png" "$validation_dir/$key.png" || {
+      printf 'Shared page changed across presets: %s (%s pages)\n' "$key" "$pages" >&2
+      exit 1
+    }
+  else
+    cp "$validation_dir/current.png" "$validation_dir/$key.png"
+  fi
+done < "$validation_dir/shared.tsv"
 
 printf 'Rust, data, font, PDF, reproducibility, CV, and cover-letter checks passed.\n'

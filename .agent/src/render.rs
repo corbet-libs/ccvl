@@ -1,17 +1,16 @@
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, ensure};
 use ctypst::{CompileRequest, Document, Engine, PageConstraint};
 use serde_json::Value;
 
-use crate::application::{
-    StyleLeaf, cl_leaves, cv_leaves, default_cl_substyle, default_cv_substyle, resolve_cl_substyle,
-    resolve_cv_substyle, validate_record,
-};
+use crate::application::validate_record;
 use crate::opportunity;
 use crate::stations;
+use crate::styles::{self, Selection, StyleLeaf};
 use crate::workspace::Workspace;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -28,24 +27,31 @@ pub struct DocumentSpec {
     pub output: PathBuf,
     pub inputs: BTreeMap<String, String>,
     pub expected_pages: usize,
+    pub selection: Selection,
+    pub contract: Value,
 }
 
 pub struct Compiler {
     engine: Engine,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct OpportunityOptions {
-    locale: &'static str,
+    locale: String,
     pages: usize,
     cover_letter: bool,
 }
 
 impl Compiler {
     pub fn new(workspace: &Workspace) -> Result<Self> {
+        let additional_fonts = styles::font_paths(workspace)?
+            .iter()
+            .map(fs::read)
+            .collect::<std::io::Result<Vec<_>>>()?;
         let engine = Engine::builder()
             .root(workspace.root())
             .fonts(ctypst::fonts::documents())
+            .fonts(additional_fonts)
             .build()
             .context("cannot initialize embedded Typst engine")?;
         Ok(Self { engine })
@@ -104,101 +110,50 @@ fn source_date_epoch() -> Result<i64> {
     Ok(epoch)
 }
 
-pub fn normalize_locale(value: &str) -> Result<&'static str> {
-    match value.to_ascii_lowercase().as_str() {
-        "de" | "de-ch" => Ok("de-ch"),
-        "en" | "en-ch" => Ok("en-ch"),
-        _ => bail!("unsupported locale: {value}"),
-    }
+pub use crate::styles::normalize_locale;
+
+pub fn cv_leaf(workspace: &Workspace, locale: &str, selection: &Selection) -> Result<StyleLeaf> {
+    styles::leaf(workspace, "cv", locale, selection)
+}
+
+pub fn cl_leaf(workspace: &Workspace, locale: &str, selection: &Selection) -> Result<StyleLeaf> {
+    styles::leaf(workspace, "cl", locale, selection)
 }
 
 pub fn cvl_cv_spec(
     workspace: &Workspace,
-    locale_value: &str,
+    locale: &str,
     pages: usize,
-    substyle: Option<&str>,
+    selection: Option<&Selection>,
 ) -> Result<DocumentSpec> {
-    stations::validate_interview(workspace, true)?;
-    let locale = normalize_locale(locale_value)?;
-    let name = match substyle {
-        Some(name) => name.to_owned(),
-        None => default_cv_substyle(workspace)?,
-    };
-    let leaf = cv_leaf(workspace, locale, &name)?;
-    let application = leaf.content();
-    let profile = workspace.path("cvl/profile.toml");
-    let relative = workspace.relative(&application)?.display().to_string();
-    let document = workspace.read_toml_value(&workspace.relative(&application)?)?;
-    // The leaf's own selection is normative: an explicit substyle must name
-    // this leaf, so a mismatched flag fails here instead of rendering the
-    // wrong look.
-    let effective = resolve_cv_substyle(workspace, &document, &relative)?;
-    ensure!(
-        effective == leaf.substyle,
-        "{relative}: options.cv_substyle {effective:?} does not match this {} leaf",
-        leaf.substyle
-    );
-    cv_spec(
-        workspace,
-        locale,
-        pages,
-        &application,
-        &profile,
-        &leaf.dir.join("pdf").join(format!("cv-{pages}.pdf")),
-        &leaf.substyle,
-    )
+    let selected = selection
+        .cloned()
+        .map_or_else(|| styles::selection(workspace, "cv", None, None), Ok)?;
+    cvl_spec(workspace, &cv_leaf(workspace, locale, &selected)?, pages)
 }
 
 pub fn cvl_cl_spec(
     workspace: &Workspace,
-    locale_value: &str,
-    substyle: Option<&str>,
+    locale: &str,
+    pages: Option<usize>,
+    selection: Option<&Selection>,
 ) -> Result<DocumentSpec> {
-    let locale = normalize_locale(locale_value)?;
-    let name = match substyle {
-        Some(name) => name.to_owned(),
-        None => default_cl_substyle(workspace)?,
-    };
-    let leaf = cl_leaf(workspace, locale, &name)?;
-    let application = leaf.content();
-    let profile = workspace.path("cvl/profile.toml");
-    let relative = workspace.relative(&application)?.display().to_string();
-    let document = workspace.read_toml_value(&workspace.relative(&application)?)?;
-    let effective = resolve_cl_substyle(workspace, &document, &relative)?;
-    ensure!(
-        effective == leaf.substyle,
-        "{relative}: options.cl_substyle {effective:?} does not match this {} leaf",
-        leaf.substyle
-    );
-    cl_spec(
+    let selected = selection
+        .cloned()
+        .map_or_else(|| styles::selection(workspace, "cl", None, None), Ok)?;
+    let leaf = cl_leaf(workspace, locale, &selected)?;
+    cvl_spec(workspace, &leaf, pages.unwrap_or(leaf.default_pages))
+}
+
+pub fn cvl_spec(workspace: &Workspace, leaf: &StyleLeaf, pages: usize) -> Result<DocumentSpec> {
+    document_spec(
         workspace,
-        locale,
-        &application,
-        &profile,
-        &leaf.dir.join("pdf").join("cl.pdf"),
-        &leaf.substyle,
+        leaf,
+        pages,
+        &leaf.content(),
+        &workspace.path("cvl/profile.toml"),
+        &leaf.output(pages),
     )
-}
-
-/// Locate one CV leaf by record locale and substyle name. Unknown names fail
-/// here — before the Typst compile — with the available substyles.
-pub fn cv_leaf(workspace: &Workspace, locale: &str, substyle: &str) -> Result<StyleLeaf> {
-    cv_leaves(workspace)?
-        .into_iter()
-        .find(|leaf| leaf.locale == locale && leaf.substyle == substyle)
-        .with_context(|| format!("no CV leaf for locale {locale} substyle {substyle:?}"))
-}
-
-/// Locate one cover-letter leaf by record locale and substyle name.
-pub fn cl_leaf(workspace: &Workspace, locale: &str, substyle: &str) -> Result<StyleLeaf> {
-    cl_leaves(workspace)?
-        .into_iter()
-        .find(|leaf| leaf.locale == locale && leaf.substyle == substyle)
-        .with_context(|| format!("no cover-letter leaf for locale {locale} substyle {substyle:?}"))
-}
-
-fn shared_defaults(workspace: &Workspace) -> Result<String> {
-    workspace.typst_path(&workspace.path("cvl/shared/defaults.toml"))
 }
 
 pub fn cv_spec(
@@ -208,99 +163,148 @@ pub fn cv_spec(
     application: &Path,
     profile: &Path,
     output: &Path,
-    cv_substyle: &str,
+    selection: &Selection,
 ) -> Result<DocumentSpec> {
-    ensure!(
-        (2..=4).contains(&pages),
-        "CV pages must be 2, 3, or 4: {pages}"
-    );
-    let leaf = cv_leaf(workspace, locale, cv_substyle)?;
-    // The record's own selection must agree with the requested leaf, so an
-    // opportunity record always renders its selected look.
-    let relative = workspace.relative(&workspace.existing_inside(application)?)?;
-    let document = workspace.read_toml_value(&relative)?;
-    let effective = resolve_cv_substyle(workspace, &document, &relative.display().to_string())?;
-    ensure!(
-        effective == leaf.substyle,
-        "{}: options.cv_substyle {effective:?} does not match the requested {} leaf",
-        relative.display(),
-        leaf.substyle
-    );
-    Ok(DocumentSpec {
-        name: format!("CV {locale}/{} {pages}p", leaf.substyle),
-        kind: DocumentKind::Cv,
-        source: leaf.adapter(),
-        output: output.to_path_buf(),
-        inputs: BTreeMap::from([
-            ("application".to_owned(), workspace.typst_path(application)?),
-            ("cv-pages".to_owned(), pages.to_string()),
-            ("profile".to_owned(), workspace.typst_path(profile)?),
-            ("strings".to_owned(), workspace.typst_path(&leaf.strings())?),
-            (
-                "substyle".to_owned(),
-                workspace.typst_path(&leaf.substyle_file())?,
-            ),
-            ("shared-defaults".to_owned(), shared_defaults(workspace)?),
-        ]),
-        expected_pages: pages,
-    })
+    document_spec(
+        workspace,
+        &cv_leaf(workspace, locale, selection)?,
+        pages,
+        application,
+        profile,
+        output,
+    )
 }
 
 pub fn cl_spec(
     workspace: &Workspace,
     locale: &str,
+    pages: usize,
     application: &Path,
     profile: &Path,
     output: &Path,
-    cl_substyle: &str,
+    selection: &Selection,
 ) -> Result<DocumentSpec> {
-    let leaf = cl_leaf(workspace, locale, cl_substyle)?;
-    let relative = workspace.relative(&workspace.existing_inside(application)?)?;
-    let document = workspace.read_toml_value(&relative)?;
-    let effective = resolve_cl_substyle(workspace, &document, &relative.display().to_string())?;
+    document_spec(
+        workspace,
+        &cl_leaf(workspace, locale, selection)?,
+        pages,
+        application,
+        profile,
+        output,
+    )
+}
+
+fn document_spec(
+    workspace: &Workspace,
+    leaf: &StyleLeaf,
+    pages: usize,
+    application: &Path,
+    profile: &Path,
+    output: &Path,
+) -> Result<DocumentSpec> {
     ensure!(
-        effective == leaf.substyle,
-        "{}: options.cl_substyle {effective:?} does not match the requested {} leaf",
-        relative.display(),
+        leaf.pages.contains(&pages),
+        "{}/{}: unsupported page count {pages}; expected {:?}",
+        leaf.document,
+        leaf.style,
+        leaf.pages
+    );
+    let relative = workspace.relative(&workspace.existing_inside(application)?)?;
+    let record = workspace.read_toml_value(&relative)?;
+    let location = relative.display().to_string();
+    validate_record(workspace, &record, &location, true)?;
+    let selected = styles::record_selection(workspace, leaf.document, &record, &location)?;
+    ensure!(
+        selected == leaf.selection(),
+        "{location}: selected {}/{} does not match requested {}/{} leaf",
+        selected.style,
+        selected.substyle,
+        leaf.style,
         leaf.substyle
     );
+    ensure!(
+        record.pointer("/options/language").and_then(Value::as_str) == Some(leaf.locale.as_str()),
+        "{location}: language does not match requested {} leaf",
+        leaf.locale
+    );
+    if leaf.document == "cv" && leaf.contract.get("layout_contract").is_some() {
+        stations::validate_style(workspace, &leaf.style, true)?;
+    }
+    let mut inputs = BTreeMap::from([
+        ("application".to_owned(), workspace.typst_path(application)?),
+        ("profile".to_owned(), workspace.typst_path(profile)?),
+        ("locale".to_owned(), leaf.locale.clone()),
+        ("pages".to_owned(), pages.to_string()),
+        ("strings".to_owned(), workspace.typst_path(&leaf.strings())?),
+        (
+            "substyle".to_owned(),
+            workspace.typst_path(&leaf.substyle_file())?,
+        ),
+    ]);
+    if let Some(path) = &leaf.defaults {
+        inputs.insert("shared-defaults".to_owned(), workspace.typst_path(path)?);
+    }
+    let contract_path = leaf.style_dir().join("contract.toml");
+    if contract_path.is_file() {
+        inputs.insert("contract".to_owned(), workspace.typst_path(&contract_path)?);
+    }
     Ok(DocumentSpec {
-        name: format!("cover letter {locale}/{}", leaf.substyle),
-        kind: DocumentKind::CoverLetter,
+        name: format!(
+            "{} {}/{}/{} {pages}p",
+            leaf.document, leaf.style, leaf.substyle, leaf.locale
+        ),
+        kind: if leaf.document == "cv" {
+            DocumentKind::Cv
+        } else {
+            DocumentKind::CoverLetter
+        },
         source: leaf.adapter(),
         output: output.to_path_buf(),
-        inputs: BTreeMap::from([
-            ("application".to_owned(), workspace.typst_path(application)?),
-            ("profile".to_owned(), workspace.typst_path(profile)?),
-            ("strings".to_owned(), workspace.typst_path(&leaf.strings())?),
-            (
-                "substyle".to_owned(),
-                workspace.typst_path(&leaf.substyle_file())?,
-            ),
-            ("shared-defaults".to_owned(), shared_defaults(workspace)?),
-        ]),
-        expected_pages: 1,
+        inputs,
+        expected_pages: pages,
+        selection: leaf.selection(),
+        contract: leaf.contract.clone(),
     })
+}
+
+pub fn cvl_specs(workspace: &Workspace) -> Result<Vec<DocumentSpec>> {
+    let mut specs = Vec::new();
+    for leaf in styles::leaves(workspace, "cv")?
+        .into_iter()
+        .chain(styles::leaves(workspace, "cl")?)
+    {
+        for pages in &leaf.pages {
+            specs.push(cvl_spec(workspace, &leaf, *pages)?);
+        }
+    }
+    Ok(specs)
 }
 
 pub fn render_cvl(workspace: &Workspace) -> Result<Vec<PathBuf>> {
     let compiler = Compiler::new(workspace)?;
-    let mut outputs = Vec::new();
-    for leaf in cv_leaves(workspace)? {
-        for pages in [2, 3, 4] {
-            outputs.push(compiler.render(
-                workspace,
-                &cvl_cv_spec(workspace, leaf.locale, pages, Some(&leaf.substyle))?,
-            )?);
+    cvl_specs(workspace)?
+        .iter()
+        .map(|spec| compiler.render(workspace, spec))
+        .collect()
+}
+
+pub fn list_documents(workspace: &Workspace) -> Result<Value> {
+    let mut entries = Vec::new();
+    for leaf in styles::leaves(workspace, "cv")?
+        .into_iter()
+        .chain(styles::leaves(workspace, "cl")?)
+    {
+        for pages in &leaf.pages {
+            entries.push(serde_json::json!({
+                "document": leaf.document, "style": leaf.style, "substyle": leaf.substyle,
+                "locale": leaf.locale, "pages": pages,
+                "content": workspace.relative(&leaf.content())?, "output": workspace.relative(&leaf.output(*pages))?,
+                "shared_pages": leaf.contract.get("shared_pages").unwrap_or(&serde_json::json!([])),
+                "require_image": leaf.contract.pointer("/pdf/require_image").and_then(Value::as_bool).unwrap_or(false),
+            }));
         }
     }
-    for leaf in cl_leaves(workspace)? {
-        outputs.push(compiler.render(
-            workspace,
-            &cvl_cl_spec(workspace, leaf.locale, Some(&leaf.substyle))?,
-        )?);
-    }
-    Ok(outputs)
+    Ok(Value::Array(entries))
 }
 
 pub fn opportunity_specs(
@@ -308,7 +312,6 @@ pub fn opportunity_specs(
     organisation: &str,
     position: &str,
 ) -> Result<Vec<DocumentSpec>> {
-    stations::validate_interview(workspace, true)?;
     let application = opportunity::record_path(workspace, organisation, position, true)?;
     let document = workspace.read_toml_value(workspace.relative(&application)?)?;
     validate_record(
@@ -322,8 +325,8 @@ pub fn opportunity_specs(
     let pages = options.pages;
     let cover_enabled = options.cover_letter;
     let relative = workspace.relative(&application)?.display().to_string();
-    let cv_substyle = resolve_cv_substyle(workspace, &document, &relative)?;
-    let letter_substyle = resolve_cl_substyle(workspace, &document, &relative)?;
+    let cv_selection = styles::record_selection(workspace, "cv", &document, &relative)?;
+    let letter_selection = styles::record_selection(workspace, "cl", &document, &relative)?;
     let parent = application
         .parent()
         .context("application record has no parent")?;
@@ -331,22 +334,29 @@ pub fn opportunity_specs(
     let profile = workspace.path("cvl/profile.toml");
     let mut specs = vec![cv_spec(
         workspace,
-        locale,
+        &locale,
         pages,
         &application,
         &profile,
         &pdfs.join("cv.pdf"),
-        &cv_substyle,
+        &cv_selection,
     )?];
     specs[0].name = format!("CV {organisation}/{position}");
     if cover_enabled {
+        let letter_pages = document
+            .pointer("/options/cl_pages")
+            .and_then(Value::as_u64)
+            .map(usize::try_from)
+            .transpose()?
+            .unwrap_or(styles::definition(workspace, "cl", &letter_selection.style)?.default_pages);
         let mut spec = cl_spec(
             workspace,
-            locale,
+            &locale,
+            letter_pages,
             &application,
             &profile,
             &pdfs.join("cl.pdf"),
-            &letter_substyle,
+            &letter_selection,
         )?;
         spec.name = format!("cover letter {organisation}/{position}");
         specs.push(spec);
@@ -382,9 +392,9 @@ fn opportunity_options(document: &Value) -> Result<OpportunityOptions> {
 /// building its full render specs. Lets the opportunity watcher scope its
 /// digest to the record's own leaf templates.
 pub struct OpportunitySelection {
-    pub locale: &'static str,
-    pub cv_substyle: String,
-    pub cl_substyle: String,
+    pub locale: String,
+    pub cv: Selection,
+    pub cl: Selection,
 }
 
 pub fn opportunity_selection(
@@ -398,8 +408,8 @@ pub fn opportunity_selection(
     let options = opportunity_options(&document)?;
     Ok(OpportunitySelection {
         locale: options.locale,
-        cv_substyle: resolve_cv_substyle(workspace, &document, &relative)?,
-        cl_substyle: resolve_cl_substyle(workspace, &document, &relative)?,
+        cv: styles::record_selection(workspace, "cv", &document, &relative)?,
+        cl: styles::record_selection(workspace, "cl", &document, &relative)?,
     })
 }
 
@@ -409,7 +419,7 @@ pub fn opportunity_locale(
     workspace: &Workspace,
     organisation: &str,
     position: &str,
-) -> Result<&'static str> {
+) -> Result<String> {
     Ok(opportunity_selection(workspace, organisation, position)?.locale)
 }
 
@@ -485,31 +495,12 @@ fn resolved_typ_text(
     position: &str,
 ) -> String {
     let mut resolved = template.to_owned();
-    for key in [
-        "application",
-        "profile",
-        "cv-pages",
-        "strings",
-        "substyle",
-        "shared-defaults",
-    ] {
-        if let Some(default) = spec.inputs.get(key) {
-            resolved = rewrite_input_default(&resolved, key, default);
-        }
+    for (key, default) in &spec.inputs {
+        resolved = rewrite_input_default(&resolved, key, default);
     }
     let mut provenance = format!("Template: {template_display}");
-    for key in [
-        "application",
-        "profile",
-        "cv-pages",
-        "strings",
-        "substyle",
-        "shared-defaults",
-    ] {
-        if let Some(default) = spec.inputs.get(key) {
-            use std::fmt::Write as _;
-            let _ = write!(provenance, " | {key}: {default}");
-        }
+    for (key, value) in &spec.inputs {
+        write!(provenance, "\n// {key}: {value}").expect("writing to a String is infallible");
     }
     format!(
         "// Resolved customization copy emitted by `ccvl build-opportunity {organisation} {position}`.\n\
@@ -550,342 +541,4 @@ fn remove_stale_cover_letter(pdfs_dir: &Path, typst_dir: &Path, cover_enabled: b
 }
 
 #[cfg(test)]
-mod tests {
-    use tempfile::tempdir;
-
-    use super::*;
-
-    #[test]
-    fn cvl_outputs_use_numeric_page_names() {
-        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        for (locale, lang) in [("de-ch", "de"), ("en-ch", "en")] {
-            for substyle in ["standard", "compact"] {
-                for pages in [2, 3, 4] {
-                    let spec = cvl_cv_spec(&workspace, locale, pages, Some(substyle)).unwrap();
-                    assert_eq!(
-                        spec.output,
-                        workspace.path(format!("cvl/cv/{substyle}/{lang}/ch/pdf/cv-{pages}.pdf"))
-                    );
-                    assert_eq!(
-                        spec.source,
-                        workspace.path(format!("cvl/cv/{substyle}/{lang}/ch/typst/cv.typ"))
-                    );
-                }
-            }
-            for substyle in ["left-rule", "frame"] {
-                let spec = cvl_cl_spec(&workspace, locale, Some(substyle)).unwrap();
-                assert_eq!(
-                    spec.output,
-                    workspace.path(format!("cvl/cl/{substyle}/{lang}/ch/pdf/cl.pdf"))
-                );
-            }
-        }
-        assert!(cvl_cv_spec(&workspace, "en-ch", 1, None).is_err());
-        assert!(cvl_cv_spec(&workspace, "en-ch", 5, None).is_err());
-        assert!(cvl_cv_spec(&workspace, "en-ch", 4, Some("nope")).is_err());
-        assert!(cvl_cl_spec(&workspace, "en-ch", Some("nope")).is_err());
-    }
-
-    #[test]
-    fn opportunity_record_selects_its_locale_pages_and_documents() {
-        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        let mut document = workspace
-            .read_toml_value("cvl/cv/standard/en/ch/content.toml")
-            .unwrap();
-        document["options"]["language"] = "en-ch".into();
-        document["options"]["pages"] = 3.into();
-        document["options"]["generate_cl"] = false.into();
-        document.as_object_mut().unwrap().remove("cl");
-        assert_eq!(
-            opportunity_options(&document).unwrap(),
-            OpportunityOptions {
-                locale: "en-ch",
-                pages: 3,
-                cover_letter: false,
-            }
-        );
-    }
-
-    #[test]
-    fn disabled_cover_letter_removes_stale_output() {
-        let directory = tempdir().unwrap();
-        let pdfs = directory.path().join("pdfs");
-        let typst = directory.path().join("typst");
-        fs::create_dir_all(&pdfs).unwrap();
-        fs::create_dir_all(&typst).unwrap();
-        let stale_pdf = pdfs.join("cl.pdf");
-        let stale_typ = typst.join("cl.typ");
-        fs::write(&stale_pdf, b"stale").unwrap();
-        fs::write(&stale_typ, b"stale").unwrap();
-        remove_stale_cover_letter(&pdfs, &typst, false).unwrap();
-        assert!(!stale_pdf.exists());
-        assert!(!stale_typ.exists());
-
-        fs::write(&stale_pdf, b"current").unwrap();
-        fs::write(&stale_typ, b"current").unwrap();
-        remove_stale_cover_letter(&pdfs, &typst, true).unwrap();
-        assert!(stale_pdf.exists());
-        assert!(stale_typ.exists());
-    }
-
-    #[test]
-    fn input_default_rewrite_points_copy_at_record() {
-        let cv = "#let cv-pages = int(sys.inputs.at(\"cv-pages\", default: \"4\"))\n\
-                  #let application-path = sys.inputs.at(\"application\", default: \"/cvl/cv/standard/en/ch/content.toml\")\n";
-        let resolved = rewrite_input_default(
-            cv,
-            "application",
-            "/opportunities/acme/lead/application.toml",
-        );
-        let resolved = rewrite_input_default(&resolved, "cv-pages", "3");
-        assert!(resolved.contains(
-            "sys.inputs.at(\"application\", default: \"/opportunities/acme/lead/application.toml\")"
-        ));
-        assert!(resolved.contains("sys.inputs.at(\"cv-pages\", default: \"3\")"));
-        assert!(!resolved.contains("/cvl/cv/standard/en/ch/content.toml"));
-
-        let cl = "#let substyle-path = sys.inputs.at(\"substyle\", default: \"/cvl/cl/left-rule/de/ch/substyle.toml\")\n";
-        let resolved = rewrite_input_default(cl, "substyle", "/cvl/cl/frame/de/ch/substyle.toml");
-        assert!(resolved.contains(
-            "sys.inputs.at(\"substyle\", default: \"/cvl/cl/frame/de/ch/substyle.toml\")"
-        ));
-        let shared = "#let shared-defaults-path = sys.inputs.at(\"shared-defaults\", default: \"/cvl/shared/defaults.toml\")\n";
-        assert_eq!(
-            rewrite_input_default(shared, "shared-defaults", "/cvl/shared/defaults.toml"),
-            shared
-        );
-        // A template that no longer carries the input survives unchanged.
-        assert_eq!(
-            rewrite_input_default("#let x = 1\n", "application", "/elsewhere.toml"),
-            "#let x = 1\n"
-        );
-    }
-
-    #[test]
-    fn resolved_copy_carries_provenance_and_record_defaults() {
-        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        let leaf = cv_leaf(&workspace, "en-ch", "standard").unwrap();
-        let output = tempdir().unwrap().path().join("pdfs").join("cv.pdf");
-        let mut spec = cv_spec(
-            &workspace,
-            "en-ch",
-            3,
-            &leaf.content(),
-            &workspace.path("cvl/profile.toml"),
-            &output,
-            "standard",
-        )
-        .unwrap();
-        spec.inputs.insert(
-            "application".to_owned(),
-            "/opportunities/acme/lead/application.toml".to_owned(),
-        );
-        let template = fs::read_to_string(leaf.adapter()).unwrap();
-        let text = resolved_typ_text(
-            &template,
-            &spec,
-            "cvl/cv/standard/en/ch/typst/cv.typ",
-            "acme",
-            "lead",
-        );
-        assert!(text.starts_with(
-            "// Resolved customization copy emitted by `ccvl build-opportunity acme lead`."
-        ));
-        assert!(text.contains("Template: cvl/cv/standard/en/ch/typst/cv.typ"));
-        assert!(text.contains("application: /opportunities/acme/lead/application.toml"));
-        assert!(text.contains("cv-pages: 3"));
-        assert!(text.contains("| strings: "));
-        assert!(text.contains("| substyle: "));
-        assert!(text.contains("| shared-defaults: "));
-        assert!(!text.contains("| style: "));
-        assert!(text.ends_with('\n'));
-        assert!(!text.contains("default: \"/cvl/cv/standard/en/ch/content.toml\""));
-        assert!(text.contains("sys.inputs.at(\"cv-pages\", default: \"3\")"));
-    }
-
-    #[test]
-    fn emitted_copies_compile_without_cli_inputs() {
-        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        let compiler = Compiler::new(&workspace).unwrap();
-        for locale in ["de-ch", "en-ch"] {
-            let mut specs = Vec::new();
-            for substyle in ["standard", "compact"] {
-                specs.push(cvl_cv_spec(&workspace, locale, 3, Some(substyle)).unwrap());
-            }
-            for substyle in ["left-rule", "frame"] {
-                specs.push(cvl_cl_spec(&workspace, locale, Some(substyle)).unwrap());
-            }
-            for spec in specs {
-                let original = compiler.compile(&workspace, &spec).unwrap();
-                let template = fs::read_to_string(&spec.source).unwrap();
-                let text = resolved_typ_text(&template, &spec, "fixture", "acme", "lead");
-                let standalone = compiler
-                    .engine
-                    .compile(
-                        CompileRequest::new("standalone.typ")
-                            .source_file("standalone.typ", text)
-                            .pages(PageConstraint::Exactly(spec.expected_pages)),
-                    )
-                    .unwrap();
-                assert_eq!(
-                    compiler.engine.pdf(&original, 0).unwrap(),
-                    compiler.engine.pdf(&standalone.document, 0).unwrap(),
-                    "standalone copy differs: {}",
-                    spec.name,
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn cvl_specs_carry_their_leaf_paths() {
-        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        for pages in [2, 3, 4] {
-            let spec = cvl_cv_spec(&workspace, "en-ch", pages, Some("compact")).unwrap();
-            assert_eq!(
-                spec.inputs.get("strings").map(String::as_str),
-                Some("/cvl/cv/compact/en/ch/strings.toml")
-            );
-            assert_eq!(
-                spec.inputs.get("substyle").map(String::as_str),
-                Some("/cvl/cv/compact/substyle.toml")
-            );
-            assert_eq!(
-                spec.inputs.get("shared-defaults").map(String::as_str),
-                Some("/cvl/shared/defaults.toml")
-            );
-            assert!(!spec.inputs.contains_key("style"));
-        }
-        // No explicit substyle renders the family default.
-        let spec = cvl_cv_spec(&workspace, "en-ch", 4, None).unwrap();
-        assert_eq!(
-            spec.inputs.get("substyle").map(String::as_str),
-            Some("/cvl/cv/standard/substyle.toml")
-        );
-        let spec = cvl_cl_spec(&workspace, "de-ch", None).unwrap();
-        assert_eq!(
-            spec.inputs.get("substyle").map(String::as_str),
-            Some("/cvl/cl/left-rule/substyle.toml")
-        );
-        let spec = cvl_cl_spec(&workspace, "de-ch", Some("frame")).unwrap();
-        assert_eq!(
-            spec.inputs.get("strings").map(String::as_str),
-            Some("/cvl/cl/frame/de/ch/strings.toml")
-        );
-    }
-
-    #[test]
-    fn mismatched_record_selection_fails_before_compiling() {
-        // A record selecting compact must not render through the standard
-        // leaf: the mismatch fails in Rust with both names.
-        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        let leaf = cv_leaf(&workspace, "en-ch", "standard").unwrap();
-        let directory = tempfile::tempdir_in(workspace.root()).unwrap();
-        let record = directory.path().join("application.toml");
-        let text = fs::read_to_string(leaf.content())
-            .unwrap()
-            .replace("cv_substyle = \"standard\"", "cv_substyle = \"compact\"");
-        fs::write(&record, text).unwrap();
-        let output = directory.path().join("cv.pdf");
-        let error = cv_spec(
-            &workspace,
-            "en-ch",
-            2,
-            &record,
-            &workspace.path("cvl/profile.toml"),
-            &output,
-            "standard",
-        )
-        .unwrap_err()
-        .to_string();
-        assert!(error.contains("compact"), "unexpected error: {error}");
-        assert!(error.contains("standard"), "unexpected error: {error}");
-    }
-
-    #[test]
-    fn style_major_leaves_compile() {
-        // The default leaves render end to end through the shared renderers
-        // under exact page constraints.
-        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        let compiler = Compiler::new(&workspace).unwrap();
-        let cv = cvl_cv_spec(&workspace, "de-ch", 2, None).unwrap();
-        compiler.compile(&workspace, &cv).unwrap();
-        let cl = cvl_cl_spec(&workspace, "de-ch", None).unwrap();
-        compiler.compile(&workspace, &cl).unwrap();
-    }
-
-    #[test]
-    fn compact_substyles_pass_the_same_measurement_gates() {
-        use crate::measure::{document_metrics, line_failure, summary_failures};
-
-        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        let compiler = Compiler::new(&workspace).unwrap();
-        // Two-page CV exercises pages 1-2; the cover letter exercises the
-        // vertical-rhythm gate. Both compile under an exact page constraint.
-        let mut cv = cvl_cv_spec(&workspace, "en-ch", 2, Some("compact")).unwrap();
-        cv.inputs
-            .insert("line-contracts".to_owned(), "report".to_owned());
-        let document = compiler.compile(&workspace, &cv).unwrap();
-        let metrics = document_metrics(&workspace, &cv, &document).unwrap();
-        assert!(
-            summary_failures(&workspace, &cv, &metrics)
-                .unwrap()
-                .is_empty()
-        );
-        for (index, metric) in metrics.iter().enumerate() {
-            assert!(
-                line_failure(&cv, index, metric).unwrap().is_none(),
-                "compact CV failure at #{index}: {metric}"
-            );
-        }
-
-        for substyle in ["left-rule", "frame"] {
-            let mut cl = cvl_cl_spec(&workspace, "en-ch", Some(substyle)).unwrap();
-            cl.inputs
-                .insert("line-contracts".to_owned(), "report".to_owned());
-            let document = compiler.compile(&workspace, &cl).unwrap();
-            let metrics = document_metrics(&workspace, &cl, &document).unwrap();
-            for (index, metric) in metrics.iter().enumerate() {
-                assert!(
-                    line_failure(&cl, index, metric).unwrap().is_none(),
-                    "{substyle} cover-letter failure at #{index}: {metric}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn compact_delta_keeps_horizontal_measure_and_accents() {
-        // Horizontal measure feeds every fill percentage, so the compact
-        // delta may only tighten vertical whitespace. Pin the invariant
-        // between the shared base knobs and the delta; the gates above prove
-        // the result still passes.
-        let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        let base = workspace
-            .read_toml_value("cvl/shared/defaults.toml")
-            .unwrap();
-        let compact = workspace
-            .read_toml_value("cvl/cv/compact/substyle.toml")
-            .unwrap();
-        let delta = compact.as_object().unwrap();
-        for forbidden in ["page", "text", "accents"] {
-            assert!(
-                !delta.contains_key(forbidden),
-                "horizontal section changed by the delta: {forbidden}"
-            );
-        }
-        let cv = delta.get("cv").and_then(|value| value.as_object());
-        assert!(
-            cv.is_none_or(|table| !table.contains_key("bullet_indent_pt")),
-            "horizontal knob changed by the delta: bullet_indent_pt"
-        );
-        let fill = |style: &serde_json::Value, pointer: &str| {
-            style.pointer(pointer).and_then(serde_json::Value::as_f64)
-        };
-        assert!(
-            fill(&compact, "/cv/entry_spacing_pt") < fill(&base, "/cv/entry_spacing_pt"),
-            "compact must tighten vertical whitespace"
-        );
-        assert!(!delta.is_empty());
-    }
-}
+mod tests;

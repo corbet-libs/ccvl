@@ -1,0 +1,78 @@
+# Independent document styles
+
+Each `cvl/cv/<style>/` and `cvl/cl/<style>/` directory declares its own
+`style.toml`. Style names and substyle names are lowercase letters, digits,
+hyphens or underscores. A substyle name is scoped to its parent style.
+
+```toml
+id = "example"
+api = 1
+documents = ["cv"]
+supports_locales = ["en-us"]
+pages = [1, 2]
+default_pages = 1
+substyles = ["standard"]
+default_substyle = "standard"
+# Optional paths, relative to this style directory and inside the workspace:
+# defaults = "tokens.toml"
+# fonts = ["assets/Example-Regular.ttf"]
+```
+
+The workspace manifest names the document roots and their `default_style`.
+The engine discovers every style directory under each root. For every listed
+substyle and locale it expects:
+
+```text
+<substyle>/substyle.toml
+<substyle>/<language>/<country>/content.toml
+<substyle>/<language>/<country>/strings.toml
+<substyle>/<language>/<country>/typst/cv.typ   # cl.typ for letters
+```
+
+The contents of `substyle.toml` and `strings.toml` belong to the style.
+`content.toml` uses the common application envelope (options and job metadata)
+with style-owned `[cv]` and `[cl]` tables. The record's document selection must
+match its directory. A style may share code between its substyles in any
+internal arrangement. Neither a shared renderer nor `src/` is mandatory.
+
+The Typst entry point receives these `sys.inputs`: `application`, `profile`,
+`locale`, `pages`, `strings`, `substyle`; optionally `shared-defaults` and
+`contract` when the style supplies them. File values are absolute workspace
+paths. Use `sys.inputs.at("application", default: "/path/to/content.toml")`
+(and equivalent literal defaults for other inputs) to support generated
+opportunity copies that compile within the workspace without CLI inputs.
+
+An optional `scaffold.toml` contains blank document fields for new opportunities,
+without a `[cv]` or `[cl]` wrapper. `new-opportunity` combines the neutral job
+scaffold with each configured style's content scaffold and page defaults.
+Absent content scaffolds produce empty document tables. Never copy personal
+showcase claims into a scaffold.
+
+An optional `contract.toml` can declare:
+
+- `content_fields`: an allowed list of document fields; omission permits arbitrary fields.
+- `metric_rules`: tables with `kind`, `minimum` and `maximum` occurrence counts
+  for emitted `ccvl-line` metrics. Metrics carry their own fill bounds.
+- `shared_pages`: page numbers that must remain identical across page presets.
+- `[pdf]`: optional `size_pt = [width, height]`, `font_pattern`,
+  `minimum_text_chars`, `required_profile_fields` and `require_image`.
+
+Harvard additionally uses its summary and paragraph contracts and the
+`layout_contract` / `source_files` four-page station-marker protocol. Those
+checks apply only to a style opting into those contracts; they are not a
+requirement for independent layouts. Styles without metrics need not emit them.
+The engine always checks the requested page count, valid positive page geometry,
+PDF integrity, embedded fonts with Unicode maps and a usable text layer.
+
+All 16 bundled ctypst font faces are available. A style may declare additional
+workspace font files; provide their redistribution licenses when publishing.
+`bash ./ccvl list-documents` lists every discovered output as JSON. `check`,
+`measure` and Linux independent PDF checks enumerate these same definitions.
+
+```sh
+bash ./ccvl build-cv en-ch 4 --style harvard --substyle compact
+bash ./ccvl build-cl en-ch --style harvard --substyle frame
+```
+
+Keep reusable style changes upstream in ccvl, then merge them into personal
+applications repositories. Private content stays downstream.

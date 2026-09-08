@@ -1,0 +1,17 @@
+# Empty Harvard letter fields for a new opportunity.
+highlights = [
+  "",
+  "",
+  "",
+  "",
+  "",
+]
+
+paragraphs = [
+  ["", "", ""],
+  ["", "", "", "", ""],
+  ["", "", "", "", ""],
+  ["", "", "", "", ""],
+  ["", "", "", "", ""],
+  ["", "", ""],
+]

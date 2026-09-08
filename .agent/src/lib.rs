@@ -15,6 +15,7 @@ pub mod runtime;
 mod runtime_source;
 pub mod skills;
 pub mod stations;
+pub mod styles;
 pub mod workspace;
 
 pub use workspace::Workspace;

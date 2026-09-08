@@ -1,0 +1,12 @@
+# Harvard CV family: the default. Registry for the CV substyle axis:
+# substyles lists every cvl/cv/harvard/<name>/substyle.toml, default_substyle renders
+# when a record selects nothing.
+id = "harvard"
+api = 1
+documents = ["cv"]
+supports_locales = ["de-ch", "en-ch"]
+pages = [2, 3, 4]
+default_substyle = "standard"
+substyles = ["standard", "compact"]
+default_pages = 4
+defaults = "../../shared/harvard/defaults.toml"

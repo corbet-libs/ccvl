@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, ensure};
 use regex::Regex;
 use serde_json::{Map, Value};
 
@@ -55,363 +55,100 @@ const PROFILE_TOP: &[&str] = &[
 
 /// Greeting rules live in the `cgreet` library
 /// (`https://github.com/corbet-labs/cgreet`, mirrored for the renderer in
-/// `.agent/typst/application.typ`) and are re-exported here so existing paths
+/// `cvl/shared/harvard/application.typ`) and are re-exported here so existing paths
 /// keep working.
 pub use cgreet::{
     Region, de_honorific_warning, de_salutation, recipient_salutation_warning,
     salutation_honorific, salutation_last_name, salutation_surname, salutation_titles,
 };
 
-/// One render leaf: a substyle in one locale, i.e. the directory
-/// `<root>/<substyle>/<lang>/ch` holding `content.toml`, `strings.toml`,
-/// `typst/`, and `pdf/`. `locale` is the record language (`de-ch`/`en-ch`);
-/// the directory language is its first subtag (`de`/`en`).
-pub struct StyleLeaf {
-    pub document: &'static str,
-    pub substyle: String,
-    pub locale: &'static str,
-    pub dir: std::path::PathBuf,
-}
-
-impl StyleLeaf {
-    #[must_use]
-    pub fn content(&self) -> std::path::PathBuf {
-        self.dir.join("content.toml")
-    }
-
-    #[must_use]
-    pub fn strings(&self) -> std::path::PathBuf {
-        self.dir.join("strings.toml")
-    }
-
-    #[must_use]
-    pub fn adapter(&self) -> std::path::PathBuf {
-        self.dir.join("typst").join(if self.document == "cv" {
-            "cv.typ"
-        } else {
-            "cl.typ"
-        })
-    }
-
-    #[must_use]
-    pub fn substyle_file(&self) -> std::path::PathBuf {
-        self.dir
-            .parent()
-            .and_then(|path| path.parent())
-            .expect("leaf dir has a substyle parent")
-            .join("substyle.toml")
-    }
-}
-
-struct StyleRegistry {
-    root: String,
-    substyles: Vec<String>,
-    default: String,
-}
-
-/// Read one document family's registry: the discovery root from
-/// `ccvl.json documents` plus its `style.toml` (`substyles`, `default_substyle`).
-fn style_registry(workspace: &Workspace, document: &str) -> Result<StyleRegistry> {
-    let manifest_key = if document == "cv" {
-        "cv"
-    } else {
-        "cover_letter"
-    };
-    let manifest = workspace.read_json("ccvl.json")?;
-    let root = manifest
-        .pointer(&format!("/documents/{manifest_key}/root"))
-        .and_then(Value::as_str)
-        .with_context(|| format!("ccvl.json documents.{manifest_key}.root is missing"))?
-        .to_owned();
-    let style = workspace.read_toml_value(format!("{root}/style.toml"))?;
-    let substyles = style
-        .get("substyles")
-        .and_then(Value::as_array)
-        .with_context(|| format!("{root}/style.toml has no substyles list"))?
-        .iter()
-        .map(Value::as_str)
-        .collect::<Option<Vec<_>>>()
-        .with_context(|| format!("{root}/style.toml substyles must be substyle names"))?
-        .into_iter()
-        .map(str::to_owned)
-        .collect::<Vec<_>>();
-    let default = style
-        .get("default_substyle")
-        .and_then(Value::as_str)
-        .with_context(|| format!("{root}/style.toml has no default_substyle"))?
-        .to_owned();
-    ensure!(
-        !substyles.is_empty() && substyles.contains(&default),
-        "{root}/style.toml: default substyle {default:?} is not listed"
-    );
-    Ok(StyleRegistry {
-        root,
-        substyles,
-        default,
-    })
-}
-
-/// Every render leaf of one document family: each `style.toml` substyle in
-/// each supported locale. Fails when a leaf directory, its `substyle.toml`,
-/// or one of its `content.toml`/`strings.toml`/adapter files is missing, so
-/// a half-added substyle cannot render silently.
-pub fn style_leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<StyleLeaf>> {
-    ensure!(
-        document == "cv" || document == "cl",
-        "unknown document family: {document}"
-    );
-    let registry = style_registry(workspace, document)?;
-    let style = workspace.read_toml_value(format!("{}/style.toml", registry.root))?;
-    let locales = style
-        .get("supports_locales")
-        .and_then(Value::as_array)
-        .with_context(|| format!("{}/style.toml has no supports_locales", registry.root))?;
-    let mut leaves = Vec::new();
-    for substyle in &registry.substyles {
-        let substyle_file = workspace.path(format!("{}/{substyle}/substyle.toml", registry.root));
-        ensure!(
-            substyle_file.is_file(),
-            "substyle {substyle} is missing {}",
-            substyle_file.display()
-        );
-        for locale in locales {
-            let locale = locale.as_str().with_context(|| {
-                format!("{}/style.toml locales must be locale names", registry.root)
-            })?;
-            let (language, dir) = match locale {
-                "de-ch" => ("de-ch", format!("{}/{substyle}/de/ch", registry.root)),
-                "en-ch" => ("en-ch", format!("{}/{substyle}/en/ch", registry.root)),
-                _ => bail!(
-                    "{}/style.toml supports unknown locale: {locale}",
-                    registry.root
-                ),
-            };
-            let leaf = StyleLeaf {
-                document,
-                substyle: substyle.clone(),
-                locale: language,
-                dir: workspace.path(&dir),
-            };
-            for path in [leaf.content(), leaf.strings(), leaf.adapter()] {
-                ensure!(
-                    path.is_file(),
-                    "leaf {} is missing {}",
-                    leaf.dir.display(),
-                    path.display()
-                );
-            }
-            leaves.push(leaf);
-        }
-    }
-    Ok(leaves)
-}
+pub use crate::styles::{Selection, StyleLeaf};
 
 pub fn cv_leaves(workspace: &Workspace) -> Result<Vec<StyleLeaf>> {
-    style_leaves(workspace, "cv")
+    crate::styles::leaves(workspace, "cv")
 }
 
 pub fn cl_leaves(workspace: &Workspace) -> Result<Vec<StyleLeaf>> {
-    style_leaves(workspace, "cl")
+    crate::styles::leaves(workspace, "cl")
 }
 
-/// Family default substyle when a record selects nothing.
 pub fn default_cv_substyle(workspace: &Workspace) -> Result<String> {
-    Ok(style_registry(workspace, "cv")?.default)
+    Ok(crate::styles::selection(workspace, "cv", None, None)?.substyle)
 }
 
-/// Family default substyle when a record selects nothing.
 pub fn default_cl_substyle(workspace: &Workspace) -> Result<String> {
-    Ok(style_registry(workspace, "cl")?.default)
+    Ok(crate::styles::selection(workspace, "cl", None, None)?.substyle)
 }
 
-/// Read one document family's measurement contract from the style tree
-/// (`<root>/contract.toml`) instead of the manifest.
+/// The default style's contract, used by profile commands without a selection.
 pub fn document_contract(workspace: &Workspace, document: &str) -> Result<Value> {
-    let manifest_key = if document == "cv" {
-        "cv"
-    } else {
-        "cover_letter"
-    };
-    let manifest = workspace.read_json("ccvl.json")?;
-    let root = manifest
-        .pointer(&format!("/documents/{manifest_key}/root"))
-        .and_then(Value::as_str)
-        .with_context(|| format!("ccvl.json documents.{manifest_key}.root is missing"))?;
-    workspace.read_toml_value(format!("{root}/contract.toml"))
+    crate::styles::contract(
+        workspace,
+        document,
+        &crate::styles::default_style(workspace, document)?,
+    )
 }
 
-/// Resolve the CV substyle for an application record.
-///
-/// `options.cv_substyle` names one entry of `cvl/cv/style.toml`.
-/// An absent or empty selection uses the family default. Unknown names fail.
 pub fn resolve_cv_substyle(
     workspace: &Workspace,
     application: &Value,
     location: &str,
 ) -> Result<String> {
-    resolve_substyle(workspace, application, location, "cv")
+    Ok(crate::styles::record_selection(workspace, "cv", application, location)?.substyle)
 }
 
-/// Resolve the cover-letter substyle for an application record. See
-/// [`resolve_cv_substyle`]; the default is `left-rule`.
 pub fn resolve_cl_substyle(
     workspace: &Workspace,
     application: &Value,
     location: &str,
 ) -> Result<String> {
-    resolve_substyle(workspace, application, location, "cl")
-}
-
-fn resolve_substyle(
-    workspace: &Workspace,
-    application: &Value,
-    location: &str,
-    document: &str,
-) -> Result<String> {
-    let registry = style_registry(workspace, document)?;
-    let key = if document == "cv" {
-        "cv_substyle"
-    } else {
-        "cl_substyle"
-    };
-    if let Some(value) = application.pointer(&format!("/options/{key}")) {
-        ensure!(
-            value.is_string(),
-            "{location}.options.{key} must be a substyle name"
-        );
-    }
-    let raw = application
-        .pointer(&format!("/options/{key}"))
-        .and_then(Value::as_str)
-        .unwrap_or("");
-    if !raw.is_empty() {
-        ensure!(
-            registry.substyles.iter().any(|name| name == raw),
-            "{location}: unknown {document} substyle {raw:?}; expected one of {} (set options.{key} in {location})",
-            registry.substyles.join(", ")
-        );
-        return Ok(raw.to_owned());
-    }
-    Ok(registry.default)
+    Ok(crate::styles::record_selection(workspace, "cl", application, location)?.substyle)
 }
 
 pub fn validate_all(workspace: &Workspace) -> Result<()> {
-    let mut candidates = vec![workspace.path(".agent/scaffolds/opportunity/application.toml")];
-    // Every style leaf carries a full application record as its showcase
-    // content; discovery (not a hardcoded locale list) keeps new leaves
-    // covered.
+    validate_record(
+        workspace,
+        &serde_json::to_value(crate::opportunity::blank_record(workspace)?)?,
+        ".agent/scaffolds/opportunity/application.toml",
+        false,
+    )?;
     for leaf in cv_leaves(workspace)?
         .into_iter()
         .chain(cl_leaves(workspace)?)
     {
-        candidates.push(leaf.content());
+        let record = read_toml_value(&leaf.content())?;
+        let relative = workspace.relative(&leaf.content())?.display().to_string();
+        validate_record(workspace, &record, &relative, true)?;
+        ensure!(
+            record.pointer("/options/language").and_then(Value::as_str)
+                == Some(leaf.locale.as_str()),
+            "{relative}: expected {} language",
+            leaf.locale
+        );
+        let selected =
+            crate::styles::record_selection(workspace, leaf.document, &record, &relative)?;
+        ensure!(
+            selected == leaf.selection(),
+            "{relative}: style/substyle selection does not match this leaf"
+        );
     }
     let opportunities = workspace.path("opportunities");
     if opportunities.is_dir() {
-        for organisation in std::fs::read_dir(&opportunities)? {
+        for organisation in std::fs::read_dir(opportunities)? {
             let organisation = organisation?;
             if !organisation.file_type()?.is_dir() {
                 continue;
             }
             for position in std::fs::read_dir(organisation.path())? {
-                let position = position?;
-                let record = position.path().join("application.toml");
+                let record = position?.path().join("application.toml");
                 if record.is_file() {
-                    candidates.push(record);
+                    let relative = workspace.relative(&record)?.display().to_string();
+                    validate_record(workspace, &read_toml_value(&record)?, &relative, true)?;
                 }
             }
         }
     }
-    candidates.sort();
-    for path in candidates {
-        let application = read_toml_value(&path)?;
-        let template = path == workspace.path(".agent/scaffolds/opportunity/application.toml");
-        validate_record(
-            workspace,
-            &application,
-            &workspace.relative(&path)?.display().to_string(),
-            !template,
-        )?;
-        let relative = workspace.relative(&path)?;
-        if let Some(leaf_locale) = leaf_locale(&relative) {
-            ensure!(
-                application
-                    .pointer("/options/language")
-                    .and_then(Value::as_str)
-                    == Some(leaf_locale),
-                "{}: expected {leaf_locale} language",
-                relative.display()
-            );
-            // The style-major tree selects per document: the retired single
-            // `options.style` key must not linger in showcase leaves, and a
-            // leaf's own selection must name its own substyle (or stay empty
-            // for the default).
-            ensure!(
-                application.pointer("/options/style").is_none(),
-                "{}: retired options.style must be replaced by options.cv_substyle/options.cl_substyle",
-                relative.display()
-            );
-            let (key, expected) = leaf_substyle(&relative).with_context(|| {
-                format!(
-                    "{}: cannot locate the enclosing substyle",
-                    relative.display()
-                )
-            })?;
-            if let Some(selected) = application
-                .pointer(&format!("/options/{key}"))
-                .and_then(Value::as_str)
-            {
-                ensure!(
-                    selected.is_empty() || selected == expected,
-                    "{}: options.{key} {selected:?} does not match this {expected} leaf",
-                    relative.display()
-                );
-            }
-        }
-    }
     Ok(())
-}
-
-/// Record language expected by a showcase leaf path
-/// (`cvl/cv|cl/<substyle>/<lang>/ch/content.toml`), if any.
-fn leaf_locale(relative: &std::path::Path) -> Option<&'static str> {
-    if !is_leaf_content(relative) {
-        return None;
-    }
-    let mut parts = relative.components().rev();
-    parts.next()?;
-    parts.next()?;
-    match parts.next()?.as_os_str().to_str()? {
-        "de" => Some("de-ch"),
-        "en" => Some("en-ch"),
-        _ => None,
-    }
-}
-
-/// Substyle selection key and enclosing substyle name for a showcase leaf
-/// path, if the path is a leaf content record.
-fn leaf_substyle(relative: &std::path::Path) -> Option<(&'static str, String)> {
-    if !is_leaf_content(relative) {
-        return None;
-    }
-    let mut parts = relative.components().rev();
-    parts.next()?;
-    parts.next()?;
-    parts.next()?;
-    let substyle = parts.next()?.as_os_str().to_str()?.to_owned();
-    let document = parts.next()?.as_os_str().to_str()?;
-    match document {
-        "cv" => Some(("cv_substyle", substyle)),
-        "cl" => Some(("cl_substyle", substyle)),
-        _ => None,
-    }
-}
-
-fn is_leaf_content(relative: &std::path::Path) -> bool {
-    let mut parts = relative.components();
-    let root = parts.next().and_then(|part| part.as_os_str().to_str());
-    let document = parts.next().and_then(|part| part.as_os_str().to_str());
-    matches!(root, Some("cvl")) && matches!(document, Some("cv" | "cl"))
 }
 
 pub fn validate_profiles(workspace: &Workspace) -> Result<()> {
@@ -436,11 +173,13 @@ fn validate_profile(profile: &Value, location: &str) -> Result<()> {
         string_at(profile, &format!("/{field}"), location)?;
     }
     let localized = object_at(profile, "/localized")?;
-    ensure_no_unknown(localized, &["de-ch", "en-ch"], location)?;
-    for locale in ["de-ch", "en-ch"] {
-        let table = localized
-            .get(locale)
-            .and_then(Value::as_object)
+    for (locale, value) in localized {
+        ensure!(
+            crate::styles::normalize_locale(locale)? == *locale,
+            "{location}.localized.{locale}: expected canonical language-country"
+        );
+        let table = value
+            .as_object()
             .with_context(|| format!("{location}.localized.{locale} is missing"))?;
         ensure_no_unknown(table, &["nationality_and_permit", "availability"], location)?;
         for field in ["nationality_and_permit", "availability"] {
@@ -495,8 +234,11 @@ pub fn validate_record(
             "pages",
             "generate_cl",
             "application_date",
+            "cv_style",
+            "cl_style",
             "cv_substyle",
             "cl_substyle",
+            "cl_pages",
         ],
         location,
     )?;
@@ -504,18 +246,24 @@ pub fn validate_record(
         .get("language")
         .and_then(Value::as_str)
         .context("options.language is missing")?;
-    ensure!(
-        ["", "de-ch", "en-ch"].contains(&language),
-        "{location}.options.language: expected de-ch or en-ch"
-    );
+    if !language.is_empty() {
+        ensure!(
+            crate::styles::normalize_locale(language)? == language,
+            "{location}.options.language: expected canonical language-country"
+        );
+    }
     let pages = options
         .get("pages")
         .and_then(Value::as_u64)
         .context("options.pages is missing")?;
+    let cv_selection = crate::styles::record_selection(workspace, "cv", application, location)?;
+    let cv_style = crate::styles::definition(workspace, "cv", &cv_selection.style)?;
     ensure!(
-        [2, 3, 4].contains(&pages),
-        "{location}.options.pages: expected 2, 3, or 4"
+        cv_style.pages.contains(&usize::try_from(pages)?),
+        "{location}.options.pages: unsupported by CV style {}",
+        cv_selection.style
     );
+    let cv_contract = crate::styles::contract(workspace, "cv", &cv_selection.style)?;
     let generate_cl = options
         .get("generate_cl")
         .and_then(Value::as_bool)
@@ -524,8 +272,20 @@ pub fn validate_record(
         .get("application_date")
         .and_then(Value::as_str)
         .context("options.application_date is missing")?;
-    resolve_cv_substyle(workspace, application, location)?;
-    resolve_cl_substyle(workspace, application, location)?;
+    let letter_selection = crate::styles::record_selection(workspace, "cl", application, location)?;
+    let letter_style = crate::styles::definition(workspace, "cl", &letter_selection.style)?;
+    if let Some(pages) = options.get("cl_pages") {
+        let pages = usize::try_from(
+            pages
+                .as_u64()
+                .context("options.cl_pages must be a positive page count")?,
+        )?;
+        ensure!(
+            letter_style.pages.contains(&pages),
+            "{location}.options.cl_pages: unsupported by letter style {}",
+            letter_selection.style
+        );
+    }
 
     let job = object_at(application, "/job")?;
     let mut allowed = JOB_FIELDS.to_vec();
@@ -561,20 +321,22 @@ pub fn validate_record(
     }
 
     let cv = object_at(application, "/cv")?;
-    ensure_no_unknown(cv, &["summary", "allow_thin"], location)?;
-    let summary = cv
-        .get("summary")
-        .and_then(Value::as_str)
-        .context("cv.summary is missing")?;
-    ensure!(
-        !require_text || !summary.trim().is_empty(),
-        "{location}.cv.summary: a rendered summary cannot be empty"
-    );
-    if let Some(allow_thin) = cv.get("allow_thin") {
+    validate_content_fields(cv, &cv_contract, location)?;
+    if cv_contract.get("summary_lines").is_some() {
+        let summary = cv
+            .get("summary")
+            .and_then(Value::as_str)
+            .context("cv.summary is missing")?;
         ensure!(
-            allow_thin.is_boolean(),
-            "{location}.cv.allow_thin must be a boolean"
+            !require_text || !summary.trim().is_empty(),
+            "{location}.cv.summary: a rendered summary cannot be empty"
         );
+        if let Some(allow_thin) = cv.get("allow_thin") {
+            ensure!(
+                allow_thin.is_boolean(),
+                "{location}.cv.allow_thin must be a boolean"
+            );
+        }
     }
 
     if !generate_cl {
@@ -585,10 +347,12 @@ pub fn validate_record(
         return Ok(());
     }
     let cl = object_at(application, "/cl")?;
-    ensure_no_unknown(cl, &["paragraphs", "highlights"], location)?;
-
-    let cl_contract = document_contract(workspace, "cl")?;
-    let paragraph_contracts = array_at(&cl_contract, "/paragraphs")?;
+    let letter_contract = crate::styles::contract(workspace, "cl", &letter_selection.style)?;
+    validate_content_fields(cl, &letter_contract, location)?;
+    if letter_contract.get("paragraphs").is_none() {
+        return Ok(());
+    }
+    let paragraph_contracts = array_at(&letter_contract, "/paragraphs")?;
     let paragraphs = cl
         .get("paragraphs")
         .and_then(Value::as_array)
@@ -636,22 +400,33 @@ pub fn validate_record(
         }
     }
     let total = counts.iter().sum::<usize>();
-    validate_count(
-        total,
-        cl_contract
-            .pointer("/body_lines")
-            .context("missing body line contract")?,
-        &format!("{location}.cl.paragraphs"),
-        "body lines",
-    )?;
-    for region in array_at(&cl_contract, "/paragraph_regions")? {
+    if let Some(bounds) = letter_contract.get("body_lines") {
+        validate_count(
+            total,
+            bounds,
+            &format!("{location}.cl.paragraphs"),
+            "body lines",
+        )?;
+    }
+    for region in letter_contract
+        .get("paragraph_regions")
+        .map(|_| array_at(&letter_contract, "/paragraph_regions"))
+        .transpose()?
+        .into_iter()
+        .flatten()
+    {
         let numbers = array_at(region, "/paragraphs")?
             .iter()
             .map(|value| value.as_u64().context("invalid paragraph number"))
             .collect::<Result<Vec<_>>>()?;
-        let start =
-            usize::try_from(numbers.first().copied().context("empty paragraph region")?)? - 1;
+        let start = usize::try_from(numbers.first().copied().context("empty paragraph region")?)?
+            .checked_sub(1)
+            .context("paragraph numbers start at 1")?;
         let end = usize::try_from(numbers.last().copied().context("empty paragraph region")?)?;
+        ensure!(
+            start < end && end <= counts.len(),
+            "paragraph region is out of bounds"
+        );
         validate_count(
             counts[start..end].iter().sum(),
             region,
@@ -660,11 +435,14 @@ pub fn validate_record(
         )?;
     }
 
+    if letter_contract.get("highlights").is_none() {
+        return Ok(());
+    }
     let highlights = cl
         .get("highlights")
         .and_then(Value::as_array)
         .context("cl.highlights is not an array")?;
-    let expected = usize::try_from(u64_at(&cl_contract, "/highlights/count")?)?;
+    let expected = usize::try_from(u64_at(&letter_contract, "/highlights/count")?)?;
     ensure!(
         highlights.len() == expected,
         "{location}.cl.highlights: expected {expected} items, found {}",
@@ -679,6 +457,21 @@ pub fn validate_record(
             "{location}.cl.highlights[{}]: a rendered highlight cannot be empty",
             index + 1
         );
+    }
+    Ok(())
+}
+
+fn validate_content_fields(
+    object: &Map<String, Value>,
+    contract: &Value,
+    location: &str,
+) -> Result<()> {
+    if let Some(fields) = contract.get("content_fields").and_then(Value::as_array) {
+        let fields = fields
+            .iter()
+            .map(|value| value.as_str().context("content_fields must contain names"))
+            .collect::<Result<Vec<_>>>()?;
+        ensure_no_unknown(object, &fields, location)?;
     }
     Ok(())
 }
@@ -736,311 +529,4 @@ fn string_at<'a>(value: &'a Value, pointer: &str, location: &str) -> Result<&'a 
 }
 
 #[cfg(test)]
-mod tests {
-    use serde_json::json;
-
-    use super::*;
-
-    fn workspace() -> Workspace {
-        Workspace::at(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap()
-    }
-
-    fn lines(count: usize) -> Vec<Value> {
-        (0..count).map(|_| json!("evidence")).collect()
-    }
-
-    fn application(paragraph_lengths: &[usize]) -> Value {
-        json!({
-            "schema_version": 4,
-            "revision": 0,
-            "options": {
-                "language": "de-ch",
-                "pages": 4,
-                "generate_cl": true,
-                "application_date": "September 2026",
-            },
-            "job": {
-                "id": "fixture",
-                "title": "Fixture",
-                "organization": "Fixture",
-                "location": "Fixture",
-                "source": "Fixture",
-                "url": "Fixture",
-                "description": "Fixture",
-                "connections": "",
-                "company_context": "",
-                "notes": "",
-                "cl_recipient": {
-                    "name": "",
-                    "title": "",
-                    "company": "",
-                    "address_line_1": "",
-                    "address_line_2": "",
-                },
-            },
-            "cv": {"summary": "Flowing evidence paragraph."},
-            "cl": {
-                "paragraphs": paragraph_lengths.iter().map(|length| lines(*length)).collect::<Vec<_>>(),
-                "highlights": lines(5),
-            },
-        })
-    }
-
-    #[test]
-    fn cv_only_application_is_valid_without_hidden_cover_letter_content() {
-        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-        draft.as_object_mut().unwrap().remove("cl");
-        draft["options"]["generate_cl"] = json!(false);
-        validate_record(&workspace(), &draft, "fixture", true).unwrap();
-
-        draft["cl"] = json!({"paragraphs": [], "highlights": []});
-        let error = validate_record(&workspace(), &draft, "fixture", true)
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("disabled cover letter"));
-    }
-
-    #[test]
-    fn strict_cover_letter_line_budgets_are_enforced() {
-        // The strict 3|5|5|5|5|3 framework admits exactly one distribution:
-        // the valid letter passes while every off-by-one in any paragraph
-        // fails, which also implies the pair (10), central (20), and body
-        // (26) totals without a separate region test.
-        let workspace = workspace();
-        validate_record(
-            &workspace,
-            &application(&[3, 5, 5, 5, 5, 3]),
-            "fixture",
-            true,
-        )
-        .unwrap();
-        for (lengths, expected) in [
-            ([2, 5, 5, 5, 5, 3], "paragraphs[1]: expected 3–3 lines"),
-            ([4, 5, 5, 5, 5, 3], "paragraphs[1]: expected 3–3 lines"),
-            ([3, 4, 5, 5, 5, 3], "paragraphs[2]: expected 5–5 lines"),
-            ([3, 6, 5, 5, 5, 3], "paragraphs[2]: expected 5–5 lines"),
-            ([3, 5, 4, 5, 5, 3], "paragraphs[3]: expected 5–5 lines"),
-            ([3, 5, 6, 5, 5, 3], "paragraphs[3]: expected 5–5 lines"),
-            ([3, 5, 5, 4, 5, 3], "paragraphs[4]: expected 5–5 lines"),
-            ([3, 5, 5, 6, 5, 3], "paragraphs[4]: expected 5–5 lines"),
-            ([3, 5, 5, 5, 4, 3], "paragraphs[5]: expected 5–5 lines"),
-            ([3, 5, 5, 5, 6, 3], "paragraphs[5]: expected 5–5 lines"),
-            ([3, 5, 5, 5, 5, 2], "paragraphs[6]: expected 3–3 lines"),
-            ([3, 5, 5, 5, 5, 4], "paragraphs[6]: expected 3–3 lines"),
-        ] {
-            let error = validate_record(&workspace, &application(&lengths), "fixture", true)
-                .unwrap_err()
-                .to_string();
-            assert!(error.contains(expected), "unexpected error: {error}");
-        }
-    }
-
-    #[test]
-    fn german_flowing_summary_with_special_characters_validates() {
-        let workspace = workspace();
-        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-        draft["cv"]["summary"] = json!(
-            "Mittelstandsmandate verbinden Finanzen, Betrieb und Technologie. \
-             Ich vereine Portfolioanalyse, Corporate Finance und Transformation mit \
-             praktischer Cloud-/KI-Umsetzung. Damit unterstütze ich Leverage Experts \
-             pragmatisch in Performance-, Portfolio- und Transformationsmandaten. \
-             GenAI bei CENVION | RAG-Suche, CHF 10 Mio., 20+ Jahre, für & mit."
-        );
-        validate_record(&workspace, &draft, "fixture", true).unwrap();
-        draft["options"]["generate_cl"] = json!(false);
-        draft.as_object_mut().unwrap().remove("cl");
-        validate_record(&workspace, &draft, "fixture", true).unwrap();
-    }
-
-    #[test]
-    fn unknown_fields_are_rejected() {
-        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-        draft["job"]["smuggled"] = json!("nope");
-        let error = validate_record(&workspace(), &draft, "fixture", true)
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("unknown fields"));
-    }
-
-    #[test]
-    fn empty_rendered_text_is_rejected() {
-        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-        draft["cv"]["summary"] = json!("  ");
-        let error = validate_record(&workspace(), &draft, "fixture", true)
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("cannot be empty"));
-        draft["cv"]["summary"] = json!("Flowing evidence paragraph.");
-        draft["cl"]["highlights"][0] = json!("  ");
-        let error = validate_record(&workspace(), &draft, "fixture", true)
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("cannot be empty"));
-    }
-
-    #[test]
-    fn missing_recipient_name_warns_without_failing_validation() {
-        // Empty/whitespace names stay valid (showcase target-neutral letters)
-        // but produce a visible, non-blocking advisory.
-        let draft = application(&[3, 5, 5, 5, 5, 3]);
-        validate_record(&workspace(), &draft, "fixture", true).unwrap();
-        let warning = recipient_salutation_warning(
-            "fixture",
-            draft["job"]["cl_recipient"]["name"].as_str().unwrap(),
-        )
-        .expect("empty showcase recipient must warn");
-        assert!(warning.contains("job.cl_recipient.name is empty"));
-        assert!(warning.contains("generic salutation"));
-        assert!(recipient_salutation_warning("fixture", "Dr. Jane Doe").is_none());
-        assert!(recipient_salutation_warning("fixture", "   ").is_some());
-    }
-
-    #[test]
-    fn substyles_default_to_standard_and_left_rule() {
-        // The fixture carries no selection keys, like records written before
-        // per-document selection existed: validation accepts it and
-        // resolution yields the family defaults.
-        let workspace = workspace();
-        let draft = application(&[3, 5, 5, 5, 5, 3]);
-        validate_record(&workspace, &draft, "fixture", true).unwrap();
-        assert_eq!(
-            resolve_cv_substyle(&workspace, &draft, "fixture").unwrap(),
-            "standard"
-        );
-        assert_eq!(
-            resolve_cl_substyle(&workspace, &draft, "fixture").unwrap(),
-            "left-rule"
-        );
-
-        let mut empty = draft.clone();
-        empty["options"]["cv_substyle"] = json!("");
-        empty["options"]["cl_substyle"] = json!("");
-        validate_record(&workspace, &empty, "fixture", true).unwrap();
-        assert_eq!(
-            resolve_cv_substyle(&workspace, &empty, "fixture").unwrap(),
-            "standard"
-        );
-        assert_eq!(
-            resolve_cl_substyle(&workspace, &empty, "fixture").unwrap(),
-            "left-rule"
-        );
-
-        let mut selected = draft.clone();
-        selected["options"]["cv_substyle"] = json!("compact");
-        selected["options"]["cl_substyle"] = json!("frame");
-        validate_record(&workspace, &selected, "fixture", true).unwrap();
-        assert_eq!(
-            resolve_cv_substyle(&workspace, &selected, "fixture").unwrap(),
-            "compact"
-        );
-        assert_eq!(
-            resolve_cl_substyle(&workspace, &selected, "fixture").unwrap(),
-            "frame"
-        );
-    }
-
-    #[test]
-    fn retired_style_selection_is_rejected() {
-        let workspace = workspace();
-        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-        draft["options"]["style"] = json!("harvard");
-        let error = validate_record(&workspace, &draft, "fixture", true)
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("style"), "unexpected error: {error}");
-    }
-
-    #[test]
-    fn unknown_substyle_fails_with_available_list() {
-        let workspace = workspace();
-        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-        draft["options"]["cv_substyle"] = json!("nope");
-        let error = validate_record(&workspace, &draft, "fixture", true)
-            .unwrap_err()
-            .to_string();
-        assert!(
-            error.contains("unknown cv substyle"),
-            "unexpected error: {error}"
-        );
-        assert!(error.contains("compact"), "unexpected error: {error}");
-        let error = resolve_cv_substyle(&workspace, &draft, "fixture")
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("standard"), "unexpected error: {error}");
-
-        draft["options"]
-            .as_object_mut()
-            .unwrap()
-            .remove("cv_substyle");
-        draft["options"]["cl_substyle"] = json!("nope");
-        let error = resolve_cl_substyle(&workspace, &draft, "fixture")
-            .unwrap_err()
-            .to_string();
-        assert!(
-            error.contains("unknown cl substyle"),
-            "unexpected error: {error}"
-        );
-        assert!(error.contains("frame"), "unexpected error: {error}");
-    }
-
-    #[test]
-    fn style_leaves_cover_every_substyle_and_locale() {
-        let workspace = workspace();
-        let cv = cv_leaves(&workspace).unwrap();
-        assert_eq!(cv.len(), 4);
-        for (substyle, locale) in [
-            ("standard", "de-ch"),
-            ("standard", "en-ch"),
-            ("compact", "de-ch"),
-            ("compact", "en-ch"),
-        ] {
-            let leaf = cv
-                .iter()
-                .find(|leaf| leaf.substyle == substyle && leaf.locale == locale)
-                .unwrap_or_else(|| panic!("missing CV leaf {substyle} {locale}"));
-            assert!(leaf.content().is_file());
-            assert!(leaf.strings().is_file());
-            assert!(leaf.adapter().is_file());
-            assert!(leaf.substyle_file().is_file());
-        }
-        let cl = cl_leaves(&workspace).unwrap();
-        assert_eq!(cl.len(), 4);
-        for (substyle, locale) in [
-            ("left-rule", "de-ch"),
-            ("left-rule", "en-ch"),
-            ("frame", "de-ch"),
-            ("frame", "en-ch"),
-        ] {
-            assert!(
-                cl.iter()
-                    .any(|leaf| leaf.substyle == substyle && leaf.locale == locale),
-                "missing cover-letter leaf {substyle} {locale}"
-            );
-        }
-    }
-
-    #[test]
-    fn non_string_substyle_is_rejected() {
-        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-        draft["options"]["cv_substyle"] = json!(3);
-        let error = resolve_cv_substyle(&workspace(), &draft, "fixture")
-            .unwrap_err()
-            .to_string();
-        assert!(
-            error.contains("options.cv_substyle must be a substyle name"),
-            "unexpected error: {error}"
-        );
-        draft["options"]
-            .as_object_mut()
-            .unwrap()
-            .remove("cv_substyle");
-        draft["options"]["cl_substyle"] = json!(3);
-        let error = resolve_cl_substyle(&workspace(), &draft, "fixture")
-            .unwrap_err()
-            .to_string();
-        assert!(
-            error.contains("options.cl_substyle must be a substyle name"),
-            "unexpected error: {error}"
-        );
-    }
-}
+mod tests;

@@ -8,6 +8,11 @@ description: Interview or import a candidate into an evidence-backed profile and
 Collect enough truthful material to fill the CV well. Do not treat a short
 first answer or a short existing CV as the complete life record.
 
+Resolve the configured CV style before allocating presentation slots. The page
+counts, source paths and station-marker protocol below describe Harvard.
+Another style defines its own presentation contract; evidence, truthful scope,
+inspectable notes and unique fact ownership apply to every style.
+
 ## Protect the user before writing
 
 Inspect the repository's publication destination before storing personal data.
@@ -173,7 +178,7 @@ Only verified facts may enter the rendered CV.
 
 Once allocation is ready, populate `cvl/profile.toml` with the approved public
 contact fields using `.agent/scaffolds/interview/profile.toml` as its shape.
-Then write the shared entries in `cvl/cv/src/entries-{de,en}.typ` and the
+Then write the shared entries in `cvl/cv/harvard/src/entries-{de,en}.typ` and the
 locale content records below each document substyle in plain
 recruiter-readable language while retaining recognised specialist terms.
 Place `// ccvl-station: <station-id>` immediately before the `#cv-h[...]` of

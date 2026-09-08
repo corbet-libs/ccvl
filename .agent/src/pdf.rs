@@ -31,7 +31,7 @@ pub fn verify(
     path: &Path,
     expected_pages: usize,
     contacts: &[String],
-    require_image: bool,
+    policy: &serde_json::Value,
 ) -> Result<VerifiedPdf> {
     let document =
         Document::load(path).with_context(|| format!("cannot parse {}", path.display()))?;
@@ -65,7 +65,11 @@ pub fn verify(
         );
     }
 
-    let font_pattern = Regex::new(r"^[A-Z]{6}\+Archivo-(Bold|Italic|Medium|Regular)$")?;
+    let font_pattern = policy
+        .get("font_pattern")
+        .and_then(serde_json::Value::as_str)
+        .map(Regex::new)
+        .transpose()?;
     let mut fonts_seen = 0;
     for (page_number, page_id) in &pages {
         let page = document.get_dictionary(*page_id)?;
@@ -85,16 +89,29 @@ pub fn verify(
         let width = media[2].as_float()? - media[0].as_float()?;
         let height = media[3].as_float()? - media[1].as_float()?;
         ensure!(
-            (width - 595.2756).abs() <= 0.2 && (height - 841.8898).abs() <= 0.2,
-            "{} page {page_number} is not A4 ({width}×{height})",
+            width.is_finite() && height.is_finite() && width > 0.0 && height > 0.0,
+            "{} page {page_number} has invalid dimensions",
             path.display()
         );
+        if let Some(size) = policy.get("size_pt").and_then(serde_json::Value::as_array) {
+            ensure!(size.len() == 2, "PDF size_pt must contain width and height");
+            let expected_width = size[0].as_f64().context("invalid PDF width")?;
+            let expected_height = size[1].as_f64().context("invalid PDF height")?;
+            ensure!(
+                (f64::from(width) - expected_width).abs() <= 0.2
+                    && (f64::from(height) - expected_height).abs() <= 0.2,
+                "{} page {page_number} does not match its style dimensions ({width}×{height})",
+                path.display()
+            );
+        }
         for font in document.get_page_fonts(*page_id)?.values() {
             fonts_seen += 1;
             let base = font.get(b"BaseFont")?.as_name()?;
             let base = String::from_utf8_lossy(base);
             ensure!(
-                font_pattern.is_match(&base),
+                font_pattern
+                    .as_ref()
+                    .is_none_or(|pattern| pattern.is_match(&base)),
                 "{} contains a fallback or unsubsetted font: {base}",
                 path.display()
             );
@@ -118,7 +135,11 @@ pub fn verify(
         "{} contains no embedded font program",
         path.display()
     );
-    if require_image {
+    if policy
+        .get("require_image")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false)
+    {
         let has_image = document.objects.values().any(|object| {
             object_dictionary(object)
                 .and_then(|dictionary| dictionary.get(b"Subtype").ok())
@@ -136,7 +157,13 @@ pub fn verify(
         .extract_text(&page_numbers)
         .context("PDF text extraction failed")?;
     ensure!(
-        text.chars().filter(|item| !item.is_whitespace()).count() >= 100,
+        text.chars().filter(|item| !item.is_whitespace()).count()
+            >= usize::try_from(
+                policy
+                    .get("minimum_text_chars")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(1)
+            )?,
         "{} has no usable text layer",
         path.display()
     );
@@ -279,58 +306,4 @@ fn inherited<'a>(document: &'a Document, mut id: ObjectId, key: &[u8]) -> Option
 }
 
 #[cfg(test)]
-mod tests {
-    use std::fs;
-
-    use tempfile::tempdir;
-
-    use super::*;
-
-    #[test]
-    fn missing_pdf_is_rejected() {
-        assert!(verify(Path::new("definitely-missing.pdf"), 1, &[], false).is_err());
-    }
-
-    #[test]
-    fn rendition_identifier_is_not_document_content() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let original = root.join("cvl/cv/standard/de/ch/pdf/cv-2.pdf");
-        let original_bytes = fs::read(&original).unwrap();
-        let trailer_id = BytesRegex::new(r"(/ID\[\([^)]*\)\()[^)]*(\)\]\s*>>)").unwrap();
-        let changed = INSTANCE_ID
-            .replace_all(&original_bytes, b"${1}AAAAAAAAAAAAAAAAAAAAAA==${2}")
-            .into_owned();
-        let changed = trailer_id
-            .replace_all(&changed, b"${1}AAAAAAAAAAAAAAAAAAAAAA==${2}")
-            .into_owned();
-        assert_ne!(original_bytes, changed);
-
-        let directory = tempdir().unwrap();
-        let equivalent = directory.path().join("equivalent.pdf");
-        fs::write(&equivalent, changed).unwrap();
-        assert_eq!(
-            semantic_signature(&original).unwrap(),
-            semantic_signature(&equivalent).unwrap()
-        );
-    }
-
-    #[test]
-    fn metadata_change_is_detected() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let original = root.join("cvl/cv/standard/de/ch/pdf/cv-2.pdf");
-        let original_bytes = fs::read(&original).unwrap();
-        let metadata = BytesRegex::new("<dc:language>").unwrap();
-        let changed = metadata
-            .replacen(&original_bytes, 1, b"<dc:languagf>")
-            .into_owned();
-        assert_ne!(original_bytes, changed);
-
-        let directory = tempdir().unwrap();
-        let modified = directory.path().join("modified.pdf");
-        fs::write(&modified, changed).unwrap();
-        assert_ne!(
-            semantic_signature(&original).unwrap(),
-            semantic_signature(&modified).unwrap()
-        );
-    }
-}
+mod tests;

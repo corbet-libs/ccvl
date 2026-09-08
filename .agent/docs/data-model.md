@@ -72,12 +72,12 @@ The record owns:
 - posting source and role context;
 - attributable organisation research and fit notes;
 - language and application date;
-- selected CV page count and exactly five tailored Summary lines;
-- one CV substyle (`standard`|`compact`) and, when enabled, one cover-letter
-  substyle (`left-rule`|`frame`), defaulting to `standard` / `left-rule`
-  through `options.cv_substyle` and `options.cl_substyle`;
-- whether a cover letter is required;
-- when enabled, six measured paragraphs and five measured highlights.
+- whether a cover letter is required (`options.generate_cl`);
+- selected CV `pages` and optional letter `cl_pages`, within each style's presets;
+- `options.cv_style` / `options.cl_style` and their `cv_substyle` / `cl_substyle`,
+  with explicit workspace and style defaults;
+- style-owned `[cv]` / `[cl]` content fields: Harvard uses a five-line summary
+  and, when enabled, six measured letter paragraphs and five highlights.
 
 Posting archives and correspondence may sit beside the record but never
 duplicate its tailored fields. Interview preparation, submission records, and

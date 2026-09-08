@@ -24,7 +24,7 @@ runs.
 
 Run `bash ./ccvl measure` or `.\ccvl.cmd measure` after changing CV or
 cover-letter text. Add `--all` to print every actual, target, and allowed fill
-percentage. The command measures the real Archivo glyph width inside each
+percentage. The command measures the selected font’s real glyph width inside each
 Typst container. Underfill and overflow return a non-zero exit status and an
 instruction to rewrite and repeat the measurement.
 
@@ -33,9 +33,10 @@ instruction to rewrite and repeat the measurement.
 `bash ./ccvl watch-cv <locale> [pages]`, `bash ./ccvl watch-cl <locale>`,
 and `bash ./ccvl watch-opportunity <organisation-key> <position-key>`
 rebuild on every change instead of exiting. CV and cover-letter watchers accept
-`--substyle <name>`; omission selects the family's configured default.
+`--style <name>` and `--substyle <name>`; omissions use the record or configured
+defaults. Letters also accept `--pages <count>`.
 The watcher hashes the style-major
-locale templates (`cvl/cv/` and `cvl/cl/` substyle trees with their `typst/`
+locale templates (`cvl/cv/` and `cvl/cl/` style/substyle trees with their `typst/`
 pointers), the shared `.agent/typst` machinery, `cvl/profile.toml`,
 `ccvl.json`, the relevant record, and the generated opportunity
 `typst/*.typ` copies; any change re-renders the PDFs (plus the resolved

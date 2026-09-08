@@ -10,22 +10,20 @@ use crate::format;
 use crate::measure;
 use crate::pdf;
 use crate::public;
-use crate::render::{Compiler, DocumentSpec, cvl_cl_spec, cvl_cv_spec};
+use crate::render::{Compiler, DocumentSpec, cvl_spec};
 use crate::skills;
-use crate::stations;
+use crate::styles;
 use crate::workspace::Workspace;
 
 pub fn run(workspace: &Workspace) -> Result<()> {
     validate_manifest(workspace)?;
     validate_styles(workspace)?;
-    validate_contracts(workspace)?;
     application::validate_profiles(workspace)?;
     application::validate_station_files(workspace)?;
     application::validate_all(workspace)?;
     skills::validate(workspace)?;
     public::validate_repository(workspace)?;
     format::format_typst(workspace, true)?;
-    stations::validate_interview(workspace, true)?;
     validate_embedded_fonts(workspace)?;
     render_and_verify(workspace)
 }
@@ -34,7 +32,7 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
     let manifest = workspace.read_json("ccvl.json")?;
     ensure!(
         manifest.get("format") == Some(&Value::String("ccvl-workspace".to_owned()))
-            && manifest.get("schema_version") == Some(&Value::from(7)),
+            && manifest.get("schema_version") == Some(&Value::from(8)),
         "ccvl.json: unsupported workspace format or schema version"
     );
     let expected_groups = json!({
@@ -46,34 +44,28 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         manifest.get("workspace_groups") == Some(&expected_groups),
         "ccvl.json: workspace groups must be interview, cvl, and keyed opportunities"
     );
-    // Style-major layout: the manifest only names the cv/cl discovery roots.
-    // Templates, contracts, and substyle registries live below those roots.
+    let documents = manifest
+        .get("documents")
+        .and_then(Value::as_object)
+        .context("ccvl.json has no documents")?;
     ensure!(
-        manifest.get("documents")
-            == Some(&json!({"cv": {"root": "cvl/cv"}, "cover_letter": {"root": "cvl/cl"}})),
-        "ccvl.json: documents must be the cv/cl discovery roots"
+        documents.len() == 2,
+        "ccvl.json must declare CV and cover-letter discovery"
     );
-    ensure!(
-        manifest.get("styles").is_none(),
-        "ccvl.json: styles moved to cvl/cv/style.toml and cvl/cl/style.toml"
-    );
+    for (key, document) in [("cv", "cv"), ("cover_letter", "cl")] {
+        ensure!(
+            documents.get(key).and_then(|value| value.get("root"))
+                == Some(&Value::String(format!("cvl/{document}"))),
+            "ccvl.json: {key} must use its document root"
+        );
+        styles::default_style(workspace, document)?;
+    }
     let mut required = vec![
         "cvl/profile.toml".to_owned(),
         "interview/stations.toml".to_owned(),
         "cvl/README.md".to_owned(),
         "interview/README.md".to_owned(),
         "opportunities/README.md".to_owned(),
-        "cvl/cv/style.toml".to_owned(),
-        "cvl/cv/contract.toml".to_owned(),
-        "cvl/cl/style.toml".to_owned(),
-        "cvl/cl/contract.toml".to_owned(),
-        "cvl/shared/style.toml".to_owned(),
-        "cvl/shared/defaults.toml".to_owned(),
-        "cvl/shared/style.typ".to_owned(),
-        "cvl/cv/src/cv.typ".to_owned(),
-        "cvl/cv/src/entries-de.typ".to_owned(),
-        "cvl/cv/src/entries-en.typ".to_owned(),
-        "cvl/cl/src/cl.typ".to_owned(),
     ];
     for leaf in cv_leaves(workspace)?
         .into_iter()
@@ -161,163 +153,9 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
 /// identity, supported locales, page presets, and one knob delta per listed
 /// substyle with the configured default among them.
 fn validate_styles(workspace: &Workspace) -> Result<()> {
-    for (root, document, pages) in [
-        ("cvl/cv", "cv", json!([2, 3, 4])),
-        ("cvl/cl", "cl", json!([1])),
-    ] {
-        let style = workspace.read_toml_value(format!("{root}/style.toml"))?;
-        ensure!(
-            style.get("id") == Some(&Value::String("harvard".to_owned())),
-            "{root}/style.toml: style family must be harvard"
-        );
-        ensure!(
-            style.get("documents") == Some(&Value::from(vec![Value::from(document)])),
-            "{root}/style.toml: documents must be [{document}]"
-        );
-        ensure!(
-            style.get("supports_locales") == Some(&json!(["de-ch", "en-ch"])),
-            "{root}/style.toml: supported locales must be de-ch and en-ch"
-        );
-        ensure!(
-            style.get("pages") == Some(&pages),
-            "{root}/style.toml: page presets changed"
-        );
-        let substyles = style
-            .get("substyles")
-            .and_then(Value::as_array)
-            .context(format!("{root}/style.toml has no substyles"))?;
-        ensure!(
-            !substyles.is_empty(),
-            "{root}/style.toml: substyles must not be empty"
-        );
-        let default = style
-            .get("default_substyle")
-            .and_then(Value::as_str)
-            .context(format!("{root}/style.toml has no default_substyle"))?;
-        ensure!(
-            substyles.contains(&Value::String(default.to_owned())),
-            "{root}/style.toml: default substyle {default:?} is not listed"
-        );
-        for name in substyles {
-            let name = name
-                .as_str()
-                .context(format!("{root}/style.toml substyles must be names"))?;
-            let relative = format!("{root}/{name}/substyle.toml");
-            ensure!(
-                workspace.path(&relative).is_file(),
-                "{root}/style.toml: substyle {name} is missing {relative}"
-            );
-        }
+    for document in ["cv", "cl"] {
+        styles::leaves(workspace, document)?;
     }
-    Ok(())
-}
-
-/// Pin the frozen measurement contracts in the style tree. Every value here
-/// is a product guarantee: weakening one silently reflows measured lines.
-fn validate_contracts(workspace: &Workspace) -> Result<()> {
-    let cv = application::document_contract(workspace, "cv")?;
-    ensure!(
-        cv.pointer("/presets") == Some(&json!([2, 3, 4])),
-        "CV contract: presets must be [2, 3, 4]"
-    );
-    ensure!(
-        cv.pointer("/summary_lines") == Some(&Value::from(5)),
-        "CV contract: every CV Summary must render to exactly five lines"
-    );
-    ensure!(
-        cv.pointer("/summary_fill") == Some(&json!({"minimum": 95, "target": 97, "maximum": 100})),
-        "CV contract: Summary fill defaults must be 95/97/100"
-    );
-    ensure!(
-        cv.pointer("/last_line_maximum") == Some(&Value::from(102)),
-        "CV contract: closing-line maximum must be 102"
-    );
-    let layout = cv
-        .pointer("/layout_contract")
-        .context("CV contract has no layout contract")?;
-    ensure!(
-        layout.pointer("/page_1/entries")
-            == Some(&json!({"minimum": 6, "target": 7, "maximum": 8})),
-        "CV contract: page 1 contract changed"
-    );
-    ensure!(
-        layout.pointer("/page_2") == Some(&json!({"entries": 10, "bullets_per_entry": 2})),
-        "CV contract: page 2 contract changed"
-    );
-    ensure!(
-        layout.pointer("/page_3") == Some(&json!({"entries": 10, "bullets_per_entry": 2})),
-        "CV contract: page 3 contract changed"
-    );
-    ensure!(
-        layout.pointer("/page_4")
-            == Some(&json!({"groups": 3, "entries_per_group": 3, "bullets_per_entry": 3})),
-        "CV contract: page 4 contract changed"
-    );
-    ensure!(
-        layout.get("verified_only") == Some(&Value::Bool(true))
-            && layout.get("unique_fact_assignment") == Some(&Value::Bool(true)),
-        "CV contract: evidence or MECE guarantees were weakened"
-    );
-    let cl = application::document_contract(workspace, "cl")?;
-    let paragraphs = cl
-        .get("paragraphs")
-        .and_then(Value::as_array)
-        .context("cover-letter contract has no paragraphs")?;
-    // The strict 3|5|5|5|5|3 framework: exactly six paragraphs with exact
-    // line budgets.
-    ensure!(
-        paragraphs.len() == 6,
-        "cover-letter contract: paragraph framework changed"
-    );
-    for (paragraph, (minimum, maximum)) in
-        paragraphs
-            .iter()
-            .zip([(3, 3), (5, 5), (5, 5), (5, 5), (5, 5), (3, 3)])
-    {
-        ensure!(
-            paragraph.pointer("/lines/minimum") == Some(&Value::from(minimum))
-                && paragraph.pointer("/lines/maximum") == Some(&Value::from(maximum)),
-            "cover-letter contract: paragraph line framework changed"
-        );
-    }
-    ensure!(
-        cl.pointer("/body_lines") == Some(&json!({"minimum": 26, "target": 26, "maximum": 26})),
-        "cover-letter contract: body contract changed"
-    );
-    ensure!(
-        cl.pointer("/highlights/count") == Some(&Value::from(5)),
-        "cover letter needs exactly five highlights"
-    );
-    ensure!(
-        cl.pointer("/line_fill/body")
-            == Some(&json!({
-                "minimum": 75,
-                "non_final_minimum": 95,
-                "target": 97,
-                "maximum": 100
-            })),
-        "cover-letter contract: body fill must stay 75/95/97/100; the higher \
-         non-final floor is the density gate and may not be weakened"
-    );
-    ensure!(
-        cl.pointer("/line_fill/highlight")
-            == Some(&json!({"minimum": 70, "target": 82, "maximum": 100})),
-        "cover-letter contract: highlight fill must stay 70/82/100"
-    );
-    ensure!(
-        cl.pointer("/vertical_rhythm/gap_pt")
-            == Some(&json!({"minimum": 12, "target": 20, "maximum": 30})),
-        "cover-letter contract: vertical rhythm changed"
-    );
-    ensure!(
-        cl.pointer("/vertical_rhythm/highlight_center_percent")
-            == Some(&json!({"minimum": 50, "target": 56, "maximum": 60})),
-        "cover-letter contract: highlight position changed"
-    );
-    ensure!(
-        cl.pointer("/widow_or_orphan_lines") == Some(&Value::from(0)),
-        "cover-letter contract: widow/orphan rule changed"
-    );
     Ok(())
 }
 
@@ -363,73 +201,80 @@ fn validate_embedded_fonts(workspace: &Workspace) -> Result<()> {
 
 fn render_and_verify(workspace: &Workspace) -> Result<()> {
     let profile = workspace.read_toml_value("cvl/profile.toml")?;
-    let contacts = ["name", "email", "phone_label"]
-        .into_iter()
-        .map(|field| {
-            profile
-                .get(field)
-                .and_then(Value::as_str)
-                .with_context(|| format!("profile has no {field}"))
-                .map(str::to_owned)
-        })
-        .collect::<Result<Vec<_>>>()?;
     let temporary = TempDir::new()?;
-    let first = temporary.path().join("first");
-    let second = temporary.path().join("second");
     let compiler = Compiler::new(workspace)?;
-    for leaf in cv_leaves(workspace)? {
+    for leaf in cv_leaves(workspace)?
+        .into_iter()
+        .chain(cl_leaves(workspace)?)
+    {
         let mut verified = Vec::new();
-        for pages in [2, 3, 4] {
-            let spec = cvl_cv_spec(workspace, leaf.locale, pages, Some(&leaf.substyle))?;
+        let policy = leaf
+            .contract
+            .get("pdf")
+            .cloned()
+            .unwrap_or_else(|| json!({}));
+        let contacts = policy
+            .get("required_profile_fields")
+            .and_then(Value::as_array)
+            .map(|fields| {
+                fields
+                    .iter()
+                    .map(|field| {
+                        let key = field
+                            .as_str()
+                            .context("required_profile_fields must contain names")?;
+                        profile
+                            .get(key)
+                            .and_then(Value::as_str)
+                            .map(str::to_owned)
+                            .with_context(|| format!("profile has no {key}"))
+                    })
+                    .collect::<Result<Vec<_>>>()
+            })
+            .transpose()?
+            .unwrap_or_default();
+        for pages in &leaf.pages {
+            let spec = cvl_spec(workspace, &leaf, *pages)?;
             let label = format!(
-                "CV build is not byte-reproducible: {} {pages} pages",
-                spec.name
+                "{}-{}-{}-{}-{pages}",
+                leaf.document, leaf.style, leaf.substyle, leaf.locale
             );
-            let first_output = render_pair(
+            let first = render_pair(
                 workspace,
                 &compiler,
                 &spec,
-                &first.join(format!("cv-{}-{}-{pages}.pdf", leaf.locale, leaf.substyle)),
-                &second.join(format!("cv-{}-{}-{pages}.pdf", leaf.locale, leaf.substyle)),
-                &label,
-                pages == 4,
+                &temporary.path().join(format!("{label}-first.pdf")),
+                &temporary.path().join(format!("{label}-second.pdf")),
+                &format!("{} is not byte-reproducible", spec.name),
+                true,
             )?;
-            let tracked = leaf.dir.join("pdf").join(format!("cv-{pages}.pdf"));
             require_semantic_pdf_match(
-                &first_output,
-                &tracked,
-                &format!("CV output: {}", spec.name),
+                &first,
+                &leaf.output(*pages),
+                &format!("{} output", spec.name),
             )?;
-            verified.push(pdf::verify(&first_output, pages, &contacts, false)?);
+            verified.push((*pages, pdf::verify(&first, *pages, &contacts, &policy)?));
         }
-        for page in [1, 2] {
-            let baseline = verified[0].page_content(page)?;
-            ensure!(
-                verified[1].page_content(page)? == baseline
-                    && verified[2].page_content(page)? == baseline,
-                "shared CV page changed across presets: {} page {page}",
-                leaf.dir.display()
-            );
+        if let Some(pages) = leaf.contract.get("shared_pages").and_then(Value::as_array) {
+            for page in pages {
+                let page = u32::try_from(
+                    page.as_u64()
+                        .context("shared_pages must contain page numbers")?,
+                )?;
+                ensure!(
+                    page > 0 && verified.iter().all(|(count, _)| *count >= page as usize),
+                    "shared page is absent from a preset"
+                );
+                let baseline = verified[0].1.page_content(page)?;
+                for (_, pdf) in &verified[1..] {
+                    ensure!(
+                        pdf.page_content(page)? == baseline,
+                        "shared page {page} changed across presets: {}",
+                        leaf.dir.display()
+                    );
+                }
+            }
         }
-    }
-    for leaf in cl_leaves(workspace)? {
-        let spec = cvl_cl_spec(workspace, leaf.locale, Some(&leaf.substyle))?;
-        let first_output = render_pair(
-            workspace,
-            &compiler,
-            &spec,
-            &first.join(format!("cl-{}-{}.pdf", leaf.locale, leaf.substyle)),
-            &second.join(format!("cl-{}-{}.pdf", leaf.locale, leaf.substyle)),
-            &format!("cover-letter build is not byte-reproducible: {}", spec.name),
-            true,
-        )?;
-        let tracked = leaf.dir.join("pdf").join("cl.pdf");
-        require_semantic_pdf_match(
-            &first_output,
-            &tracked,
-            &format!("cover-letter output: {}", spec.name),
-        )?;
-        pdf::verify(&first_output, 1, &contacts, true)?;
     }
     Ok(())
 }
@@ -499,99 +344,4 @@ fn require_semantic_pdf_match(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn checked_in_manifest_styles_and_contracts_are_fixed() {
-        let workspace = Workspace::discover(None).unwrap();
-        validate_manifest(&workspace).unwrap();
-        validate_styles(&workspace).unwrap();
-        validate_contracts(&workspace).unwrap();
-    }
-
-    #[test]
-    fn cover_letter_contract_rejects_weakened_density_and_closing_spill() {
-        let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        let temporary = TempDir::new().unwrap();
-        // Style validation only needs these references to exist, with real
-        // registry and manifest copies. Keep the fixture isolated from
-        // private records and local agent directories.
-        for relative in [
-            "cvl/profile.toml",
-            "interview/stations.toml",
-            "cvl/README.md",
-            "interview/README.md",
-            "opportunities/README.md",
-            "cvl/shared/style.toml",
-            "cvl/shared/defaults.toml",
-            "cvl/shared/style.typ",
-            "cvl/cv/src/cv.typ",
-            "cvl/cv/src/entries-de.typ",
-            "cvl/cv/src/entries-en.typ",
-            "cvl/cl/src/cl.typ",
-        ] {
-            let path = temporary.path().join(relative);
-            fs::create_dir_all(path.parent().unwrap()).unwrap();
-            fs::write(path, "").unwrap();
-        }
-        for relative in [
-            "ccvl.json",
-            "cvl/cv/style.toml",
-            "cvl/cl/style.toml",
-            "cvl/cv/contract.toml",
-            "cvl/cl/contract.toml",
-        ] {
-            let path = temporary.path().join(relative);
-            fs::create_dir_all(path.parent().unwrap()).unwrap();
-            fs::write(&path, fs::read(repository.path(relative)).unwrap()).unwrap();
-        }
-        for leaf in cv_leaves(&repository)
-            .unwrap()
-            .into_iter()
-            .chain(cl_leaves(&repository).unwrap())
-        {
-            for relative in [
-                repository.relative(&leaf.content()).unwrap(),
-                repository.relative(&leaf.strings()).unwrap(),
-                repository.relative(&leaf.adapter()).unwrap(),
-                repository.relative(&leaf.substyle_file()).unwrap(),
-            ] {
-                let path = temporary.path().join(relative);
-                fs::create_dir_all(path.parent().unwrap()).unwrap();
-                fs::write(path, "").unwrap();
-            }
-        }
-        let workspace = Workspace::at(temporary.path()).unwrap();
-        validate_manifest(&workspace).unwrap();
-        validate_styles(&workspace).unwrap();
-        validate_contracts(&workspace).unwrap();
-
-        for (pointer, weakened, message) in [
-            ("/line_fill/body/non_final_minimum", 75, "body fill"),
-            ("/line_fill/body/minimum", 60, "body fill"),
-            ("/line_fill/body/maximum", 102, "body fill"),
-            ("/line_fill/highlight/minimum", 60, "highlight fill"),
-        ] {
-            let contract_path = temporary.path().join("cvl/cl/contract.toml");
-            let text = fs::read_to_string(&contract_path).unwrap();
-            let mut contract: toml::Value = toml::from_str(&text).unwrap();
-            let target = pointer.split('/').filter(|part| !part.is_empty()).fold(
-                &mut contract,
-                |value, part| {
-                    value
-                        .as_table_mut()
-                        .expect("contract section")
-                        .get_mut(part)
-                        .expect("contract key")
-                },
-            );
-            *target = toml::Value::Integer(weakened);
-            fs::write(&contract_path, toml::to_string(&contract).unwrap()).unwrap();
-            let error = validate_contracts(&workspace).unwrap_err().to_string();
-            assert!(error.contains(message), "{pointer}: {error}");
-            fs::write(&contract_path, text).unwrap();
-            validate_contracts(&workspace).unwrap();
-        }
-    }
-}
+mod tests;

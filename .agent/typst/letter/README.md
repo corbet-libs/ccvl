@@ -1,7 +1,7 @@
 # letter/ — correspondence library modules (vendored)
 
 Typst sources vendored from the correspondence family. Both modules are
-adopted by the locale templates through `cvl/cl/src/cl.typ`.
+adopted by the locale templates through `cvl/cl/harvard/src/cl.typ`.
 Do not edit vendored files by hand — re-copy from the pinned versions
 below.
 
@@ -18,7 +18,7 @@ each library is copied here and pinned. The Rust side needs no vendoring:
 
 Why only these two: `cgreet` (salutations) ships Rust + TypeScript only,
 with no Typst module — the matching rules are mirrored for the renderer
-in `.agent/typst/application.typ` (`salutation-honorific`,
+in `cvl/shared/harvard/application.typ` (`salutation-honorific`,
 `salutation-titles`, `salutation-surname`, `de-salutation`) and the Rust
 side re-exports `cgreet` from `ccvl::application`. `cletter` (openings,
 subjects, locale resolution) is intentionally not vendored: ccvl's

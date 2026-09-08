@@ -1,0 +1,12 @@
+# Harvard cover-letter family: the default. Registry for the cover-letter
+# substyle axis: substyles lists every cvl/cl/harvard/<name>/substyle.toml,
+# default_substyle renders when a record selects nothing.
+id = "harvard"
+api = 1
+documents = ["cl"]
+supports_locales = ["de-ch", "en-ch"]
+pages = [1]
+default_substyle = "left-rule"
+substyles = ["left-rule", "frame"]
+default_pages = 1
+defaults = "../../shared/harvard/defaults.toml"

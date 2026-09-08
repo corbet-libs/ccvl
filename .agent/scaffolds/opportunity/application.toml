@@ -1,20 +1,12 @@
-# New opportunity scaffold. Fill every field; empty text fails the gate.
-# Summary is one flowing paragraph (must typeset to exactly 5 lines).
-# Highlights are written before the paragraphs but render between 3 and 4.
+# Neutral opportunity record. The selected styles supply page defaults and blank content fields.
 
 schema_version = 4
 revision = 0
 
 [options]
 language = ""
-pages = 4
 generate_cl = true
 application_date = ""
-# Render look: one CV substyle (standard, compact — see cvl/cv/style.toml)
-# plus one cover-letter substyle (left-rule, frame — see cvl/cl/style.toml).
-# Records without these fields render the family defaults.
-cv_substyle = "standard"
-cl_substyle = "left-rule"
 
 [job]
 id = ""
@@ -37,26 +29,3 @@ title = ""
 company = ""
 address_line_1 = ""
 address_line_2 = ""
-
-[cv]
-# allow_thin keeps an explicitly wanted thin line green; thin lines fail otherwise.
-allow_thin = false
-summary = """"""
-
-[cl]
-highlights = [
-  "",
-  "",
-  "",
-  "",
-  "",
-]
-
-paragraphs = [
-  ["", "", ""],
-  ["", "", "", "", ""],
-  ["", "", "", "", ""],
-  ["", "", "", "", ""],
-  ["", "", "", "", ""],
-  ["", "", ""],
-]

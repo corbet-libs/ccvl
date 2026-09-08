@@ -186,9 +186,11 @@ mod tests {
         ] {
             assert!(
                 workspace
-                    .path(format!("cvl/{document}/{substyle}/{lang}/ch/pdf/{name}"))
+                    .path(format!(
+                        "cvl/{document}/harvard/{substyle}/{lang}/ch/pdf/{name}"
+                    ))
                     .is_file(),
-                "missing cvl/{document}/{substyle}/{lang}/ch/pdf/{name}"
+                "missing cvl/{document}/harvard/{substyle}/{lang}/ch/pdf/{name}"
             );
         }
     }

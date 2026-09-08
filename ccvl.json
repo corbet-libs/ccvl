@@ -1,6 +1,6 @@
 {
   "format": "ccvl-workspace",
-  "schema_version": 7,
+  "schema_version": 8,
   "workspace_groups": {
     "interview": {
       "root": "interview",
@@ -31,10 +31,12 @@
   ],
   "documents": {
     "cv": {
-      "root": "cvl/cv"
+      "root": "cvl/cv",
+      "default_style": "harvard"
     },
     "cover_letter": {
-      "root": "cvl/cl"
+      "root": "cvl/cl",
+      "default_style": "harvard"
     }
   }
 }

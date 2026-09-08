@@ -1,0 +1,4 @@
+# Empty Harvard CV fields for a new opportunity.
+# allow_thin keeps an explicitly wanted thin line green; thin lines fail otherwise.
+allow_thin = false
+summary = """"""

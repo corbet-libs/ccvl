@@ -14,16 +14,13 @@
     website: profile-data.website,
   )
 
-  let localized-profile = (
-    "de-ch": (
-      nationality-and-permit: profile-data.localized.at("de-ch").nationality_and_permit,
-      availability: profile-data.localized.at("de-ch").availability,
-    ),
-    "en-ch": (
-      nationality-and-permit: profile-data.localized.at("en-ch").nationality_and_permit,
-      availability: profile-data.localized.at("en-ch").availability,
-    ),
-  )
+  let localized-profile = (:)
+  for (locale, fields) in profile-data.localized {
+    localized-profile.insert(locale, (
+      nationality-and-permit: fields.nationality_and_permit,
+      availability: fields.availability,
+    ))
+  }
 
   (profile: profile, localized-profile: localized-profile)
 }

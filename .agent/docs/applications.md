@@ -6,7 +6,7 @@ Every concrete opportunity has one canonical tailored-data file:
 opportunities/<organisation-key>/<position-key>/application.toml
 ```
 
-The general CV foundation must first pass `ccvl profile-status
+For Harvard, the general CV foundation must first pass `ccvl profile-status
 --verify-sources`. Tailoring cannot repair a core page that lacks enough
 verified stations.
 
@@ -17,28 +17,29 @@ bash ./ccvl new-opportunity <organisation-key> <position-key>
 ```
 
 The command validates both keys, copies
-`.agent/scaffolds/opportunity/application.toml`, assigns a stable ID, and
+`.agent/scaffolds/opportunity/application.toml`, adds the configured styles’
+blank content scaffolds and page defaults, assigns a stable ID, and
 refuses to overwrite an existing record. When no cover letter is needed,
 pass `--no-cover-letter`: the record is written with `generate_cl = false`
 and no `[cl]` table, so there is nothing to delete afterwards (validation
 rejects a disabled letter that retains hidden content). Schema version 4
 contains:
 
-- `options`: language, CV page count, cover-letter switch, application date,
-  and one render substyle per document — CV `standard`|`compact`, cover
-  letter `left-rule`|`frame`, defaulting to `standard` / `left-rule`
-  through `options.cv_substyle` and `options.cl_substyle`;
+- `options`: language, CV `pages`, optional `cl_pages`, cover-letter switch,
+  application date, `cv_style` / `cl_style` and `cv_substyle` / `cl_substyle`.
+  Missing selections use the explicit workspace and style defaults;
 - `job`: vacancy, organisation, source, description, context, notes, and
   recipient (`job.cl_recipient.name` holds the full address form such as
   `"Frau Dr. Müller"` for the locale-correct salutation; empty falls back
   to the generic greeting with a warning, see
   `.agent/docs/cover-letter.md`);
-- `cv.summary`: one flowing paragraph that must typeset to exactly five
+- Harvard `cv.summary`: one flowing paragraph that must typeset to exactly five
   lines;
-- when the cover letter is enabled, exactly six paragraphs following
+- for an enabled Harvard letter, exactly six paragraphs following
   `.agent/docs/cover-letter.md` and exactly five one-line highlights.
 
-Line lengths are authored as plain text; fill bounds come from `cvl/cv/contract.toml` and `cvl/cl/contract.toml`.
+Other styles define their own `[cv]` / `[cl]` fields and layout contracts.
+For Harvard, line lengths are authored as plain text; fill bounds come from `cvl/cv/harvard/contract.toml` and `cvl/cl/harvard/contract.toml`.
 Typst measures actual glyph width with the bundled font. The Summary must
 render to exactly five lines; thin Summary lines fail unless explicitly
 allowed, and its closing line may extend up to 102% of the measure.

@@ -24,8 +24,8 @@ texts. Neither is a product-data domain.
 
 `interview/` is the private, inspectable knowledge base an agent maintains
 with the user. It owns source imports, the informal working profile, journal,
-unresolved conflicts, preferences, and the station allocation plan. The
-deterministic layout gate requires 6–8 experience entries on page 1, exactly
+unresolved conflicts, preferences, and the station allocation plan. The shipped Harvard CV
+layout gate requires 6–8 experience entries on page 1, exactly
 10 two-bullet supporting entries on page 2, exactly 10 two-bullet projects on
 page 3, and three groups of three three-line competency blocks on page 4.
 
@@ -34,33 +34,28 @@ uniquely assigned facts may cross into `cvl/` or an opportunity.
 
 ## `cvl/`: the general document
 
-`cvl/` contains only approved sources and outputs for the general bilingual CV
-and cover letter. `cvl/profile.toml` supplies the public header fields.
-Harvard is the top-level style family, so the tree is style-major: each
-document owns its substyles, and each substyle holds one locale tree with
-content, chrome strings, a Typst pointer, and PDFs:
+`cvl/` contains approved sources and outputs. `cvl/profile.toml` supplies
+approved profile fields. The hierarchy is document → style → substyle →
+language → country:
 
 ```text
-cvl/cv/{standard,compact}/{de,en}/ch/{content.toml,strings.toml,typst/,pdf/}
-cvl/cl/{left-rule,frame}/{de,en}/ch/{content.toml,strings.toml,typst/,pdf/}
-cvl/shared/{style.toml,defaults.toml}
+cvl/cv/harvard/{standard,compact}/{de,en}/ch/{content.toml,strings.toml,typst/,pdf/}
+cvl/cl/harvard/{left-rule,frame}/{de,en}/ch/{content.toml,strings.toml,typst/,pdf/}
+cvl/shared/harvard/{style.typ,defaults.toml,application.typ}
 ```
 
-`content.toml` carries the locale wording (the general Summary and letter);
-`strings.toml` carries section/subject chrome only. Family identity lives in
-`cvl/cv/style.toml` and `cvl/cl/style.toml` (`id = "harvard"`); each substyle
-top holds a `substyle.toml` delta. Shared tokens (page, fonts, palette) live
-in `cvl/shared/`. Each document owns its layout contract in `contract.toml`.
-The Typst engine and shared measurement primitives live under `.agent/typst/`.
+Each style owns its `style.toml`, optional `contract.toml` and content scaffold,
+and all of its layout code. Harvard uses a `src/` folder within each document
+style. Other styles are siblings of Harvard and may organise their internals
+differently. Shared Harvard tokens and helpers are explicitly Harvard-owned.
 
-Each record selects one CV substyle (`standard`|`compact`) and one
-cover-letter substyle (`left-rule`|`frame`) — per-document selection instead
-of a single shared style field, defaulting to `standard` / `left-rule` when
-the fields are absent. The record fields are `options.cv_substyle` and
-`options.cl_substyle`. All substyles share the same line and
-vertical-rhythm contracts, and horizontal measure stays identical across
-substyles, so every substyle passes the same `measure`/`check` gates with
-the same content.
+The engine discovers style metadata, resolves record/profile inputs, compiles
+the selected entry point, and verifies its declared page and measurement rules.
+Fonts, shapes, page geometry and content structure belong to the style.
+Records select `cv_style`/`cl_style` and `cv_substyle`/`cl_substyle` under
+`options`; workspace and style metadata declare the defaults. See
+[styles.md](styles.md) for the interface and [../../cvl/README.md](../../cvl/README.md)
+for the shipped tree.
 
 ## `opportunities/`: keyed job packages
 
@@ -86,7 +81,7 @@ role belongs inside its concrete opportunity. There are also no top-level
 
 `.agent/` owns the canonical skills, neutral scaffolds, Rust source,
 tests, bootstrap scripts, internal documentation, Typst engine, and
-workspace manifest and document contracts. Skills own editorial judgment;
+workspace manifest validation. Each style owns its document contracts. Skills own editorial judgment;
 deterministic code owns paths, validation, rendering, measurement, and checks.
 
 ## Public upstream and personal downstream

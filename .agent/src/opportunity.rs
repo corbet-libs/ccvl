@@ -29,6 +29,52 @@ pub fn record_path(
     Ok(record)
 }
 
+/// Instantiate neutral metadata and the configured styles' empty content fields.
+/// Style scaffolds contain only document fields; never copy showcase wording.
+pub fn blank_record(workspace: &Workspace) -> Result<toml::Value> {
+    let mut record: toml::Value = toml::from_str(&fs::read_to_string(
+        workspace.path(".agent/scaffolds/opportunity/application.toml"),
+    )?)
+    .context("invalid scaffold application.toml")?;
+    for document in ["cv", "cl"] {
+        let selected = crate::styles::selection(workspace, document, None, None)?;
+        let definition = crate::styles::definition(workspace, document, &selected.style)?;
+        record["options"]
+            .as_table_mut()
+            .context("missing options table")?
+            .insert(format!("{document}_style"), selected.style.clone().into());
+        record["options"]
+            .as_table_mut()
+            .context("missing options table")?
+            .insert(format!("{document}_substyle"), selected.substyle.into());
+        let page_key = if document == "cv" {
+            "pages"
+        } else {
+            "cl_pages"
+        };
+        record["options"]
+            .as_table_mut()
+            .context("missing options table")?
+            .insert(
+                page_key.into(),
+                i64::try_from(definition.default_pages)?.into(),
+            );
+        let path = crate::styles::root(workspace, document)?
+            .join(&selected.style)
+            .join("scaffold.toml");
+        let content = if path.exists() {
+            toml::from_str(&fs::read_to_string(workspace.existing_inside(&path)?)?)?
+        } else {
+            toml::Value::Table(toml::Table::new())
+        };
+        record
+            .as_table_mut()
+            .context("invalid scaffold table")?
+            .insert(document.into(), content);
+    }
+    Ok(record)
+}
+
 pub fn create_record(
     workspace: &Workspace,
     organisation: &str,
@@ -42,10 +88,7 @@ pub fn create_record(
             workspace.relative(&destination)?.display()
         );
     }
-    let mut document: toml::Value = toml::from_str(&fs::read_to_string(
-        workspace.path(".agent/scaffolds/opportunity/application.toml"),
-    )?)
-    .context("invalid scaffold application.toml")?;
+    let mut document = blank_record(workspace)?;
     document["job"]["id"] = toml::Value::String(format!("{organisation}--{position}"));
     if !cover_letter {
         // No letter needed: leave it out in the first place instead of
@@ -72,15 +115,20 @@ mod tests {
 
     fn temporary_workspace() -> (tempfile::TempDir, Workspace) {
         let directory = tempdir().unwrap();
-        fs::write(directory.path().join("ccvl.json"), "{}\n").unwrap();
-        fs::create_dir_all(directory.path().join(".agent/scaffolds/opportunity")).unwrap();
-        fs::write(
-            directory
-                .path()
-                .join(".agent/scaffolds/opportunity/application.toml"),
-            "[job]\nid = \"\"\n\n[options]\ngenerate_cl = true\n\n[cl]\nhighlights = []\n",
-        )
-        .unwrap();
+        let original = Workspace::at(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        for relative in [
+            "ccvl.json",
+            ".agent/scaffolds/opportunity/application.toml",
+            "cvl/cv/harvard/style.toml",
+            "cvl/cl/harvard/style.toml",
+            "cvl/cv/harvard/scaffold.toml",
+            "cvl/cl/harvard/scaffold.toml",
+            "cvl/shared/harvard/defaults.toml",
+        ] {
+            let target = directory.path().join(relative);
+            fs::create_dir_all(target.parent().unwrap()).unwrap();
+            fs::copy(original.path(relative), target).unwrap();
+        }
         let workspace = Workspace::at(directory.path()).unwrap();
         (directory, workspace)
     }

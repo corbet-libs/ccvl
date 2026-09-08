@@ -5,8 +5,10 @@ description: Write, tailor, render, and verify ccvl CV variants when Summary, ex
 
 # Create and revise a ccvl CV
 
-Preserve the Harvard-style hierarchy and make the document legible to both
-recruiters and specialists.
+Resolve `options.cv_style` and `options.cv_substyle`, then read that style’s
+metadata and contract under `cvl/cv/<style>/`. Make the document legible to
+recruiters and specialists. Harvard is the shipped default; another style may
+use entirely different content fields, geometry, fonts and page presets.
 
 ## Writing contract
 
@@ -21,7 +23,7 @@ recruiters and specialists.
 - Treat the checked-in showcase as visual design evidence, never as facts or
   reusable wording for a new user. Its personal content is not a template.
 
-## Summary
+## Summary (Harvard CV)
 
 Maintain the opportunity-independent master below `cvl/`. For every
 concrete role, read `cv.summary` from
@@ -42,7 +44,7 @@ author. A real application must be target-specific.
 
 These counts are the Harvard family's contract — shared by the `standard`
 and `compact` CV substyles, which differ only in whitespace — not engine law:
-a future second family would bring its own contract. Before polishing or
+other styles bring their own contracts. Before polishing or
 tailoring, load `interview/stations.toml` and run
 `ccvl profile-status --verify-sources`. Page 1 must contain 6–8 full experience
 stations. Page 2 contains exactly 10 supporting stations with two bullets each.
@@ -68,15 +70,16 @@ fixed slots and iterating on the failed gate are two separately required
 actions: always do both.
 
 Every controlled CV line is measured against a minimum, target, and maximum
-fill percentage from `cvl/cv/contract.toml` for its actual Typst container. A sparse or
+fill percentage from `cvl/cv/harvard/contract.toml` for its actual Typst container. A sparse or
 overflowing line is a failed draft. Add relevant, verified signal or tighten
 the wording, then run `ccvl measure` again. Never use filler merely to make a
 draft pass.
 
 ## Verification
 
-Render every affected locale, substyle, and preset. Require the station gate and requested two-, three-, or
-four-page count, inspect every rendered page, and extract the PDF text layer.
+Render every affected style, substyle, locale and preset. Enforce its declared
+contract (including the station gate for Harvard) and the exact requested page
+count. Inspect every rendered page and extract the PDF text layer.
 Reject clipped content, accidental extra pages, missing glyphs, placeholders,
 or any line outside its declared bounds. Run the matching platform `measure`
 command until it passes, then run `check` before completion.

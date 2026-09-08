@@ -43,11 +43,13 @@ pub fn load_plan(workspace: &Workspace, path: &Path) -> Result<Value> {
 }
 
 pub fn assess(workspace: &Workspace, document: &Value, location: &str) -> Result<Assessment> {
-    validate_semantics(document, location)?;
     let rules = crate::application::document_contract(workspace, "cv")?;
-    let rules = rules
-        .pointer("/layout_contract")
-        .context("missing CV layout contract")?;
+    assess_with_contract(document, location, &rules)
+}
+
+fn assess_with_contract(document: &Value, location: &str, contract: &Value) -> Result<Assessment> {
+    validate_semantics(document, location)?;
+    let rules = contract.get("layout_contract");
     let stations = document
         .get("stations")
         .and_then(Value::as_array)
@@ -80,36 +82,36 @@ pub fn assess(workspace: &Workspace, document: &Value, location: &str) -> Result
         }
     }
     let mut problems = Vec::new();
-    let page_one = rules
-        .pointer("/page_1/entries")
-        .context("missing page 1 contract")?;
-    let minimum = usize::try_from(page_one.get("minimum").and_then(Value::as_u64).unwrap_or(6))?;
-    let maximum = usize::try_from(page_one.get("maximum").and_then(Value::as_u64).unwrap_or(8))?;
-    let count_one = page_counts[&1];
-    if count_one < minimum {
-        problems.push(format!(
-            "page 1 is underfilled: {count_one} stations; minimum {minimum}"
-        ));
-    } else if count_one > maximum {
-        problems.push(format!(
-            "page 1 is overcrowded: {count_one} stations; maximum {maximum}"
-        ));
-    }
-    let page_two = usize::try_from(
-        rules
-            .pointer("/page_2/entries")
-            .and_then(Value::as_u64)
-            .unwrap_or(10),
-    )?;
-    let count_two = page_counts[&2];
-    if count_two < page_two {
-        problems.push(format!(
-            "page 2 is underfilled: {count_two} stations; exactly {page_two} required"
-        ));
-    } else if count_two > page_two {
-        problems.push(format!(
-            "page 2 is overcrowded: {count_two} stations; exactly {page_two} required"
-        ));
+    if let Some(rules) = rules {
+        for page in [1_u8, 2] {
+            let bounds = rules
+                .pointer(&format!("/page_{page}/entries"))
+                .context("missing station page contract")?;
+            let (minimum, maximum) = if let Some(exact) = bounds.as_u64() {
+                (exact, exact)
+            } else {
+                (
+                    bounds
+                        .get("minimum")
+                        .and_then(Value::as_u64)
+                        .context("missing minimum")?,
+                    bounds
+                        .get("maximum")
+                        .and_then(Value::as_u64)
+                        .context("missing maximum")?,
+                )
+            };
+            let count = page_counts[&page];
+            if count < usize::try_from(minimum)? {
+                problems.push(format!(
+                    "page {page} is underfilled: {count} stations; minimum {minimum}"
+                ));
+            } else if count > usize::try_from(maximum)? {
+                problems.push(format!(
+                    "page {page} is overcrowded: {count} stations; maximum {maximum}"
+                ));
+            }
+        }
     }
     if !unresolved_assigned.is_empty() {
         problems.push(format!(
@@ -127,36 +129,55 @@ pub fn assess(workspace: &Workspace, document: &Value, location: &str) -> Result
 }
 
 pub fn validate_interview(workspace: &Workspace, require_ready: bool) -> Result<Assessment> {
-    let plan_path = workspace.path("interview/stations.toml");
-    let document = load_plan(workspace, &plan_path)?;
-    let assessment = assess(workspace, &document, "interview/stations.toml")?;
+    validate_style(
+        workspace,
+        &crate::styles::default_style(workspace, "cv")?,
+        require_ready,
+    )
+}
+
+/// A style opts into station allocation and source-marker checks through its
+/// own contract. Other renderers need no station page structure or source files.
+pub fn validate_style(
+    workspace: &Workspace,
+    style: &str,
+    require_ready: bool,
+) -> Result<Assessment> {
+    let document = load_plan(workspace, &workspace.path("interview/stations.toml"))?;
+    let contract = crate::styles::contract(workspace, "cv", style)?;
+    let assessment = assess_with_contract(&document, "interview/stations.toml", &contract)?;
     if require_ready && !assessment.ready() {
         bail!(
             "{}. Run ccvl profile-status and continue the profile interview",
             assessment.problems.join("; ")
         );
     }
-    let de = verify_source_counts(
-        workspace,
-        &document,
-        &workspace.path("cvl/cv/src/entries-de.typ"),
-    )?;
-    let en = verify_source_counts(
-        workspace,
-        &document,
-        &workspace.path("cvl/cv/src/entries-en.typ"),
-    )?;
-    ensure!(
-        de.project_ids == en.project_ids,
-        "CV locales use different page-3 project IDs or ordering"
-    );
-    ensure!(
-        de.competency_groups == en.competency_groups,
-        "CV locales use different page-4 competency IDs, grouping, or ordering"
-    );
+    if let Some(files) = contract.get("source_files").and_then(Value::as_array) {
+        let root = crate::styles::root(workspace, "cv")?.join(style);
+        let mut baseline: Option<SourceLayout> = None;
+        for file in files {
+            let path = workspace.existing_inside(
+                root.join(file.as_str().context("source_files must contain paths")?),
+            )?;
+            let layout = verify_source_counts(workspace, &document, &path)?;
+            if let Some(baseline) = &baseline {
+                ensure!(
+                    layout.project_ids == baseline.project_ids,
+                    "CV locales use different page-3 project IDs or ordering"
+                );
+                ensure!(
+                    layout.competency_groups == baseline.competency_groups,
+                    "CV locales use different page-4 competency IDs, grouping, or ordering"
+                );
+            } else {
+                baseline = Some(layout);
+            }
+        }
+    }
     Ok(assessment)
 }
 
+/// Validate the opt-in four-page station-marker source format used by Harvard.
 pub fn validate_typst_layout(workspace: &Workspace, path: &Path) -> Result<SourceLayout> {
     let source = fs::read_to_string(path)?;
     let pages = source.split("#cv-pagebreak()").collect::<Vec<_>>();
@@ -236,6 +257,17 @@ pub fn validate_typst_layout(workspace: &Workspace, path: &Path) -> Result<Sourc
 
 pub fn format_report(workspace: &Workspace, assessment: &Assessment) -> Result<String> {
     let rules = crate::application::document_contract(workspace, "cv")?;
+    if rules.get("layout_contract").is_none() {
+        return Ok(format!(
+            "CV station plan: {}\nNo station layout required by the selected style.\nUnassigned candidates: {}",
+            if assessment.ready() {
+                "READY"
+            } else {
+                "NOT READY"
+            },
+            assessment.unassigned
+        ));
+    }
     let rules = rules
         .pointer("/layout_contract")
         .context("missing CV layout contract")?;

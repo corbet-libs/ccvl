@@ -57,8 +57,8 @@ path = [
   ".agent/docs/showcase.md",
   ".agent/docs/signature.md",
   "cvl/profile.toml",
-  "cvl/*/*/*/*/content.toml",
-  "cvl/cv/src/entries-*.typ",
+  "cvl/*/*/*/*/*/content.toml",
+  "cvl/cv/harvard/src/entries-*.typ",
   "cvl/assets/signature.png",
   "interview/stations.toml",
 ]
@@ -85,13 +85,14 @@ SPDX-License-Identifier = "OFL-1.1"
 path = [
   "justfile",
   "cvl/shared/**",
-  "cvl/*/style.toml",
-  "cvl/*/contract.toml",
-  "cvl/*/*/substyle.toml",
-  "cvl/*/*/*/*/strings.toml",
-  "cvl/*/*/*/*/typst/*.typ",
-  "cvl/cv/src/cv.typ",
-  "cvl/cl/src/cl.typ",
+  "cvl/*/*/style.toml",
+  "cvl/*/*/contract.toml",
+  "cvl/*/*/scaffold.toml",
+  "cvl/*/*/*/substyle.toml",
+  "cvl/*/*/*/*/*/strings.toml",
+  "cvl/*/*/*/*/*/typst/*.typ",
+  "cvl/cv/harvard/src/cv.typ",
+  "cvl/cl/harvard/src/cl.typ",
 ]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"

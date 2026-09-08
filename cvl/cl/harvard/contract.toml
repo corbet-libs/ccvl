@@ -1,0 +1,152 @@
+# Harvard cover-letter contract: the frozen paragraph, fill, and rhythm
+# budgets every cover-letter substyle (left-rule, frame) satisfies. Moved
+# from ccvl.json documents.cover_letter; the engine reads this file instead
+# of the manifest.
+
+id = "harvard"
+api = 1
+content_fields = ["paragraphs", "highlights"]
+mirror_paragraphs = [1, 6]
+keep_paragraphs_together = true
+justify_body = true
+widow_or_orphan_lines = 0
+
+[[paragraphs]]
+number = 1
+role = "positioning"
+purpose = "Name the target and establish immediate fit."
+
+[paragraphs.lines]
+minimum = 3
+target = 3
+maximum = 3
+
+[[paragraphs]]
+number = 2
+role = "primary-evidence"
+purpose = "Prove the strongest relevant experience and results."
+
+[paragraphs.lines]
+minimum = 5
+target = 5
+maximum = 5
+
+[[paragraphs]]
+number = 3
+role = "complementary-evidence"
+purpose = "Add complementary evidence and the career-wide pattern."
+
+[paragraphs.lines]
+minimum = 5
+target = 5
+maximum = 5
+
+[[paragraphs]]
+number = 4
+role = "differentiation"
+purpose = "Explain the value created by the combined evidence."
+
+[paragraphs.lines]
+minimum = 5
+target = 5
+maximum = 5
+
+[[paragraphs]]
+number = 5
+role = "target-fit"
+purpose = "Connect that value to the specific organisation and opportunity."
+
+[paragraphs.lines]
+minimum = 5
+target = 5
+maximum = 5
+
+[[paragraphs]]
+number = 6
+role = "warm-close"
+purpose = "Close warmly with a low-friction invitation to talk."
+
+[paragraphs.lines]
+minimum = 3
+target = 3
+maximum = 3
+
+[[paragraph_regions]]
+paragraphs = [2, 3]
+minimum = 10
+target = 10
+maximum = 10
+preferred_totals = [10]
+
+[[paragraph_regions]]
+paragraphs = [4, 5]
+minimum = 10
+target = 10
+maximum = 10
+preferred_totals = [10]
+
+[[paragraph_regions]]
+paragraphs = [2, 3, 4, 5]
+minimum = 20
+target = 20
+maximum = 20
+preferred_totals = [20]
+
+[body_lines]
+minimum = 26
+target = 26
+maximum = 26
+
+[highlights]
+count = 5
+lines_each = 1
+position = "between-paragraphs-3-and-4"
+purpose = "Provide a fast evidence index across the target's main selection dimensions."
+
+[line_fill.body]
+minimum = 75
+non_final_minimum = 95
+target = 97
+maximum = 100
+
+[line_fill.highlight]
+minimum = 70
+target = 82
+maximum = 100
+
+[vertical_rhythm.gap_pt]
+minimum = 12
+target = 20
+maximum = 30
+
+[vertical_rhythm.highlight_center_percent]
+minimum = 50
+target = 56
+maximum = 60
+
+[pdf]
+size_pt = [595.2756, 841.8898]
+font_pattern = "^[A-Z]{6}\\+Archivo-(Bold|Italic|Medium|Regular)$"
+required_profile_fields = ["name", "email", "phone_label"]
+minimum_text_chars = 100
+require_image = true
+
+[[metric_rules]]
+kind = "cl-body"
+minimum = 26
+maximum = 26
+
+[[metric_rules]]
+kind = "cl-highlight"
+minimum = 5
+maximum = 5
+
+[[metric_rules]]
+kind = "cl-vertical-gap"
+minimum = 1
+maximum = 1
+
+[[metric_rules]]
+kind = "cl-highlight-center"
+minimum = 1
+maximum = 1

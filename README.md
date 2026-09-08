@@ -82,11 +82,12 @@ On native Windows, use the root dispatcher from Command Prompt or PowerShell:
 ```
 
 Generated general documents are written to
-`cvl/cv/<substyle>/<language>/<region>/pdf/cv-{2,3,4}.pdf` and
-`cvl/cl/<substyle>/<language>/<region>/pdf/cl.pdf`.
-CV substyles are `standard` and `compact`; cover-letter substyles are
-`left-rule` and `frame`. Use `build-cv en-ch 4 --substyle compact` or
-`build-cl en-ch --substyle frame` with your platform launcher.
+`cvl/cv/<style>/<substyle>/<language>/<region>/pdf/cv-{2,3,4}.pdf` and
+`cvl/cl/<style>/<substyle>/<language>/<region>/pdf/cl.pdf`.
+The shipped Harvard CV substyles are `standard` and `compact`; cover-letter substyles are
+`left-rule` and `frame`. Use `build-cv en-ch 4 --style harvard --substyle compact` or
+`build-cl en-ch --style harvard --substyle frame` with your platform launcher.
+Other styles own their layouts and page presets; see [.agent/docs/styles.md](.agent/docs/styles.md).
 Opportunity-specific documents are written beside their job record under
 `opportunities/<organisation>/<position>/pdfs/` (rendered PDFs) and
 `opportunities/<organisation>/<position>/typst/` (resolved standalone

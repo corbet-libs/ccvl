@@ -55,7 +55,7 @@ fn measurement_implementation_lives_in_ctypst() {
     assert!(
         workspace
             .root()
-            .join("cvl/cv/standard/de/ch/content.toml")
+            .join("cvl/cv/harvard/standard/de/ch/content.toml")
             .is_file(),
         "ownership scan runs at the workspace root"
     );

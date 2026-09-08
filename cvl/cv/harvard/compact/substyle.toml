@@ -1,0 +1,19 @@
+# compact: thin whitespace-only CV variant. Same renderer, same contracts
+# as standard; only vertical spacing tightened. Horizontal measure (page,
+# text, accents, bullet indent) stays in cvl/shared/harvard/defaults.toml: changing
+# it would reflow every measured line, so a delta may never name those keys.
+
+[header]
+after_pt = 5.5
+
+[cv]
+superheading_outer_spacing_pt = 15.0
+compact_heading_spacing_pt = 8.0
+spacious_heading_spacing_pt = 16.5
+entry_spacing_pt = 10.0
+heading_after_pt = 5.5
+subheading_after_pt = 6.5
+bullet_after_pt = 7.5
+competency_heading_after_pt = 6.5
+rule_gap_pt = 4.0
+superheading_inner_pt = 4.5

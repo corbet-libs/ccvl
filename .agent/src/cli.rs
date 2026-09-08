@@ -75,6 +75,8 @@ enum Command {
     },
     /// Build every CVL template and page preset.
     Build,
+    /// List every registered document variant and its output as JSON.
+    ListDocuments,
     /// Create one keyed opportunity without overwriting an existing record.
     NewOpportunity {
         organisation_key: String,
@@ -87,10 +89,11 @@ enum Command {
     /// Build one CV.
     BuildCv {
         locale: String,
-        #[arg(default_value_t = 4)]
-        pages: usize,
-        /// CV substyle (one entry of cvl/cv/style.toml). Defaults to the
+        pages: Option<usize>,
+        /// CV substyle (one entry of cvl/cv/harvard/style.toml). Defaults to the
         /// record's selection, then to the family default.
+        #[arg(long)]
+        style: Option<String>,
         #[arg(long)]
         substyle: Option<String>,
         #[arg(long)]
@@ -103,8 +106,12 @@ enum Command {
     /// Build one cover letter.
     BuildCl {
         locale: String,
-        /// Cover-letter substyle (one entry of cvl/cl/style.toml). Defaults
+        #[arg(long)]
+        pages: Option<usize>,
+        /// Cover-letter substyle (one entry of cvl/cl/harvard/style.toml). Defaults
         /// to the record's selection, then to the family default.
+        #[arg(long)]
+        style: Option<String>,
         #[arg(long)]
         substyle: Option<String>,
         #[arg(long)]
@@ -122,14 +129,19 @@ enum Command {
     /// Rebuild one CV whenever its inputs change.
     WatchCv {
         locale: String,
-        #[arg(default_value_t = 4)]
-        pages: usize,
+        pages: Option<usize>,
+        #[arg(long)]
+        style: Option<String>,
         #[arg(long)]
         substyle: Option<String>,
     },
     /// Rebuild one cover letter whenever its inputs change.
     WatchCl {
         locale: String,
+        #[arg(long)]
+        pages: Option<usize>,
+        #[arg(long)]
+        style: Option<String>,
         #[arg(long)]
         substyle: Option<String>,
     },
@@ -245,6 +257,10 @@ pub fn run() -> Result<ExitCode> {
             upstream_ref,
         } => downstream::validate(&workspace, &policy, upstream_ref.as_deref())?,
         Command::Build => print_outputs(render::render_cvl(&workspace)?),
+        Command::ListDocuments => println!(
+            "{}",
+            serde_json::to_string_pretty(&render::list_documents(&workspace)?)?
+        ),
         Command::NewOpportunity {
             organisation_key,
             position_key,
@@ -261,57 +277,82 @@ pub fn run() -> Result<ExitCode> {
         Command::BuildCv {
             locale,
             pages,
+            style,
             substyle,
             application,
             profile,
             output,
         } => {
-            stations::validate_interview(&workspace, true)?;
-            let locale = render::normalize_locale(&locale)?;
-            let substyle = cli_substyle(&workspace, substyle, application.as_deref(), "cv")?;
-            let leaf = render::cv_leaf(&workspace, locale, &substyle)?;
+            let selection = cli_selection(
+                &workspace,
+                style.as_deref(),
+                substyle.as_deref(),
+                application.as_deref(),
+                "cv",
+            )?;
+            let leaf = render::cv_leaf(&workspace, &locale, &selection)?;
             let application =
                 workspace.existing_inside(application.unwrap_or_else(|| leaf.content()))?;
+            let record = workspace.read_toml_value(workspace.relative(&application)?)?;
+            let pages = pages
+                .or(record
+                    .pointer("/options/pages")
+                    .and_then(serde_json::Value::as_u64)
+                    .map(usize::try_from)
+                    .transpose()?)
+                .unwrap_or(leaf.default_pages);
             let profile = workspace
                 .existing_inside(profile.unwrap_or_else(|| PathBuf::from("cvl/profile.toml")))?;
-            let output = if let Some(output) = output {
-                output
-            } else {
-                leaf.dir.join("pdf").join(format!("cv-{pages}.pdf"))
-            };
+            let output = output.unwrap_or_else(|| leaf.output(pages));
             let spec = render::cv_spec(
                 &workspace,
-                locale,
+                &leaf.locale,
                 pages,
                 &application,
                 &profile,
                 &output,
-                &substyle,
+                &selection,
             )?;
             print_outputs(vec![Compiler::new(&workspace)?.render(&workspace, &spec)?]);
         }
         Command::BuildCl {
             locale,
+            pages,
+            style,
             substyle,
             application,
             profile,
             output,
         } => {
-            let locale = render::normalize_locale(&locale)?;
-            let substyle = cli_substyle(&workspace, substyle, application.as_deref(), "cl")?;
-            let leaf = render::cl_leaf(&workspace, locale, &substyle)?;
+            let selection = cli_selection(
+                &workspace,
+                style.as_deref(),
+                substyle.as_deref(),
+                application.as_deref(),
+                "cl",
+            )?;
+            let leaf = render::cl_leaf(&workspace, &locale, &selection)?;
             let application =
                 workspace.existing_inside(application.unwrap_or_else(|| leaf.content()))?;
+            let record = workspace.read_toml_value(workspace.relative(&application)?)?;
+            let pages = pages
+                .or(record
+                    .pointer("/options/cl_pages")
+                    .and_then(serde_json::Value::as_u64)
+                    .map(usize::try_from)
+                    .transpose()?)
+                .unwrap_or(leaf.default_pages);
             let profile = workspace
                 .existing_inside(profile.unwrap_or_else(|| PathBuf::from("cvl/profile.toml")))?;
-            let output = output.unwrap_or_else(|| leaf.dir.join("pdf").join("cl.pdf"));
+            let output = output.unwrap_or_else(|| leaf.output(pages));
             let spec = render::cl_spec(
                 &workspace,
-                locale,
+                &leaf.locale,
+                pages,
                 &application,
                 &profile,
                 &output,
-                &substyle,
+                &selection,
             )?;
             print_outputs(vec![Compiler::new(&workspace)?.render(&workspace, &spec)?]);
         }
@@ -326,10 +367,30 @@ pub fn run() -> Result<ExitCode> {
         Command::WatchCv {
             locale,
             pages,
+            style,
             substyle,
-        } => watch_cv(&workspace, &locale, pages, substyle.as_deref())?,
-        Command::WatchCl { locale, substyle } => {
-            watch_cl(&workspace, &locale, substyle.as_deref())?;
+        } => {
+            watch_cv(
+                &workspace,
+                &locale,
+                pages,
+                style.as_deref(),
+                substyle.as_deref(),
+            )?;
+        }
+        Command::WatchCl {
+            locale,
+            pages,
+            style,
+            substyle,
+        } => {
+            watch_cl(
+                &workspace,
+                &locale,
+                pages,
+                style.as_deref(),
+                substyle.as_deref(),
+            )?;
         }
         Command::WatchOpportunity {
             organisation_key,
@@ -395,64 +456,77 @@ fn doctor(workspace: &Workspace) -> Result<()> {
 
 /// Explicit `--substyle` wins; otherwise the record at `application`
 /// selects; otherwise the family default renders.
-fn cli_substyle(
+fn cli_selection(
     workspace: &Workspace,
-    flag: Option<String>,
+    style: Option<&str>,
+    substyle: Option<&str>,
     application: Option<&Path>,
     document: &str,
-) -> Result<String> {
-    if let Some(name) = flag {
-        return Ok(name);
-    }
-    if let Some(record) = application {
-        let relative = workspace.relative(&workspace.existing_inside(record)?)?;
-        let document_value = workspace.read_toml_value(&relative)?;
-        let location = relative.display().to_string();
-        if document == "cv" {
-            return crate::application::resolve_cv_substyle(workspace, &document_value, &location);
-        }
-        return crate::application::resolve_cl_substyle(workspace, &document_value, &location);
-    }
-    if document == "cv" {
-        crate::application::default_cv_substyle(workspace)
-    } else {
-        crate::application::default_cl_substyle(workspace)
-    }
+) -> Result<crate::styles::Selection> {
+    let record = application
+        .map(|path| {
+            let path = workspace.existing_inside(path)?;
+            let location = workspace.relative(&path)?.display().to_string();
+            crate::styles::record_selection(
+                workspace,
+                document,
+                &workspace.read_toml_value(&location)?,
+                &location,
+            )
+        })
+        .transpose()?;
+    crate::styles::selection(
+        workspace,
+        document,
+        style.or(record.as_ref().map(|selection| selection.style.as_str())),
+        substyle.or(record.as_ref().map(|selection| selection.substyle.as_str())),
+    )
 }
 
 fn watch_cv(
     workspace: &Workspace,
     locale: &str,
-    pages: usize,
+    pages: Option<usize>,
+    style: Option<&str>,
     substyle: Option<&str>,
 ) -> Result<()> {
-    let locale = render::normalize_locale(locale)?;
-    let substyle = substyle.map_or(
-        crate::application::default_cv_substyle(workspace)?,
-        str::to_owned,
-    );
+    let selection = crate::styles::selection(workspace, "cv", style, substyle)?;
+    let leaf = render::cv_leaf(workspace, locale, &selection)?;
+    let pages = pages.unwrap_or(leaf.default_pages);
     watch_loop(
-        &format!("ccvl sources for {locale}/{substyle} {pages}-page CV"),
+        &format!(
+            "ccvl sources for {}/{}/{locale} {pages}-page CV",
+            selection.style, selection.substyle
+        ),
         || cvl_digest(workspace),
         || {
-            let spec = render::cvl_cv_spec(workspace, locale, pages, Some(&substyle))?;
-            Ok(vec![Compiler::new(workspace)?.render(workspace, &spec)?])
+            Ok(vec![Compiler::new(workspace)?.render(
+                workspace,
+                &render::cvl_cv_spec(workspace, locale, pages, Some(&selection))?,
+            )?])
         },
     )
 }
 
-fn watch_cl(workspace: &Workspace, locale: &str, substyle: Option<&str>) -> Result<()> {
-    let locale = render::normalize_locale(locale)?;
-    let substyle = substyle.map_or(
-        crate::application::default_cl_substyle(workspace)?,
-        str::to_owned,
-    );
+fn watch_cl(
+    workspace: &Workspace,
+    locale: &str,
+    pages: Option<usize>,
+    style: Option<&str>,
+    substyle: Option<&str>,
+) -> Result<()> {
+    let selection = crate::styles::selection(workspace, "cl", style, substyle)?;
     watch_loop(
-        &format!("ccvl sources for {locale}/{substyle} cover letter"),
+        &format!(
+            "ccvl sources for {}/{}/{locale} cover letter",
+            selection.style, selection.substyle
+        ),
         || cvl_digest(workspace),
         || {
-            let spec = render::cvl_cl_spec(workspace, locale, Some(&substyle))?;
-            Ok(vec![Compiler::new(workspace)?.render(workspace, &spec)?])
+            Ok(vec![Compiler::new(workspace)?.render(
+                workspace,
+                &render::cvl_cl_spec(workspace, locale, pages, Some(&selection))?,
+            )?])
         },
     )
 }
@@ -517,21 +591,21 @@ fn opportunity_digest(
         workspace.path("cvl/assets"),
         workspace.path("cvl/profile.toml"),
         workspace.path("cvl/shared"),
-        workspace.path("cvl/cv/contract.toml"),
-        workspace.path("cvl/cl/contract.toml"),
-        workspace.path("cvl/cv/src"),
-        workspace.path("cvl/cl/src"),
+        workspace.path("cvl/cv/harvard/contract.toml"),
+        workspace.path("cvl/cl/harvard/contract.toml"),
         workspace.path("ccvl.json"),
         directory,
     ];
     match render::opportunity_selection(workspace, organisation, position) {
         Ok(selection) => {
-            if let Ok(leaf) = render::cv_leaf(workspace, selection.locale, &selection.cv_substyle) {
+            if let Ok(leaf) = render::cv_leaf(workspace, &selection.locale, &selection.cv) {
+                roots.push(leaf.style_dir().to_path_buf());
                 roots.push(leaf.adapter());
                 roots.push(leaf.strings());
                 roots.push(leaf.substyle_file());
             }
-            if let Ok(leaf) = render::cl_leaf(workspace, selection.locale, &selection.cl_substyle) {
+            if let Ok(leaf) = render::cl_leaf(workspace, &selection.locale, &selection.cl) {
+                roots.push(leaf.style_dir().to_path_buf());
                 roots.push(leaf.adapter());
                 roots.push(leaf.strings());
                 roots.push(leaf.substyle_file());
@@ -577,7 +651,11 @@ fn digest_roots(roots: &[PathBuf]) -> Result<Vec<u8>> {
 /// render never retriggers its own watcher.
 fn is_watched(path: &Path) -> bool {
     path.extension().is_some_and(|extension| {
-        extension == "typ" || extension == "toml" || extension == "json" || extension == "png"
+        [
+            "typ", "toml", "json", "png", "jpg", "jpeg", "webp", "svg", "ttf", "otf",
+        ]
+        .iter()
+        .any(|candidate| extension.eq_ignore_ascii_case(candidate))
     })
 }
 
@@ -596,101 +674,4 @@ fn resolve(workspace: &Workspace, path: &Path) -> PathBuf {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn watched_workspace() -> (tempfile::TempDir, Workspace) {
-        let directory = tempfile::tempdir().unwrap();
-        let root = directory.path();
-        fs::create_dir_all(root.join("cvl/cv/standard/de/ch/typst")).unwrap();
-        fs::create_dir_all(root.join(".agent/typst")).unwrap();
-        fs::create_dir_all(root.join("opportunities/acme/lead/pdfs")).unwrap();
-        fs::create_dir_all(root.join("opportunities/acme/lead/typst")).unwrap();
-        fs::write(root.join("ccvl.json"), "{}\n").unwrap();
-        fs::write(
-            root.join("cvl/cv/standard/de/ch/typst/cv.typ"),
-            "#let x = 1\n",
-        )
-        .unwrap();
-        fs::write(
-            root.join("cvl/cv/standard/de/ch/content.toml"),
-            "language = \"en-ch\"\n",
-        )
-        .unwrap();
-        fs::write(root.join(".agent/typst/shared.typ"), "#let y = 2\n").unwrap();
-        fs::write(
-            root.join("opportunities/acme/lead/application.toml"),
-            "language = \"en-ch\"\n",
-        )
-        .unwrap();
-        fs::write(
-            root.join("opportunities/acme/lead/typst/cv.typ"),
-            "#let x = 1\n",
-        )
-        .unwrap();
-        fs::write(root.join("opportunities/acme/lead/pdfs/cv.pdf"), b"%PDF-").unwrap();
-        let workspace = Workspace::at(root).unwrap();
-        (directory, workspace)
-    }
-
-    fn fixture_digest(workspace: &Workspace) -> Vec<u8> {
-        digest_roots(&[
-            workspace.path("cvl"),
-            workspace.path(".agent/typst"),
-            workspace.path("ccvl.json"),
-            workspace.path("opportunities/acme/lead"),
-        ])
-        .unwrap()
-    }
-
-    #[test]
-    fn watched_extensions_cover_templates_records_and_generated_typs() {
-        for watched in ["cv.typ", "application.toml", "contract.json", "asset.png"] {
-            assert!(is_watched(Path::new(watched)), "{watched} was ignored");
-        }
-        for ignored in ["cv.pdf", "notes.md", "no-extension"] {
-            assert!(!is_watched(Path::new(ignored)), "{ignored} was watched");
-        }
-    }
-
-    #[test]
-    fn digest_reacts_to_templates_records_contracts_and_generated_typs() {
-        let (_directory, workspace) = watched_workspace();
-        let baseline = fixture_digest(&workspace);
-        // A rebuilt PDF alone must not retrigger the watcher.
-        fs::write(
-            workspace.path("opportunities/acme/lead/pdfs/cv.pdf"),
-            b"%PDF-changed",
-        )
-        .unwrap();
-        assert_eq!(fixture_digest(&workspace), baseline);
-        // Untouched content hashes stably.
-        assert_eq!(fixture_digest(&workspace), baseline);
-        for relative in [
-            "cvl/cv/standard/de/ch/typst/cv.typ",
-            "cvl/cv/standard/de/ch/content.toml",
-            ".agent/typst/shared.typ",
-            "ccvl.json",
-            "opportunities/acme/lead/application.toml",
-            "opportunities/acme/lead/typst/cv.typ",
-        ] {
-            let path = workspace.path(relative);
-            let before = fs::read(&path).unwrap();
-            fs::write(&path, [before.clone(), b"changed\n".to_vec()].concat()).unwrap();
-            assert_ne!(
-                fixture_digest(&workspace),
-                baseline,
-                "{relative} was ignored"
-            );
-            fs::write(&path, before).unwrap();
-            assert_eq!(fixture_digest(&workspace), baseline);
-        }
-    }
-
-    #[test]
-    fn invalid_record_keys_are_rejected_before_watching() {
-        let (_directory, workspace) = watched_workspace();
-        assert!(opportunity::record_path(&workspace, "../acme", "lead", true).is_err());
-        assert!(opportunity::record_path(&workspace, "acme", "lead", true).is_ok());
-    }
-}
+mod tests;

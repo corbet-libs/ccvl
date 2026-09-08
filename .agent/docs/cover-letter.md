@@ -6,7 +6,7 @@ exactly three lines; paragraph 6 mirrors it with a warm three-line close. The
 four central paragraphs carry the evidence and target case in exactly 20 lines:
 five lines each.
 
-`cvl/cl/contract.toml` is the machine-readable source of truth. Each paragraph definition
+`cvl/cl/harvard/contract.toml` is the machine-readable source of truth. Each paragraph definition
 contains its number, semantic role, purpose, and line bounds, making the
 contract self-describing for both people and agents.
 
@@ -127,7 +127,7 @@ and surname render; first names never appear in a formal salutation. The
 rules live in the `cgreet` library
 (`https://github.com/corbet-labs/cgreet`, re-exported
 for compatibility via `ccvl::application`) and are mirrored for the renderer
-in `.agent/typst/application.typ` (`salutation-honorific`,
+in `cvl/shared/harvard/application.typ` (`salutation-honorific`,
 `salutation-titles`, `salutation-surname`, `de-salutation`); `en-ch`
 additionally uses `salutation-last-name` (`"Dr. Jane Doe"` renders
 `Dear Doe,`).
