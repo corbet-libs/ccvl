@@ -9,6 +9,7 @@ path = [
   ".agent/src/**",
   ".agent/tests/**",
   ".agent/typst/**/*.toml",
+  ".agent/typst/**/*.json",
   ".agent/typst/**/*.typ",
   ".crow.yaml",
   ".github/workflows/**",

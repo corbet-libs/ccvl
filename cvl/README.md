@@ -136,7 +136,10 @@ bash .agent/scripts/render-previews.sh
 bash ./ccvl public-check
 ```
 
-The script enumerates registered outputs and renders every page at 96 dpi into
-its adjacent `preview/` directory. It consumes the actual PDFs; it does not
+The script enumerates registered outputs and renders changed PDFs at 96 dpi
+into their adjacent `preview/` directory. Unchanged PDFs reuse previews when
+the rasterizer and rendering settings match and every image is intact; local
+cache records live in `.agent/cache/previews/`. It consumes the actual PDFs; it does not
 invent mockups. Inspect every changed page at full resolution as well as in
-this comparison. Remove obsolete previews if page presets are removed.
+this comparison. A shorter PDF's surplus page previews are removed after a
+successful refresh. Remove obsolete previews if entire page presets are removed.

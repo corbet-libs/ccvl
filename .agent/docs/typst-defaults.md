@@ -21,6 +21,27 @@ remain in `strings.toml`, separate from geometry. The optional
 a font, paper or language. A new style can implement a different settings
 schema, renderer arrangement or composition without using this adapter.
 
+Styles using this adapter declare `settings_adapter = "document-v1"` in
+`style.toml`. A single rule file, `.agent/typst/document-settings.json`, is read
+by both the Rust preflight and Typst adapter. Unknown keys in its four reserved
+tables, invalid enums or types, missing required values and reversed bounds
+fail explicitly. Rust checks each source layer before merging, so an invalid
+value cannot hide behind a later override. Style-owned extension tables stay
+unrestricted. Native Typst still checks its own paper names, scripts, font
+metrics and rendering constraints.
+
+`bash ./ccvl explain-style cv en-us --style test-style-1 --substyle sidebar`
+reports the merged inputs and source path for each effective value, without
+rendering. It covers the declared adapter merge, not component-level Typst
+show/set rules. For example, `page.paper` comes from the US leaf layout, while
+`text.font` comes from the family defaults.
+
+The adapter accepts `left`, `center`, `right`, `start` and `end` block alignment;
+page binding accepts `left` or `right`; CJK–Latin spacing accepts `auto` or
+`none`. Misspellings fail rather than selecting another value. Numeric font
+weights are restricted to 100–900, avoiding Typst's silent clamping. Custom
+paper requires both dimensions; named paper rejects unused custom dimensions.
+
 **Language does not determine paper.** The examples explicitly choose A4 for
 `en-ch` and US Letter for `en-us`; these are style choices, not an engine
 country-to-paper rule. A US English A4 document is valid too: change its layout
@@ -82,11 +103,15 @@ file that nothing reads cannot configure a document.
 
 Typst's baseline paragraph leading is 0.65 em, spacing 1.2 em, justification
 false and line breaking auto. The latter chooses the optimized algorithm for
-justified paragraphs. The styles declare leading (Harvard 0.7 em before its
-compact override, style 1 0.7 em, style 2 0.6 em), zero paragraph spacing and
+justified paragraphs. The styles declare leading (Harvard 0.7 em,
+style 1 0.7 em, style 2 0.6 em), zero paragraph spacing and
 no baseline justification. Intentional Harvard regions still opt into their
 established justification/spacing. All retain `linebreaks = "auto"` as an
 explicit algorithm choice. [Paragraph reference](https://typst.app/docs/reference/model/par/).
+
+`paragraph.leading_em` is the single authority for line spacing, including
+Harvard; `text.leading_em` is invalid. Substyles may override the paragraph
+value without a renderer silently replacing it.
 
 First-line and hanging indents are explicitly zero; indent-all is false.
 Justification limits explicitly retain word spacing between two-thirds and

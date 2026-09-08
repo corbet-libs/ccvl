@@ -1,4 +1,5 @@
 // Explicit Typst 0.15.1 settings. No paper, font or locale is chosen here.
+#import "document-settings.typ": validate-settings
 #let merge-settings(base, override) = {
   let result = base
   for (key, value) in override {
@@ -13,6 +14,7 @@
   panic("direction must be ltr or rtl")
 }
 #let apply-document-settings(settings, body) = {
+  validate-settings(settings)
   let p = settings.page
   let t = settings.text
   let q = settings.paragraph
@@ -30,7 +32,7 @@
       right: p.margin_right_mm * 1mm,
     ),
     bleed: p.bleed_mm * 1mm,
-    binding: if p.binding == "left" { left } else { right },
+    binding: (left: left, right: right).at(p.binding),
     fill: if p.fill == "auto" { auto } else { rgb(p.fill) },
     numbering: none,
     supplement: none,
@@ -58,7 +60,7 @@
     tracking: t.tracking_pt * 1pt,
     spacing: t.spacing_percent * 1%,
     baseline: t.baseline_pt * 1pt,
-    cjk-latin-spacing: if t.cjk_latin_spacing == "auto" { auto } else { none },
+    cjk-latin-spacing: ("auto": auto, "none": none).at(t.cjk_latin_spacing),
     top-edge: t.top_edge,
     bottom-edge: t.bottom_edge,
     overhang: t.overhang,
@@ -95,7 +97,7 @@
     ),
   )
   set par.line(numbering: none)
-  set align(if settings.block.align == "left" { left } else { right })
+  set align((left: left, center: center, right: right, start: start, end: end).at(settings.block.align))
   set block(
     above: settings.block.above_pt * 1pt,
     below: settings.block.below_pt * 1pt,

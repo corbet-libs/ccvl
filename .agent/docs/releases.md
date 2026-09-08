@@ -65,3 +65,9 @@ as artifacts. Packages have a three-day Actions retention period; published
 downloads are retained as release assets. Public source uses standard
 GitHub-hosted runners. Private downstream content stays on the maintainer's
 self-hosted workflow and is never uploaded to those runners.
+
+Linux independent verification runs one public check and retains its freshly
+verified PDFs for Poppler, QPDF and pixel comparisons. Each variant still
+compiles twice inside Rust and once in a separate process. Download identity
+checking uses `doctor`; complete setup remains tested in the clean archive
+environment. No document-validation result is reused across CI runs.

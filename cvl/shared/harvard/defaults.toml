@@ -50,8 +50,6 @@ cost_hyphenation_percent = 100
 cost_runt_percent = 100
 cost_widow_percent = 100
 cost_orphan_percent = 100
-# Kept here for Harvard substyle compatibility; paragraph leading is below.
-leading_em = 0.7
 
 [paragraph]
 leading_em = 0.7

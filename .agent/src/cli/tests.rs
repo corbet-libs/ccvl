@@ -134,3 +134,22 @@ fn style_substyle_and_page_arguments_remain_independent() {
         matches!(cl.command, Command::BuildCl { pages: Some(2), style: Some(style), substyle: Some(substyle), .. } if style == "postcard" && substyle == "standard")
     );
 }
+
+#[test]
+fn explain_style_accepts_document_locale_and_scoped_selection() {
+    let args = Args::try_parse_from([
+        "ccvl",
+        "explain-style",
+        "cl",
+        "en-us",
+        "--style",
+        "test-style-2",
+        "--substyle",
+        "cards",
+    ])
+    .unwrap();
+    assert!(
+        matches!(args.command, Command::ExplainStyle { document, locale, style: Some(style), substyle: Some(substyle) } if document == "cl" && locale == "en-us" && style == "test-style-2" && substyle == "cards")
+    );
+    assert!(Args::try_parse_from(["ccvl", "explain-style", "resume", "en-us"]).is_err());
+}

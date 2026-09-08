@@ -34,7 +34,12 @@ beside its parent style. Independent styles need not import Harvard or use
   strings and paper/language/region/direction in layout.
 - Put explicit page, text, paragraph and block decisions in style-owned
   defaults. The optional `.agent/typst/document.typ` adapter applies those
-  values; it does not choose a design. Retain `auto` only as a deliberate,
+  values; it does not choose a design. Declare `settings_adapter = "document-v1"`
+  when using it; the engine and direct Typst adapter share one validation schema.
+  Use `paragraph.leading_em` as the single line-spacing authority, and
+  `explain-style <cv|cl> <locale> --style <id> --substyle <id>` to inspect merged
+  inputs and their sources. Independent renderers keep their own schema.
+  Retain `auto` only as a deliberate,
   documented algorithm choice. Set spacing/insets/shape strokes explicitly
   for components introduced by the style.
 - The supplied `layout` input must reach the renderer; writing metadata

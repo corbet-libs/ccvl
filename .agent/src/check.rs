@@ -16,6 +16,19 @@ use crate::styles;
 use crate::workspace::Workspace;
 
 pub fn run(workspace: &Workspace) -> Result<()> {
+    run_with_artifacts(workspace, None)
+}
+
+/// Retain the first, verified PDF for independent checks in this invocation.
+/// The destination must be new; existing files are never accepted as evidence.
+pub fn run_with_artifacts(workspace: &Workspace, artifacts: Option<&Path>) -> Result<()> {
+    if let Some(path) = artifacts {
+        ensure!(
+            !path.exists(),
+            "artifact directory already exists: {}",
+            path.display()
+        );
+    }
     validate_manifest(workspace)?;
     validate_styles(workspace)?;
     application::validate_profiles(workspace)?;
@@ -25,7 +38,7 @@ pub fn run(workspace: &Workspace) -> Result<()> {
     public::validate_repository(workspace)?;
     format::format_typst(workspace, true)?;
     validate_embedded_fonts(workspace)?;
-    render_and_verify(workspace)
+    render_and_verify(workspace, artifacts)
 }
 
 fn validate_manifest(workspace: &Workspace) -> Result<()> {
@@ -199,10 +212,11 @@ fn validate_embedded_fonts(workspace: &Workspace) -> Result<()> {
     Ok(())
 }
 
-fn render_and_verify(workspace: &Workspace) -> Result<()> {
+fn render_and_verify(workspace: &Workspace, artifacts: Option<&Path>) -> Result<()> {
     let profile = workspace.read_toml_value("cvl/profile.toml")?;
     let temporary = TempDir::new()?;
     let compiler = Compiler::new(workspace)?;
+    let mut checked_pdfs = Vec::new();
     for leaf in cv_leaves(workspace)?
         .into_iter()
         .chain(cl_leaves(workspace)?)
@@ -254,6 +268,7 @@ fn render_and_verify(workspace: &Workspace) -> Result<()> {
                 &format!("{} output", spec.name),
             )?;
             verified.push((*pages, pdf::verify(&first, *pages, &contacts, &policy)?));
+            checked_pdfs.push((first, format!("{label}.pdf")));
         }
         if let Some(pages) = leaf.contract.get("shared_pages").and_then(Value::as_array) {
             for page in pages {
@@ -274,6 +289,19 @@ fn render_and_verify(workspace: &Workspace) -> Result<()> {
                     );
                 }
             }
+        }
+    }
+    if let Some(destination) = artifacts {
+        // Publish only after every document, shared-page and repeat-render check
+        // succeeds. create_dir rejects an existing destination, including races.
+        fs::create_dir(destination).with_context(|| {
+            format!(
+                "cannot create new artifact directory {}",
+                destination.display()
+            )
+        })?;
+        for (source, name) in checked_pdfs {
+            fs::copy(source, destination.join(name))?;
         }
     }
     Ok(())

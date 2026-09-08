@@ -34,6 +34,14 @@ Harvard rules, not assumptions about every document style. The independent
 styles own different fields and page geometry and do not need Harvard metrics.
 `public-check` adds the public/private boundary and secret checks. Linux's
 `check-linux-deep.sh` independently uses Poppler, QPDF and page images.
+It runs `public-check --artifacts <new-directory>` once and reuses those
+freshly checked PDFs. The Rust check still compiles report/enforce pairs;
+one further compile in a fresh process per variant proves cross-process
+byte reproducibility. Independent tools inspect the generated and tracked
+PDFs, compare every page's pixels and text, and check declared shared pages.
+The artifact directory must not exist, and no PDFs are exported until all
+document checks pass. It is temporary evidence for that invocation, not a
+persistent cache that could bypass current source checks.
 
 Regression fixtures verify a complete workspace without Harvard; selected
 style/content/page defaults; actual paper and font changes through layout
@@ -41,6 +49,13 @@ inputs; locale-specific geometry; incorrect PDF policy rejection; and wrapped
 contact names. All newly added or affected pages also need visual review.
 `render-previews.sh` regenerates the [gallery](../../cvl/README.md) from the
 registered PDFs; thumbnails complement full-resolution page inspection.
+It reuses previews only when PDF bytes, page count, the renderer executable
+and reported version, rendering script, and every output image still match.
+Missing or changed images are rebuilt. Cache records live in the ignored
+`.agent/cache/previews/` directory; a failed render does not publish partial
+pages or update its record. A successful refresh removes surplus numbered
+previews for that PDF when its page count shrinks. `test_previews.sh` exercises reuse, each source
+of invalidation, and recovery from a failure partway through a document.
 
 Every CI run builds optimized release binaries natively on Linux
 x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64/arm64. Each binary passes
@@ -49,6 +64,10 @@ reject a mismatched workspace. Windows also exercises the PowerShell download
 installer. Linux performs the locked Rust unit suite, Clippy, and independent
 Poppler, QPDF, and pixel comparisons. A minimal Linux container extracts the
 actual download bundle and runs setup without Git, Rust, or a compiler.
+The Linux independent-check job verifies the downloaded binary's checksum
+and workspace identity with `doctor`; it avoids rerunning setup's full
+document suite before its own public check. The archive job continues to
+exercise the complete user setup path.
 
 The same tested files become release assets; publication never rebuilds or
 fetches an older rolling binary. The CI workflow requires all six builds and

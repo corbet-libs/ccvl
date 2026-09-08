@@ -1,5 +1,6 @@
 id = "test-style-2"
 api = 1
+settings_adapter = "document-v1"
 documents = ["cl"]
 supports_locales = ["en-ch", "en-us"]
 pages = [2]

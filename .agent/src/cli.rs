@@ -65,7 +65,11 @@ enum Command {
         all: bool,
     },
     /// Run all checks required before publishing.
-    PublicCheck,
+    PublicCheck {
+        /// Retain freshly verified PDFs in a new directory.
+        #[arg(long)]
+        artifacts: Option<PathBuf>,
+    },
     /// Verify that a private downstream differs only in explicitly owned paths.
     DownstreamCheck {
         #[arg(long, default_value = "ccvl-downstream.json")]
@@ -77,6 +81,16 @@ enum Command {
     Build,
     /// List every registered document variant and its output as JSON.
     ListDocuments,
+    /// Explain merged adapter settings and the source of each value as JSON.
+    ExplainStyle {
+        #[arg(value_parser = ["cv", "cl"])]
+        document: String,
+        locale: String,
+        #[arg(long)]
+        style: Option<String>,
+        #[arg(long)]
+        substyle: Option<String>,
+    },
     /// Create one keyed opportunity without overwriting an existing record.
     NewOpportunity {
         organisation_key: String,
@@ -245,8 +259,8 @@ pub fn run() -> Result<ExitCode> {
                 failures.len()
             );
         }
-        Command::PublicCheck => {
-            check::run(&workspace)?;
+        Command::PublicCheck { artifacts } => {
+            check::run_with_artifacts(&workspace, artifacts.as_deref())?;
             public::validate_boundary(&workspace)?;
             println!(
                 "Public-boundary checks passed. Review .agent/docs/public-identifiers.md before publishing."
@@ -261,6 +275,25 @@ pub fn run() -> Result<ExitCode> {
             "{}",
             serde_json::to_string_pretty(&render::list_documents(&workspace)?)?
         ),
+        Command::ExplainStyle {
+            document,
+            locale,
+            style,
+            substyle,
+        } => {
+            let document = if document == "cv" { "cv" } else { "cl" };
+            let selected = crate::styles::selection(
+                &workspace,
+                document,
+                style.as_deref(),
+                substyle.as_deref(),
+            )?;
+            let leaf = crate::styles::leaf(&workspace, document, &locale, &selected)?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&crate::settings::resolve(&workspace, &leaf)?)?
+            );
+        }
         Command::NewOpportunity {
             organisation_key,
             position_key,

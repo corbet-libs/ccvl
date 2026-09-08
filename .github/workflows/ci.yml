@@ -120,7 +120,7 @@ jobs:
           cp ccvl-linux-x86_64 "$GITHUB_WORKSPACE/.agent/cache/ccvl/bin/ccvl"
           chmod 0755 "$GITHUB_WORKSPACE/.agent/cache/ccvl/bin/ccvl"
           cd "$GITHUB_WORKSPACE"
-          bash ./ccvl setup
+          bash ./ccvl doctor
 
       - name: Install independent PDF tools
         run: |
@@ -129,9 +129,6 @@ jobs:
 
       - name: Run Linux-specific independent PDF checks
         run: bash .agent/scripts/check-linux-deep.sh
-
-      - name: Run public release checks
-        run: bash ./ccvl public-check
 
       - name: Record tool versions
         if: always()

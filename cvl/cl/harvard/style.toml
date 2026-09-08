@@ -3,6 +3,7 @@
 # default_substyle renders when a record selects nothing.
 id = "harvard"
 api = 1
+settings_adapter = "document-v1"
 documents = ["cl"]
 supports_locales = ["de-ch", "en-ch"]
 pages = [1]

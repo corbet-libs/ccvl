@@ -4,8 +4,7 @@
 #let document-style(locale: "en-ch", style: none, doc) = {
   assert(style != none, message: "Harvard needs explicit settings")
   assert(style.text.lang + "-" + lower(style.text.region) == locale, message: "layout locale mismatch")
-  let settings = merge-settings(style, (paragraph: (leading_em: style.text.leading_em)))
-  show: apply-document-settings.with(settings)
+  show: apply-document-settings.with(style)
   show link: it => text(fill: rgb(style.accents.link), it)
   doc
 }

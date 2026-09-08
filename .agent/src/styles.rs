@@ -28,6 +28,7 @@ pub struct Definition {
     pub default_substyle: String,
     pub substyles: Vec<String>,
     pub defaults: Option<String>,
+    pub settings_adapter: Option<String>,
     #[serde(default)]
     pub fonts: Vec<String>,
 }
@@ -43,6 +44,7 @@ pub struct StyleLeaf {
     pub pages: Vec<usize>,
     pub default_pages: usize,
     pub defaults: Option<PathBuf>,
+    pub settings_adapter: Option<String>,
     pub contract: Value,
 }
 
@@ -220,6 +222,14 @@ pub fn definition(workspace: &Workspace, document: &str, name: &str) -> Result<D
                 == definition.supports_locales.len()
             && definition.pages.iter().collect::<BTreeSet<_>>().len() == definition.pages.len(),
         "{}: duplicate substyles, locales or page presets",
+        path.display()
+    );
+    ensure!(
+        definition
+            .settings_adapter
+            .as_deref()
+            .is_none_or(|value| value == "document-v1"),
+        "{}: unknown settings_adapter; expected document-v1 or omit for a custom renderer",
         path.display()
     );
     for relative in definition.defaults.iter().chain(definition.fonts.iter()) {
@@ -408,6 +418,7 @@ pub fn leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<Style
                     pages: style.pages.clone(),
                     default_pages: style.default_pages,
                     defaults: defaults.clone(),
+                    settings_adapter: style.settings_adapter.clone(),
                     contract: resolved_contract,
                 };
                 for path in [leaf.content(), leaf.strings(), leaf.adapter()] {

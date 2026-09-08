@@ -1,0 +1,277 @@
+{
+  "page": {
+    "paper": {
+      "type": "string"
+    },
+    "width_mm": {
+      "type": "number",
+      "exclusive_minimum": 0,
+      "optional": true
+    },
+    "height_mm": {
+      "type": "number",
+      "exclusive_minimum": 0,
+      "optional": true
+    },
+    "flipped": {
+      "type": "boolean"
+    },
+    "columns": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "margin_top_mm": {
+      "type": "number",
+      "minimum": 0
+    },
+    "margin_bottom_mm": {
+      "type": "number",
+      "minimum": 0
+    },
+    "margin_left_mm": {
+      "type": "number",
+      "minimum": 0
+    },
+    "margin_right_mm": {
+      "type": "number",
+      "minimum": 0
+    },
+    "bleed_mm": {
+      "type": "number",
+      "minimum": 0
+    },
+    "binding": {
+      "type": "string",
+      "enum": [
+        "left",
+        "right"
+      ]
+    },
+    "fill": {
+      "type": "color-auto"
+    },
+    "header_ascent_percent": {
+      "type": "number",
+      "minimum": 0
+    },
+    "footer_descent_percent": {
+      "type": "number",
+      "minimum": 0
+    }
+  },
+  "text": {
+    "font": {
+      "type": "font"
+    },
+    "fallback": {
+      "type": "boolean"
+    },
+    "overhang": {
+      "type": "boolean"
+    },
+    "kerning": {
+      "type": "boolean"
+    },
+    "alternates": {
+      "type": "boolean"
+    },
+    "ligatures": {
+      "type": "boolean"
+    },
+    "discretionary_ligatures": {
+      "type": "boolean"
+    },
+    "historical_ligatures": {
+      "type": "boolean"
+    },
+    "slashed_zero": {
+      "type": "boolean"
+    },
+    "fractions": {
+      "type": "boolean"
+    },
+    "smart_quotes": {
+      "type": "boolean"
+    },
+    "style": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "italic",
+        "oblique"
+      ]
+    },
+    "weight": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 900
+    },
+    "stretch_percent": {
+      "type": "number",
+      "exclusive_minimum": 0
+    },
+    "size_pt": {
+      "type": "number",
+      "exclusive_minimum": 0
+    },
+    "fill": {
+      "type": "color"
+    },
+    "lang": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "script": {
+      "type": "string"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "ltr",
+        "rtl"
+      ]
+    },
+    "tracking_pt": {
+      "type": "number"
+    },
+    "spacing_percent": {
+      "type": "number"
+    },
+    "baseline_pt": {
+      "type": "number"
+    },
+    "cjk_latin_spacing": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "none"
+      ]
+    },
+    "top_edge": {
+      "type": "string",
+      "enum": [
+        "ascender",
+        "cap-height",
+        "x-height",
+        "baseline",
+        "descender",
+        "bounds"
+      ]
+    },
+    "bottom_edge": {
+      "type": "string",
+      "enum": [
+        "ascender",
+        "cap-height",
+        "x-height",
+        "baseline",
+        "descender",
+        "bounds"
+      ]
+    },
+    "hyphenate": {
+      "type": "boolean-auto"
+    },
+    "number_type": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "lining",
+        "old-style"
+      ]
+    },
+    "number_width": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "proportional",
+        "tabular"
+      ]
+    },
+    "features": {
+      "type": "features"
+    },
+    "variations": {
+      "type": "variations"
+    },
+    "cost_hyphenation_percent": {
+      "type": "number",
+      "minimum": 0
+    },
+    "cost_runt_percent": {
+      "type": "number",
+      "minimum": 0
+    },
+    "cost_widow_percent": {
+      "type": "number",
+      "minimum": 0
+    },
+    "cost_orphan_percent": {
+      "type": "number",
+      "minimum": 0
+    }
+  },
+  "paragraph": {
+    "leading_em": {
+      "type": "number"
+    },
+    "spacing_pt": {
+      "type": "number"
+    },
+    "first_line_indent_pt": {
+      "type": "number"
+    },
+    "hanging_indent_pt": {
+      "type": "number"
+    },
+    "word_spacing_min_percent": {
+      "type": "number"
+    },
+    "word_spacing_max_percent": {
+      "type": "number"
+    },
+    "tracking_min_pt": {
+      "type": "number"
+    },
+    "tracking_max_pt": {
+      "type": "number"
+    },
+    "justify": {
+      "type": "boolean"
+    },
+    "indent_all": {
+      "type": "boolean"
+    },
+    "linebreaks": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "simple",
+        "optimized"
+      ]
+    }
+  },
+  "block": {
+    "align": {
+      "type": "string",
+      "enum": [
+        "left",
+        "center",
+        "right",
+        "start",
+        "end"
+      ]
+    },
+    "above_pt": {
+      "type": "number"
+    },
+    "below_pt": {
+      "type": "number"
+    },
+    "breakable": {
+      "type": "boolean"
+    }
+  }
+}

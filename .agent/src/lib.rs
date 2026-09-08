@@ -13,6 +13,7 @@ pub mod public;
 pub mod render;
 pub mod runtime;
 mod runtime_source;
+pub mod settings;
 pub mod skills;
 pub mod stations;
 pub mod styles;

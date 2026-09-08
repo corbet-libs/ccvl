@@ -15,12 +15,16 @@ cd "$repo_root"
 }
 
 "$binary" doctor >/dev/null
-"$binary" check
+# Reuse only PDFs produced and fully verified by this invocation. The Rust
+# check renders report/enforce pairs; a fresh process below supplies the third
+# render, preserving cross-process reproducibility without another full suite.
+first_build="$validation_dir/first"
+"$binary" public-check --artifacts "$first_build"
 bash .agent/tests/test_bootstrap.sh
+bash .agent/tests/test_previews.sh
 for shell_script in .agent/scripts/*.sh .agent/tests/*.sh ccvl; do
   bash -n "$shell_script"
 done
-"$binary" fmt --check
 
 for filename in Archivo-Bold.ttf Archivo-Italic.ttf Archivo-Medium.ttf Archivo-Regular.ttf; do
   path="$repo_root/.agent/typst/fonts/$filename"
@@ -153,10 +157,8 @@ render_suite() {
   done < "$validation_dir/documents.tsv"
 }
 
-first_build="$validation_dir/first"
 second_build="$validation_dir/second"
-mkdir -p -- "$first_build" "$second_build"
-render_suite "$first_build"
+mkdir -p -- "$second_build"
 render_suite "$second_build"
 
 while IFS=$'\t' read -r document style substyle locale pages record tracked require_image; do

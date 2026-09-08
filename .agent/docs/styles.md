@@ -16,6 +16,7 @@ default_substyle = "standard"
 # Optional paths, relative to this style directory and inside the workspace:
 # defaults = "tokens.toml"
 # fonts = ["assets/Example-Regular.ttf"]
+# settings_adapter = "document-v1" # optional shared settings protocol
 ```
 
 The workspace manifest names the document roots and their `default_style`.
@@ -31,6 +32,12 @@ substyle and locale it expects:
 ```
 
 The contents of `substyle.toml` and `strings.toml` belong to the style.
+A style importing `.agent/typst/document.typ` declares
+`settings_adapter = "document-v1"`. This opts into the family → substyle →
+locale deep merge and shared validation. The adapter reserves only `page`,
+`text`, `paragraph` and `block`; additional tables remain style-owned.
+Omit this field for an independent renderer with its own settings schema.
+
 `content.toml` uses the common application envelope (options and job metadata)
 with style-owned `[cv]` and `[cl]` tables. The record's document selection must
 match its directory. A style may share code between its substyles in any
@@ -77,6 +84,20 @@ workspace font files; provide their redistribution licenses when publishing.
 bash ./ccvl build-cv en-ch 4 --style harvard --substyle compact
 bash ./ccvl build-cl en-ch --style harvard --substyle frame
 ```
+
+Inspect the merged adapter inputs without compiling or creating outputs:
+
+```sh
+bash ./ccvl explain-style cv en-us --style test-style-1 --substyle sidebar
+bash ./ccvl explain-style cl en-ch --style harvard --substyle frame
+```
+
+The JSON lists sources in precedence order, merged `settings`, and `origins`
+keyed by JSON Pointer (for example `/page/paper`). A value retains the last
+source that actually supplies it, including equal-value overrides. The result
+explains adapter inputs; component-specific renderer overrides such as header
+font size are outside its scope. A renderer that has not opted in receives a
+clear unsupported-adapter error instead of a guessed explanation.
 
 Keep reusable style changes upstream in ccvl, then merge them into personal
 applications repositories. Private content stays downstream.

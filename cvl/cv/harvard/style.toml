@@ -3,6 +3,7 @@
 # when a record selects nothing.
 id = "harvard"
 api = 1
+settings_adapter = "document-v1"
 documents = ["cv"]
 supports_locales = ["de-ch", "en-ch"]
 pages = [2, 3, 4]

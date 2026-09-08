@@ -230,6 +230,9 @@ fn document_spec(
     if leaf.document == "cv" && leaf.contract.get("layout_contract").is_some() {
         stations::validate_style(workspace, &leaf.style, true)?;
     }
+    if leaf.settings_adapter.is_some() {
+        crate::settings::resolve(workspace, leaf)?;
+    }
     let mut inputs = BTreeMap::from([
         ("application".to_owned(), workspace.typst_path(application)?),
         ("profile".to_owned(), workspace.typst_path(profile)?),

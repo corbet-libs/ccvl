@@ -396,6 +396,14 @@ fn layout_input_changes_exported_paper_and_font_and_pdf_policy_is_enforced() {
     let original = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
     for (source, destination) in [
         (".agent/typst/document.typ", ".agent/typst/document.typ"),
+        (
+            ".agent/typst/document-settings.typ",
+            ".agent/typst/document-settings.typ",
+        ),
+        (
+            ".agent/typst/document-settings.json",
+            ".agent/typst/document-settings.json",
+        ),
         ("cvl/shared/test-style-1/defaults.toml", "defaults.toml"),
     ] {
         write(

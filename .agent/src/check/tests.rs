@@ -1,6 +1,30 @@
 use super::*;
 
 #[test]
+fn checked_artifacts_reject_existing_directories_and_failed_checks_publish_nothing() {
+    let temporary = TempDir::new().unwrap();
+    fs::write(temporary.path().join("ccvl.json"), "{}").unwrap();
+    let workspace = Workspace::at(temporary.path()).unwrap();
+    let artifacts = temporary.path().join("artifacts");
+    let error = run_with_artifacts(&workspace, Some(&artifacts)).unwrap_err();
+    assert!(error.to_string().contains("unsupported workspace"));
+    assert!(!artifacts.exists());
+
+    fs::create_dir(&artifacts).unwrap();
+    fs::write(artifacts.join("existing.pdf"), "previous output").unwrap();
+    let error = run_with_artifacts(&workspace, Some(&artifacts)).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("artifact directory already exists")
+    );
+    assert_eq!(
+        fs::read_to_string(artifacts.join("existing.pdf")).unwrap(),
+        "previous output"
+    );
+}
+
+#[test]
 fn checked_in_manifest_styles_and_contracts_are_fixed() {
     let workspace = Workspace::discover(None).unwrap();
     validate_manifest(&workspace).unwrap();
