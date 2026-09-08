@@ -6,7 +6,7 @@ exactly three lines; paragraph 6 mirrors it with a warm three-line close. The
 four central paragraphs carry the evidence and target case in exactly 20 lines:
 five lines each.
 
-`ccvl.json` is the machine-readable source of truth. Each paragraph definition
+`cvl/cl/contract.toml` is the machine-readable source of truth. Each paragraph definition
 contains its number, semantic role, purpose, and line bounds, making the
 contract self-describing for both people and agents.
 
@@ -75,17 +75,26 @@ application. Each is exactly one measured line with a recognisable heading and
 concrete evidence. Together they cover the target's main selection dimensions
 without duplicating the prose verbatim.
 
-Use the same triangular bullet markers as the CV. Keep the five rows inside
-the existing shaded panel with its accent border and colour palette. Align
-each triangle and its text with the corresponding CV bullet positions. The
-panel extends into both side margins and keeps vertical padding around the
-rows. Separate the rows with about half a line of whitespace so each highlight
-is easy to scan; follow the CV's spacing rhythm throughout the letter.
+The entire highlight panel, including the outer edge of its blue border,
+aligns with the body paragraphs' left and right edges. Keep its accent border
+and colour palette. (`left-rule` renders the accent as a left border; the
+`frame` substyle renders the same panel with a full border and wider padding
+— panel chrome only, same contracts.) Place the unchanged CV triangles and highlight text inside
+the panel, with 8 pt inner padding and the CV's 10.5 pt marker column. Account
+for the stroke width when aligning the visible panel edge. About half a line
+of whitespace between rows keeps the five highlights distinct.
 
-Each highlight is measured against its actual container before any visual
-spacing: minimum 70%, target 82%, maximum 100%. Add useful evidence to a thin
-highlight or tighten an overflowing one; never pad it merely to meet the
-minimum.
+Highlight text inherits the CV and body font size of 10.5 pt. Set the category
+before the existing `|` separator in bold and the evidence in regular weight.
+Use label weight and spacing for hierarchy while keeping the shared font size.
+Keep the rows left aligned with natural, ragged endings.
+
+Measure the actual styled text, including its font size and bold category,
+against its available inner width after panel padding and the marker column:
+minimum 70%, target 82%, maximum 100%.
+Ragged endings within these bounds are intentional. Add useful evidence to a
+thin highlight or tighten an overflowing one; never pad it or stretch its word
+spacing merely to reach the target.
 
 ## Vertical rhythm
 

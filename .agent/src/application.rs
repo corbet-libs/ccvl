@@ -62,60 +62,250 @@ pub use cgreet::{
     salutation_honorific, salutation_last_name, salutation_surname, salutation_titles,
 };
 
-/// Resolve the render style for an application record.
-///
-/// `options.style` names one entry of the `styles` section in `ccvl.json`
-/// (one Typst renderer plus one TOML knob file below
-/// `.agent/typst/styles/`). Records written before styles existed omit the
-/// field — as does an empty string — and render with the manifest default
-/// (`harvard`). Unknown names fail with the available list.
-pub fn resolve_style(workspace: &Workspace, application: &Value, location: &str) -> Result<String> {
+/// One render leaf: a substyle in one locale, i.e. the directory
+/// `<root>/<substyle>/<lang>/ch` holding `content.toml`, `strings.toml`,
+/// `typst/`, and `pdf/`. `locale` is the record language (`de-ch`/`en-ch`);
+/// the directory language is its first subtag (`de`/`en`).
+pub struct StyleLeaf {
+    pub document: &'static str,
+    pub substyle: String,
+    pub locale: &'static str,
+    pub dir: std::path::PathBuf,
+}
+
+impl StyleLeaf {
+    #[must_use]
+    pub fn content(&self) -> std::path::PathBuf {
+        self.dir.join("content.toml")
+    }
+
+    #[must_use]
+    pub fn strings(&self) -> std::path::PathBuf {
+        self.dir.join("strings.toml")
+    }
+
+    #[must_use]
+    pub fn adapter(&self) -> std::path::PathBuf {
+        self.dir.join("typst").join(if self.document == "cv" {
+            "cv.typ"
+        } else {
+            "cl.typ"
+        })
+    }
+
+    #[must_use]
+    pub fn substyle_file(&self) -> std::path::PathBuf {
+        self.dir
+            .parent()
+            .and_then(|path| path.parent())
+            .expect("leaf dir has a substyle parent")
+            .join("substyle.toml")
+    }
+}
+
+struct StyleRegistry {
+    root: String,
+    substyles: Vec<String>,
+    default: String,
+}
+
+/// Read one document family's registry: the discovery root from
+/// `ccvl.json documents` plus its `style.toml` (`substyles`, `default_substyle`).
+fn style_registry(workspace: &Workspace, document: &str) -> Result<StyleRegistry> {
+    let manifest_key = if document == "cv" {
+        "cv"
+    } else {
+        "cover_letter"
+    };
     let manifest = workspace.read_json("ccvl.json")?;
-    let styles = manifest
-        .pointer("/styles")
-        .context("ccvl.json has no styles section")?;
-    let default = styles
-        .get("default")
+    let root = manifest
+        .pointer(&format!("/documents/{manifest_key}/root"))
         .and_then(Value::as_str)
-        .context("ccvl.json styles.default is missing")?;
-    let available = styles
-        .get("available")
+        .with_context(|| format!("ccvl.json documents.{manifest_key}.root is missing"))?
+        .to_owned();
+    let style = workspace.read_toml_value(format!("{root}/style.toml"))?;
+    let substyles = style
+        .get("substyles")
         .and_then(Value::as_array)
-        .context("ccvl.json styles.available is missing")?;
-    let available = available
+        .with_context(|| format!("{root}/style.toml has no substyles list"))?
         .iter()
         .map(Value::as_str)
         .collect::<Option<Vec<_>>>()
-        .context("ccvl.json styles.available must be style names")?;
+        .with_context(|| format!("{root}/style.toml substyles must be substyle names"))?
+        .into_iter()
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    let default = style
+        .get("default_substyle")
+        .and_then(Value::as_str)
+        .with_context(|| format!("{root}/style.toml has no default_substyle"))?
+        .to_owned();
     ensure!(
-        !available.is_empty() && available.contains(&default),
-        "ccvl.json: default style {default:?} is not available"
+        !substyles.is_empty() && substyles.contains(&default),
+        "{root}/style.toml: default substyle {default:?} is not listed"
     );
-    if let Some(value) = application.pointer("/options/style") {
+    Ok(StyleRegistry {
+        root,
+        substyles,
+        default,
+    })
+}
+
+/// Every render leaf of one document family: each `style.toml` substyle in
+/// each supported locale. Fails when a leaf directory, its `substyle.toml`,
+/// or one of its `content.toml`/`strings.toml`/adapter files is missing, so
+/// a half-added substyle cannot render silently.
+pub fn style_leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<StyleLeaf>> {
+    ensure!(
+        document == "cv" || document == "cl",
+        "unknown document family: {document}"
+    );
+    let registry = style_registry(workspace, document)?;
+    let style = workspace.read_toml_value(format!("{}/style.toml", registry.root))?;
+    let locales = style
+        .get("supports_locales")
+        .and_then(Value::as_array)
+        .with_context(|| format!("{}/style.toml has no supports_locales", registry.root))?;
+    let mut leaves = Vec::new();
+    for substyle in &registry.substyles {
+        let substyle_file = workspace.path(format!("{}/{substyle}/substyle.toml", registry.root));
+        ensure!(
+            substyle_file.is_file(),
+            "substyle {substyle} is missing {}",
+            substyle_file.display()
+        );
+        for locale in locales {
+            let locale = locale.as_str().with_context(|| {
+                format!("{}/style.toml locales must be locale names", registry.root)
+            })?;
+            let (language, dir) = match locale {
+                "de-ch" => ("de-ch", format!("{}/{substyle}/de/ch", registry.root)),
+                "en-ch" => ("en-ch", format!("{}/{substyle}/en/ch", registry.root)),
+                _ => bail!(
+                    "{}/style.toml supports unknown locale: {locale}",
+                    registry.root
+                ),
+            };
+            let leaf = StyleLeaf {
+                document,
+                substyle: substyle.clone(),
+                locale: language,
+                dir: workspace.path(&dir),
+            };
+            for path in [leaf.content(), leaf.strings(), leaf.adapter()] {
+                ensure!(
+                    path.is_file(),
+                    "leaf {} is missing {}",
+                    leaf.dir.display(),
+                    path.display()
+                );
+            }
+            leaves.push(leaf);
+        }
+    }
+    Ok(leaves)
+}
+
+pub fn cv_leaves(workspace: &Workspace) -> Result<Vec<StyleLeaf>> {
+    style_leaves(workspace, "cv")
+}
+
+pub fn cl_leaves(workspace: &Workspace) -> Result<Vec<StyleLeaf>> {
+    style_leaves(workspace, "cl")
+}
+
+/// Family default substyle when a record selects nothing.
+pub fn default_cv_substyle(workspace: &Workspace) -> Result<String> {
+    Ok(style_registry(workspace, "cv")?.default)
+}
+
+/// Family default substyle when a record selects nothing.
+pub fn default_cl_substyle(workspace: &Workspace) -> Result<String> {
+    Ok(style_registry(workspace, "cl")?.default)
+}
+
+/// Read one document family's measurement contract from the style tree
+/// (`<root>/contract.toml`) instead of the manifest.
+pub fn document_contract(workspace: &Workspace, document: &str) -> Result<Value> {
+    let manifest_key = if document == "cv" {
+        "cv"
+    } else {
+        "cover_letter"
+    };
+    let manifest = workspace.read_json("ccvl.json")?;
+    let root = manifest
+        .pointer(&format!("/documents/{manifest_key}/root"))
+        .and_then(Value::as_str)
+        .with_context(|| format!("ccvl.json documents.{manifest_key}.root is missing"))?;
+    workspace.read_toml_value(format!("{root}/contract.toml"))
+}
+
+/// Resolve the CV substyle for an application record.
+///
+/// `options.cv_substyle` names one entry of `cvl/cv/style.toml`.
+/// An absent or empty selection uses the family default. Unknown names fail.
+pub fn resolve_cv_substyle(
+    workspace: &Workspace,
+    application: &Value,
+    location: &str,
+) -> Result<String> {
+    resolve_substyle(workspace, application, location, "cv")
+}
+
+/// Resolve the cover-letter substyle for an application record. See
+/// [`resolve_cv_substyle`]; the default is `left-rule`.
+pub fn resolve_cl_substyle(
+    workspace: &Workspace,
+    application: &Value,
+    location: &str,
+) -> Result<String> {
+    resolve_substyle(workspace, application, location, "cl")
+}
+
+fn resolve_substyle(
+    workspace: &Workspace,
+    application: &Value,
+    location: &str,
+    document: &str,
+) -> Result<String> {
+    let registry = style_registry(workspace, document)?;
+    let key = if document == "cv" {
+        "cv_substyle"
+    } else {
+        "cl_substyle"
+    };
+    if let Some(value) = application.pointer(&format!("/options/{key}")) {
         ensure!(
             value.is_string(),
-            "{location}.options.style must be a style name"
+            "{location}.options.{key} must be a substyle name"
         );
     }
     let raw = application
-        .pointer("/options/style")
+        .pointer(&format!("/options/{key}"))
         .and_then(Value::as_str)
         .unwrap_or("");
-    let resolved = if raw.is_empty() { default } else { raw };
-    ensure!(
-        available.contains(&resolved),
-        "{location}: unknown style {raw:?}; expected one of {} (set options.style in {location})",
-        available.join(", ")
-    );
-    Ok(resolved.to_owned())
+    if !raw.is_empty() {
+        ensure!(
+            registry.substyles.iter().any(|name| name == raw),
+            "{location}: unknown {document} substyle {raw:?}; expected one of {} (set options.{key} in {location})",
+            registry.substyles.join(", ")
+        );
+        return Ok(raw.to_owned());
+    }
+    Ok(registry.default)
 }
 
 pub fn validate_all(workspace: &Workspace) -> Result<()> {
-    let mut candidates = vec![
-        workspace.path(".agent/scaffolds/opportunity/application.toml"),
-        workspace.path("cvl/de-ch/application.toml"),
-        workspace.path("cvl/en-ch/application.toml"),
-    ];
+    let mut candidates = vec![workspace.path(".agent/scaffolds/opportunity/application.toml")];
+    // Every style leaf carries a full application record as its showcase
+    // content; discovery (not a hardcoded locale list) keeps new leaves
+    // covered.
+    for leaf in cv_leaves(workspace)?
+        .into_iter()
+        .chain(cl_leaves(workspace)?)
+    {
+        candidates.push(leaf.content());
+    }
     let opportunities = workspace.path("opportunities");
     if opportunities.is_dir() {
         for organisation in std::fs::read_dir(&opportunities)? {
@@ -143,24 +333,85 @@ pub fn validate_all(workspace: &Workspace) -> Result<()> {
             !template,
         )?;
         let relative = workspace.relative(&path)?;
-        if relative == std::path::Path::new("cvl/de-ch/application.toml")
-            && application
-                .pointer("/options/language")
+        if let Some(leaf_locale) = leaf_locale(&relative) {
+            ensure!(
+                application
+                    .pointer("/options/language")
+                    .and_then(Value::as_str)
+                    == Some(leaf_locale),
+                "{}: expected {leaf_locale} language",
+                relative.display()
+            );
+            // The style-major tree selects per document: the retired single
+            // `options.style` key must not linger in showcase leaves, and a
+            // leaf's own selection must name its own substyle (or stay empty
+            // for the default).
+            ensure!(
+                application.pointer("/options/style").is_none(),
+                "{}: retired options.style must be replaced by options.cv_substyle/options.cl_substyle",
+                relative.display()
+            );
+            let (key, expected) = leaf_substyle(&relative).with_context(|| {
+                format!(
+                    "{}: cannot locate the enclosing substyle",
+                    relative.display()
+                )
+            })?;
+            if let Some(selected) = application
+                .pointer(&format!("/options/{key}"))
                 .and_then(Value::as_str)
-                != Some("de-ch")
-        {
-            bail!("{}: expected de-ch language", relative.display());
-        }
-        if relative == std::path::Path::new("cvl/en-ch/application.toml")
-            && application
-                .pointer("/options/language")
-                .and_then(Value::as_str)
-                != Some("en-ch")
-        {
-            bail!("{}: expected en-ch language", relative.display());
+            {
+                ensure!(
+                    selected.is_empty() || selected == expected,
+                    "{}: options.{key} {selected:?} does not match this {expected} leaf",
+                    relative.display()
+                );
+            }
         }
     }
     Ok(())
+}
+
+/// Record language expected by a showcase leaf path
+/// (`cvl/cv|cl/<substyle>/<lang>/ch/content.toml`), if any.
+fn leaf_locale(relative: &std::path::Path) -> Option<&'static str> {
+    if !is_leaf_content(relative) {
+        return None;
+    }
+    let mut parts = relative.components().rev();
+    parts.next()?;
+    parts.next()?;
+    match parts.next()?.as_os_str().to_str()? {
+        "de" => Some("de-ch"),
+        "en" => Some("en-ch"),
+        _ => None,
+    }
+}
+
+/// Substyle selection key and enclosing substyle name for a showcase leaf
+/// path, if the path is a leaf content record.
+fn leaf_substyle(relative: &std::path::Path) -> Option<(&'static str, String)> {
+    if !is_leaf_content(relative) {
+        return None;
+    }
+    let mut parts = relative.components().rev();
+    parts.next()?;
+    parts.next()?;
+    parts.next()?;
+    let substyle = parts.next()?.as_os_str().to_str()?.to_owned();
+    let document = parts.next()?.as_os_str().to_str()?;
+    match document {
+        "cv" => Some(("cv_substyle", substyle)),
+        "cl" => Some(("cl_substyle", substyle)),
+        _ => None,
+    }
+}
+
+fn is_leaf_content(relative: &std::path::Path) -> bool {
+    let mut parts = relative.components();
+    let root = parts.next().and_then(|part| part.as_os_str().to_str());
+    let document = parts.next().and_then(|part| part.as_os_str().to_str());
+    matches!(root, Some("cvl")) && matches!(document, Some("cv" | "cl"))
 }
 
 pub fn validate_profiles(workspace: &Workspace) -> Result<()> {
@@ -244,7 +495,8 @@ pub fn validate_record(
             "pages",
             "generate_cl",
             "application_date",
-            "style",
+            "cv_substyle",
+            "cl_substyle",
         ],
         location,
     )?;
@@ -272,7 +524,8 @@ pub fn validate_record(
         .get("application_date")
         .and_then(Value::as_str)
         .context("options.application_date is missing")?;
-    resolve_style(workspace, application, location)?;
+    resolve_cv_substyle(workspace, application, location)?;
+    resolve_cl_substyle(workspace, application, location)?;
 
     let job = object_at(application, "/job")?;
     let mut allowed = JOB_FIELDS.to_vec();
@@ -334,11 +587,8 @@ pub fn validate_record(
     let cl = object_at(application, "/cl")?;
     ensure_no_unknown(cl, &["paragraphs", "highlights"], location)?;
 
-    let contract = workspace.read_json("ccvl.json")?;
-    let cl_contract = contract
-        .pointer("/documents/cover_letter")
-        .context("ccvl.json has no cover-letter contract")?;
-    let paragraph_contracts = array_at(cl_contract, "/paragraphs")?;
+    let cl_contract = document_contract(workspace, "cl")?;
+    let paragraph_contracts = array_at(&cl_contract, "/paragraphs")?;
     let paragraphs = cl
         .get("paragraphs")
         .and_then(Value::as_array)
@@ -394,7 +644,7 @@ pub fn validate_record(
         &format!("{location}.cl.paragraphs"),
         "body lines",
     )?;
-    for region in array_at(cl_contract, "/paragraph_regions")? {
+    for region in array_at(&cl_contract, "/paragraph_regions")? {
         let numbers = array_at(region, "/paragraphs")?
             .iter()
             .map(|value| value.as_u64().context("invalid paragraph number"))
@@ -414,7 +664,7 @@ pub fn validate_record(
         .get("highlights")
         .and_then(Value::as_array)
         .context("cl.highlights is not an array")?;
-    let expected = usize::try_from(u64_at(cl_contract, "/highlights/count")?)?;
+    let expected = usize::try_from(u64_at(&cl_contract, "/highlights/count")?)?;
     ensure!(
         highlights.len() == expected,
         "{location}.cl.highlights: expected {expected} items, found {}",
@@ -646,63 +896,150 @@ mod tests {
     }
 
     #[test]
-    fn style_defaults_to_harvard_for_legacy_records() {
-        // The fixture carries no options.style, like records written before
-        // styles existed: validation accepts it and resolution yields the
-        // manifest default.
+    fn substyles_default_to_standard_and_left_rule() {
+        // The fixture carries no selection keys, like records written before
+        // per-document selection existed: validation accepts it and
+        // resolution yields the family defaults.
         let workspace = workspace();
         let draft = application(&[3, 5, 5, 5, 5, 3]);
         validate_record(&workspace, &draft, "fixture", true).unwrap();
         assert_eq!(
-            resolve_style(&workspace, &draft, "fixture").unwrap(),
-            "harvard"
+            resolve_cv_substyle(&workspace, &draft, "fixture").unwrap(),
+            "standard"
+        );
+        assert_eq!(
+            resolve_cl_substyle(&workspace, &draft, "fixture").unwrap(),
+            "left-rule"
         );
 
         let mut empty = draft.clone();
-        empty["options"]["style"] = json!("");
+        empty["options"]["cv_substyle"] = json!("");
+        empty["options"]["cl_substyle"] = json!("");
         validate_record(&workspace, &empty, "fixture", true).unwrap();
         assert_eq!(
-            resolve_style(&workspace, &empty, "fixture").unwrap(),
-            "harvard"
+            resolve_cv_substyle(&workspace, &empty, "fixture").unwrap(),
+            "standard"
+        );
+        assert_eq!(
+            resolve_cl_substyle(&workspace, &empty, "fixture").unwrap(),
+            "left-rule"
         );
 
-        let mut compact = draft.clone();
-        compact["options"]["style"] = json!("harvard-compact");
-        validate_record(&workspace, &compact, "fixture", true).unwrap();
+        let mut selected = draft.clone();
+        selected["options"]["cv_substyle"] = json!("compact");
+        selected["options"]["cl_substyle"] = json!("frame");
+        validate_record(&workspace, &selected, "fixture", true).unwrap();
         assert_eq!(
-            resolve_style(&workspace, &compact, "fixture").unwrap(),
-            "harvard-compact"
+            resolve_cv_substyle(&workspace, &selected, "fixture").unwrap(),
+            "compact"
+        );
+        assert_eq!(
+            resolve_cl_substyle(&workspace, &selected, "fixture").unwrap(),
+            "frame"
         );
     }
 
     #[test]
-    fn unknown_style_fails_with_available_list() {
+    fn retired_style_selection_is_rejected() {
         let workspace = workspace();
         let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-        draft["options"]["style"] = json!("nope");
+        draft["options"]["style"] = json!("harvard");
         let error = validate_record(&workspace, &draft, "fixture", true)
             .unwrap_err()
             .to_string();
-        assert!(error.contains("unknown style"), "unexpected error: {error}");
-        assert!(error.contains("harvard"), "unexpected error: {error}");
-        let error = resolve_style(&workspace, &draft, "fixture")
-            .unwrap_err()
-            .to_string();
-        assert!(
-            error.contains("harvard-compact"),
-            "unexpected error: {error}"
-        );
+        assert!(error.contains("style"), "unexpected error: {error}");
     }
 
     #[test]
-    fn non_string_style_is_rejected() {
+    fn unknown_substyle_fails_with_available_list() {
+        let workspace = workspace();
         let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-        draft["options"]["style"] = json!(3);
-        let error = resolve_style(&workspace(), &draft, "fixture")
+        draft["options"]["cv_substyle"] = json!("nope");
+        let error = validate_record(&workspace, &draft, "fixture", true)
             .unwrap_err()
             .to_string();
         assert!(
-            error.contains("options.style must be a style name"),
+            error.contains("unknown cv substyle"),
+            "unexpected error: {error}"
+        );
+        assert!(error.contains("compact"), "unexpected error: {error}");
+        let error = resolve_cv_substyle(&workspace, &draft, "fixture")
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("standard"), "unexpected error: {error}");
+
+        draft["options"]
+            .as_object_mut()
+            .unwrap()
+            .remove("cv_substyle");
+        draft["options"]["cl_substyle"] = json!("nope");
+        let error = resolve_cl_substyle(&workspace, &draft, "fixture")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("unknown cl substyle"),
+            "unexpected error: {error}"
+        );
+        assert!(error.contains("frame"), "unexpected error: {error}");
+    }
+
+    #[test]
+    fn style_leaves_cover_every_substyle_and_locale() {
+        let workspace = workspace();
+        let cv = cv_leaves(&workspace).unwrap();
+        assert_eq!(cv.len(), 4);
+        for (substyle, locale) in [
+            ("standard", "de-ch"),
+            ("standard", "en-ch"),
+            ("compact", "de-ch"),
+            ("compact", "en-ch"),
+        ] {
+            let leaf = cv
+                .iter()
+                .find(|leaf| leaf.substyle == substyle && leaf.locale == locale)
+                .unwrap_or_else(|| panic!("missing CV leaf {substyle} {locale}"));
+            assert!(leaf.content().is_file());
+            assert!(leaf.strings().is_file());
+            assert!(leaf.adapter().is_file());
+            assert!(leaf.substyle_file().is_file());
+        }
+        let cl = cl_leaves(&workspace).unwrap();
+        assert_eq!(cl.len(), 4);
+        for (substyle, locale) in [
+            ("left-rule", "de-ch"),
+            ("left-rule", "en-ch"),
+            ("frame", "de-ch"),
+            ("frame", "en-ch"),
+        ] {
+            assert!(
+                cl.iter()
+                    .any(|leaf| leaf.substyle == substyle && leaf.locale == locale),
+                "missing cover-letter leaf {substyle} {locale}"
+            );
+        }
+    }
+
+    #[test]
+    fn non_string_substyle_is_rejected() {
+        let mut draft = application(&[3, 5, 5, 5, 5, 3]);
+        draft["options"]["cv_substyle"] = json!(3);
+        let error = resolve_cv_substyle(&workspace(), &draft, "fixture")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("options.cv_substyle must be a substyle name"),
+            "unexpected error: {error}"
+        );
+        draft["options"]
+            .as_object_mut()
+            .unwrap()
+            .remove("cv_substyle");
+        draft["options"]["cl_substyle"] = json!(3);
+        let error = resolve_cl_substyle(&workspace(), &draft, "fixture")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("options.cl_substyle must be a substyle name"),
             "unexpected error: {error}"
         );
     }

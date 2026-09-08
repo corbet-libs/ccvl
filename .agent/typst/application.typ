@@ -2,14 +2,16 @@
 // cover-letter renderers. Deep bounds live in Rust and in the measured
 // render; here only what the renderers index is asserted, so a hand-edited
 // record fails with a location instead of a cryptic field access.
-#let workspace = json("/ccvl.json")
-#let cover-letter-contract = workspace.documents.cover_letter
-#let cv-contract = workspace.documents.cv
-#let known-styles = workspace.styles.available
-#let default-style-name = workspace.styles.default
+//
+// Contracts live with the style, not the manifest: cvl/cv/contract.toml and
+// cvl/cl/contract.toml. Substyle membership (which cv/cl look a record
+// selects) is enforced in Rust before the compile; here the selection keys
+// only need to be strings when present.
+#let cover-letter-contract = toml("/cvl/cl/contract.toml")
+#let cv-contract = toml("/cvl/cv/contract.toml")
 // CV Summary closing-line allowance. Cover-letter paragraphs use their own
 // body maximum and do not inherit this allowance.
-#let last-line-maximum = workspace.at("last_line_maximum", default: 102)
+#let last-line-maximum = cv-contract.at("last_line_maximum", default: 102)
 
 // Last whitespace-separated token of a recipient name for the salutation.
 // "Dr. Jane Doe" -> "Doe"; single-token and hyphenated names survive;
@@ -135,18 +137,14 @@
     options.pages in (2, 3, 4),
     message: "application.options.pages must be 2, 3, or 4",
   )
-  // Style axis: options.style is optional and defaults to the manifest
-  // default ("harvard") for records written before styles existed. An
-  // unknown name fails here with the available list.
-  let style-name = options.at("style", default: default-style-name)
-  assert(
-    type(style-name) == str,
-    message: "application.options.style must be a style name",
-  )
-  assert(
-    style-name == "" or style-name in known-styles,
-    message: "unknown style " + repr(style-name) + ". Available styles: " + known-styles.join(", ") + ".",
-  )
+  // Rust validates per-document substyle membership before compilation.
+  for key in ("cv_substyle", "cl_substyle") {
+    let value = options.at(key, default: "")
+    assert(
+      type(value) == str,
+      message: "application.options." + key + " must be a substyle name",
+    )
+  }
   if expected-language != none {
     assert(
       options.language == expected-language,

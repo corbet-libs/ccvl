@@ -25,8 +25,9 @@ rejects a disabled letter that retains hidden content). Schema version 4
 contains:
 
 - `options`: language, CV page count, cover-letter switch, application date,
-  and render style (`style`, defaulting to `harvard`; see the `styles`
-  section in `ccvl.json` and `.agent/typst/README.md`);
+  and one render substyle per document — CV `standard`|`compact`, cover
+  letter `left-rule`|`frame`, defaulting to `standard` / `left-rule`
+  through `options.cv_substyle` and `options.cl_substyle`;
 - `job`: vacancy, organisation, source, description, context, notes, and
   recipient (`job.cl_recipient.name` holds the full address form such as
   `"Frau Dr. Müller"` for the locale-correct salutation; empty falls back
@@ -37,7 +38,7 @@ contains:
 - when the cover letter is enabled, exactly six paragraphs following
   `.agent/docs/cover-letter.md` and exactly five one-line highlights.
 
-Line lengths are authored as plain text; fill defaults come from `ccvl.json`.
+Line lengths are authored as plain text; fill bounds come from `cvl/cv/contract.toml` and `cvl/cl/contract.toml`.
 Typst measures actual glyph width with the bundled font. The Summary must
 render to exactly five lines; thin Summary lines fail unless explicitly
 allowed, and its closing line may extend up to 102% of the measure.
@@ -85,8 +86,8 @@ bash ./ccvl watch-opportunity <organisation-key> <position-key>
 just watch <organisation-key> <position-key>
 ```
 
-The watcher hashes the record's locale templates (`cvl/<locale>/*.typ`),
-the shared Typst machinery (`.agent/typst/**/*.typ`), `cvl/profile.toml`,
+The watcher hashes the record's style-major locale templates
+(`cvl/cv/`, `cvl/cl/`, and their `typst/` pointers), the shared Typst machinery (`.agent/typst/**/*.typ`), `cvl/profile.toml`,
 `ccvl.json`, the opportunity record, and the generated `typst/*.typ`
 copies, then rebuilds the PDFs plus the resolved copies on change.
 `watch-cv` and `watch-cl` provide the same loop for one general locale

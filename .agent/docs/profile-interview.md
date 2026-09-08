@@ -13,16 +13,18 @@ then applies a deterministic station gate to the publishable CV plan.
 | `interview/profile.md` | informal, source-linked working portrait | private and ignored |
 | `interview/journal.md` | visible interview progress and deferred questions | private and ignored |
 | `interview/stations.toml` | selected and unassigned station candidates | private working state |
-| `cvl/<locale>/cv.typ` | approved rendered wording and presentation | publishable candidate data |
+| `cvl/cv/<substyle>/<lang>/ch/` and `cvl/cl/<substyle>/<lang>/ch/` | approved rendered wording and presentation | publishable candidate data |
 
 The journal is written before the next question is asked. A user can inspect it
 at any time, paste information directly into it, or provide more documents.
 
-## Fixed layout contract
+## Fixed layout contract (Harvard CV)
 
 A station is a full visual CV entry with its own heading, context or period,
 and supporting content. Individual bullets and compact standalone lines do not
-count.
+count. The counts below are the Harvard family contract, shared by its
+`standard` and `compact` CV substyles — not engine law for a future second
+family.
 
 | Page | Role | Fixed structure |
 |---|---|---|
@@ -76,8 +78,8 @@ It remains available for later tailoring without appearing twice.
 7. **Allocate:** give every station one page and section; give every atomic fact
    one station owner. Rank surplus material and leave it unassigned for future
    tailoring.
-8. **Verify:** compare the plan with both locale sources, render, measure, and
-   run the complete workspace check.
+8. **Verify:** compare the plan with every locale source in each selected
+   substyle, render, measure, and run the complete workspace check.
 
 ## Question scheduler
 
@@ -122,7 +124,7 @@ bash ./ccvl profile-status --verify-sources
 ```
 
 The first command reports station coverage and targeted next prompts. The
-second proves that both locale sources contain the planned page-1 and page-2
+second proves that every selected locale source contains the planned page-1 and page-2
 station IDs, exactly ten two-bullet projects, and the same 3×3 competency
 structure. Entries use `// ccvl-station: <station-id>`, `// ccvl-project:
 <project-id>`, or `// ccvl-competency: <competency-id>` directly before their

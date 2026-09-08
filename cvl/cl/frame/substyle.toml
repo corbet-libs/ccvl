@@ -1,0 +1,10 @@
+# frame: full-border cover-letter panel variant. Same renderer and
+# contracts as left-rule; padding and border geometry only.
+
+[cover]
+highlight_inset_pt = 10
+highlight_gap_pt = 9.0
+highlight_border_top_pt = 1
+highlight_border_right_pt = 1
+highlight_border_bottom_pt = 1
+highlight_border_left_pt = 1

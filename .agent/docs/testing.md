@@ -21,7 +21,7 @@ It verifies:
 - the Rust-native evaluator and workspace contracts, embedded Typst formatting,
   and clean Git whitespace;
 - binary asset integrity and all four bundled Archivo variants;
-- all six CV variants and both cover letters with zero Typst diagnostics;
+- all 12 CV variants and four cover letters with zero Typst diagnostics;
 - exactly five Summary lines, six cover-letter paragraphs with 26 body
   lines, and five one-line highlights per locale;
 - 6–8 verified full stations on CV page 1; exactly 10 two-bullet stations on

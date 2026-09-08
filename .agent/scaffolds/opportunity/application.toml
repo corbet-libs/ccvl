@@ -10,8 +10,11 @@ language = ""
 pages = 4
 generate_cl = true
 application_date = ""
-# Render style: one entry from the `styles` section in ccvl.json.
-style = "harvard"
+# Render look: one CV substyle (standard, compact — see cvl/cv/style.toml)
+# plus one cover-letter substyle (left-rule, frame — see cvl/cl/style.toml).
+# Records without these fields render the family defaults.
+cv_substyle = "standard"
+cl_substyle = "left-rule"
 
 [job]
 id = ""

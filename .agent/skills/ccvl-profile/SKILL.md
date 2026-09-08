@@ -173,7 +173,8 @@ Only verified facts may enter the rendered CV.
 
 Once allocation is ready, populate `cvl/profile.toml` with the approved public
 contact fields using `.agent/scaffolds/interview/profile.toml` as its shape.
-Then write both locale masters below `cvl/<locale>/` in plain
+Then write the shared entries in `cvl/cv/src/entries-{de,en}.typ` and the
+locale content records below each document substyle in plain
 recruiter-readable language while retaining recognised specialist terms.
 Place `// ccvl-station: <station-id>` immediately before the `#cv-h[...]` of
 every full station on pages 1 and 2. Place `// ccvl-project: <project-id>` before

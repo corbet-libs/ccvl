@@ -82,7 +82,11 @@ On native Windows, use the root dispatcher from Command Prompt or PowerShell:
 ```
 
 Generated general documents are written to
-`cvl/<locale>/output/cv-{2,3,4}.pdf` and `cvl/<locale>/output/cl.pdf`.
+`cvl/cv/<substyle>/<language>/<region>/pdf/cv-{2,3,4}.pdf` and
+`cvl/cl/<substyle>/<language>/<region>/pdf/cl.pdf`.
+CV substyles are `standard` and `compact`; cover-letter substyles are
+`left-rule` and `frame`. Use `build-cv en-ch 4 --substyle compact` or
+`build-cl en-ch --substyle frame` with your platform launcher.
 Opportunity-specific documents are written beside their job record under
 `opportunities/<organisation>/<position>/pdfs/` (rendered PDFs) and
 `opportunities/<organisation>/<position>/typst/` (resolved standalone

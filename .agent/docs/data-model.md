@@ -73,6 +73,9 @@ The record owns:
 - attributable organisation research and fit notes;
 - language and application date;
 - selected CV page count and exactly five tailored Summary lines;
+- one CV substyle (`standard`|`compact`) and, when enabled, one cover-letter
+  substyle (`left-rule`|`frame`), defaulting to `standard` / `left-rule`
+  through `options.cv_substyle` and `options.cl_substyle`;
 - whether a cover letter is required;
 - when enabled, six measured paragraphs and five measured highlights.
 

@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn rendition_identifier_is_not_document_content() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let original = root.join("cvl/de-ch/output/cv-2.pdf");
+        let original = root.join("cvl/cv/standard/de/ch/pdf/cv-2.pdf");
         let original_bytes = fs::read(&original).unwrap();
         let trailer_id = BytesRegex::new(r"(/ID\[\([^)]*\)\()[^)]*(\)\]\s*>>)").unwrap();
         let changed = INSTANCE_ID
@@ -317,7 +317,7 @@ mod tests {
     #[test]
     fn metadata_change_is_detected() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let original = root.join("cvl/de-ch/output/cv-2.pdf");
+        let original = root.join("cvl/cv/standard/de/ch/pdf/cv-2.pdf");
         let original_bytes = fs::read(&original).unwrap();
         let metadata = BytesRegex::new("<dc:language>").unwrap();
         let changed = metadata

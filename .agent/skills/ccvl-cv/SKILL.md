@@ -38,9 +38,12 @@ target profile | differentiation | two evidenced results | value offered
 The public showcase may combine this formula with an invitation to contact the
 author. A real application must be target-specific.
 
-## Fixed layout gate
+## Fixed layout gate (Harvard CV contract)
 
-Before polishing or tailoring, load `interview/stations.toml` and run
+These counts are the Harvard family's contract — shared by the `standard`
+and `compact` CV substyles, which differ only in whitespace — not engine law:
+a future second family would bring its own contract. Before polishing or
+tailoring, load `interview/stations.toml` and run
 `ccvl profile-status --verify-sources`. Page 1 must contain 6–8 full experience
 stations. Page 2 contains exactly 10 supporting stations with two bullets each.
 Page 3 contains exactly 10 projects or initiatives with two bullets each. Page
@@ -65,14 +68,14 @@ fixed slots and iterating on the failed gate are two separately required
 actions: always do both.
 
 Every controlled CV line is measured against a minimum, target, and maximum
-fill percentage from `ccvl.json` for its actual Typst container. A sparse or
+fill percentage from `cvl/cv/contract.toml` for its actual Typst container. A sparse or
 overflowing line is a failed draft. Add relevant, verified signal or tighten
 the wording, then run `ccvl measure` again. Never use filler merely to make a
 draft pass.
 
 ## Verification
 
-Render every affected locale and preset. Require the station gate and requested two-, three-, or
+Render every affected locale, substyle, and preset. Require the station gate and requested two-, three-, or
 four-page count, inspect every rendered page, and extract the PDF text layer.
 Reject clipped content, accidental extra pages, missing glyphs, placeholders,
 or any line outside its declared bounds. Run the matching platform `measure`

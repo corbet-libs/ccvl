@@ -1,7 +1,7 @@
 # letter/ — correspondence library modules (vendored)
 
 Typst sources vendored from the correspondence family. Both modules are
-adopted by the locale templates (`cvl/de-ch/cl.typ`, `cvl/en-ch/cl.typ`).
+adopted by the locale templates through `cvl/cl/src/cl.typ`.
 Do not edit vendored files by hand — re-copy from the pinned versions
 below.
 

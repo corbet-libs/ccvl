@@ -180,9 +180,11 @@ pub fn validate_boundary(workspace: &Workspace) -> Result<()> {
         let relative = workspace.relative(&path)?;
         let is_font = relative.starts_with(".agent/typst/fonts");
         let is_output = relative.extension().is_some_and(|ext| ext == "pdf")
-            && relative
-                .components()
-                .any(|part| part.as_os_str() == "output" || part.as_os_str() == "pdfs");
+            && relative.components().any(|part| {
+                part.as_os_str() == "output"
+                    || part.as_os_str() == "pdfs"
+                    || part.as_os_str() == "pdf"
+            });
         if relative != Path::new("cvl/assets/signature.png") && !is_font && !is_output {
             let text = String::from_utf8_lossy(&fs::read(&path)?).into_owned();
             ensure!(

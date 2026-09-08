@@ -1,0 +1,5 @@
+# CL chrome, de-ch. Salutations/closings come from cletter; subject prefix here.
+subject_application_for = "Bewerbung als"
+subject_open = "Offene Bewerbung"
+
+locale = "de-ch"

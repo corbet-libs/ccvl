@@ -35,31 +35,32 @@ uniquely assigned facts may cross into `cvl/` or an opportunity.
 ## `cvl/`: the general document
 
 `cvl/` contains only approved sources and outputs for the general bilingual CV
-and cover letter. `cvl/profile.toml` supplies the public header fields. Each
-locale has one `cv.typ`, one `cl.typ`, one general `application.toml`, and an
-output directory:
+and cover letter. `cvl/profile.toml` supplies the public header fields.
+Harvard is the top-level style family, so the tree is style-major: each
+document owns its substyles, and each substyle holds one locale tree with
+content, chrome strings, a Typst pointer, and PDFs:
 
 ```text
-cvl/<locale>/cv.typ
-cvl/<locale>/cl.typ
-cvl/<locale>/application.toml
-cvl/<locale>/output/cv-{2,3,4}.pdf
-cvl/<locale>/output/cl.pdf
+cvl/cv/{standard,compact}/{de,en}/ch/{content.toml,strings.toml,typst/,pdf/}
+cvl/cl/{left-rule,frame}/{de,en}/ch/{content.toml,strings.toml,typst/,pdf/}
+cvl/shared/{style.toml,defaults.toml}
 ```
 
-Both `cv.typ` files hold the complete visible CV logic and both `cl.typ`
-files the complete cover-letter logic; they are the editing surface. The
-Typst engine, shared measurement primitives, styles, fonts, and layout
-contracts live under `.agent/typst/`; they are mechanism, not a second CV
-data model.
+`content.toml` carries the locale wording (the general Summary and letter);
+`strings.toml` carries section/subject chrome only. Family identity lives in
+`cvl/cv/style.toml` and `cvl/cl/style.toml` (`id = "harvard"`); each substyle
+top holds a `substyle.toml` delta. Shared tokens (page, fonts, palette) live
+in `cvl/shared/`. Each document owns its layout contract in `contract.toml`.
+The Typst engine and shared measurement primitives live under `.agent/typst/`.
 
-Each record selects a render style through `options.style`, defaulting to
-`harvard` when the field is absent. A style is one Typst renderer plus one
-TOML knob file below `.agent/typst/styles/` (see `.agent/typst/README.md`);
-the available names live in the `styles` section of `ccvl.json`. All styles
-share the same line and vertical-rhythm contracts, and horizontal measure
-stays identical across styles, so every style passes the same
-`measure`/`check` gates with the same content.
+Each record selects one CV substyle (`standard`|`compact`) and one
+cover-letter substyle (`left-rule`|`frame`) — per-document selection instead
+of a single shared style field, defaulting to `standard` / `left-rule` when
+the fields are absent. The record fields are `options.cv_substyle` and
+`options.cl_substyle`. All substyles share the same line and
+vertical-rhythm contracts, and horizontal measure stays identical across
+substyles, so every substyle passes the same `measure`/`check` gates with
+the same content.
 
 ## `opportunities/`: keyed job packages
 
@@ -85,7 +86,7 @@ role belongs inside its concrete opportunity. There are also no top-level
 
 `.agent/` owns the canonical skills, neutral scaffolds, Rust source,
 tests, bootstrap scripts, internal documentation, Typst engine, and
-machine-readable `ccvl.json` contract. Skills own editorial judgment;
+workspace manifest and document contracts. Skills own editorial judgment;
 deterministic code owns paths, validation, rendering, measurement, and checks.
 
 ## Public upstream and personal downstream

@@ -12,12 +12,14 @@ use serde_json::Value;
 
 pub fn cvl_specs(workspace: &Workspace) -> Result<Vec<DocumentSpec>> {
     let mut specs = Vec::new();
-    for locale in ["de-ch", "en-ch"] {
-        let mut cv = cvl_cv_spec(workspace, locale, 4)?;
+    for leaf in crate::application::cv_leaves(workspace)? {
+        let mut cv = cvl_cv_spec(workspace, leaf.locale, 4, Some(&leaf.substyle))?;
         cv.inputs
             .insert("line-contracts".to_owned(), "report".to_owned());
         specs.push(cv);
-        let mut cl = cvl_cl_spec(workspace, locale)?;
+    }
+    for leaf in crate::application::cl_leaves(workspace)? {
+        let mut cl = cvl_cl_spec(workspace, leaf.locale, Some(&leaf.substyle))?;
         cl.inputs
             .insert("line-contracts".to_owned(), "report".to_owned());
         specs.push(cl);
@@ -108,10 +110,10 @@ struct SummaryPolicy {
 }
 
 fn summary_policy(workspace: &Workspace, spec: &DocumentSpec) -> Result<SummaryPolicy> {
-    let contract = workspace.read_json("ccvl.json")?;
+    let contract = crate::application::document_contract(workspace, "cv")?;
     let fill = contract
-        .pointer("/documents/cv/summary_fill")
-        .context("ccvl.json has no summary fill contract")?;
+        .pointer("/summary_fill")
+        .context("CV contract has no summary fill")?;
     let floor = fill
         .get("minimum")
         .and_then(Value::as_f64)
@@ -123,7 +125,7 @@ fn summary_policy(workspace: &Workspace, spec: &DocumentSpec) -> Result<SummaryP
     let last_max = contract
         .pointer("/last_line_maximum")
         .and_then(Value::as_f64)
-        .context("ccvl.json has no closing-line maximum")?;
+        .context("CV contract has no closing-line maximum")?;
     let typst_path = spec
         .inputs
         .get("application")
@@ -292,10 +294,7 @@ fn validate_metric_set(
             }
         }
         DocumentKind::CoverLetter => {
-            let contract = workspace.read_json("ccvl.json")?;
-            let contract = contract
-                .pointer("/documents/cover_letter")
-                .context("missing cover-letter contract")?;
+            let contract = crate::application::document_contract(workspace, "cl")?;
             let paragraph_counts = paragraph_counts(spec, metrics)?;
             let paragraph_contracts = contract
                 .get("paragraphs")
@@ -555,7 +554,7 @@ mod tests {
     }
 
     fn repo_cv_spec() -> DocumentSpec {
-        cv_spec("cvl/de-ch/application.toml")
+        cv_spec("cvl/cv/standard/de/ch/content.toml")
     }
 
     fn metric(kind: &str, identifier: &str) -> Value {
@@ -598,10 +597,12 @@ mod tests {
         ];
         for locale in ["de-ch", "en-ch"] {
             for (kind, fill, expected) in cases {
-                // Use the real locale template's contract assignment and a
-                // measured fixture width, independent of showcase wording.
-                // The same 85% line must fail before a break and pass as the
-                // paragraph close; the CV's 102% grace must not leak here.
+                // Use the real leaf's contract assignment and a measured
+                // fixture width, independent of showcase wording. The same
+                // 85% line must fail before a break and pass as the paragraph
+                // close; the CV's 102% grace must not leak here.
+                // Fill helpers are independent of application inputs; importing
+                // them must not read a leaf record or emit a document.
                 let content = if kind == "cl-body" {
                     format!(
                         "measured-paragraph(\"fixture\", \"cl-body\", \
@@ -614,7 +615,7 @@ mod tests {
                         .to_owned()
                 };
                 let source = format!(
-                    "#import \"/cvl/{locale}/cl.typ\": with-body-fill, with-highlight-fill\n\
+                    "#import \"/cvl/cl/src/cl.typ\": with-body-fill, with-highlight-fill\n\
                      #import \"/.agent/typst/line-contract.typ\": measured-paragraph, measured-line\n\
                      #set page(width: 200pt, height: 100pt, margin: 10pt)\n\
                      #set text(font: \"Archivo\", size: 10pt, hyphenate: false)\n\
@@ -624,14 +625,13 @@ mod tests {
                        block(width: width)[#{content}]\n\
                      }}"
                 );
+                let mut report_inputs = std::collections::BTreeMap::new();
+                report_inputs.insert("line-contracts".to_owned(), "report".to_owned());
                 let report = engine
                     .compile(
                         ctypst::CompileRequest::new("density.typ")
                             .source_file("density.typ", source.clone())
-                            .inputs(std::collections::BTreeMap::from([(
-                                "line-contracts".to_owned(),
-                                "report".to_owned(),
-                            )]))
+                            .inputs(report_inputs)
                             .pages(ctypst::PageConstraint::Exactly(1)),
                     )
                     .unwrap();
@@ -675,8 +675,9 @@ mod tests {
         let spill = "Damit unterstütze ich Leverage Experts pragmatisch in Performance-, Portfolio- und Transformationsmandaten.";
         let source = format!(
             "#import \"/.agent/typst/line-contract.typ\": measured-lines\n\
-             #import \"/.agent/typst/styles/document.typ\": document-style\n\
-             #show: document-style.with(locale: \"de-ch\")\n\
+             #import \"/cvl/shared/style.typ\": document-style, merge-style\n\
+             #let cv-style = merge-style(toml(\"/cvl/shared/defaults.toml\"), toml(\"/cvl/cv/standard/substyle.toml\"))\n\
+             #show: document-style.with(locale: \"de-ch\", style: cv-style)\n\
              #set page(height: 60mm)\n\
              #set text(hyphenate: false)\n\
              #let spill = \"{spill}\"\n\
@@ -717,8 +718,9 @@ mod tests {
         let spill = "Donaudampfschifffahrtsgesellschaftskapitän Gioacchino Rossini encountered extraordinary circumstances daily.";
         let source = format!(
             "#import \"/.agent/typst/line-contract.typ\": measured-paragraph\n\
-             #import \"/.agent/typst/styles/document.typ\": document-style\n\
-             #show: document-style.with(locale: \"de-ch\")\n\
+             #import \"/cvl/shared/style.typ\": document-style, merge-style\n\
+             #let cv-style = merge-style(toml(\"/cvl/shared/defaults.toml\"), toml(\"/cvl/cv/standard/substyle.toml\"))\n\
+             #show: document-style.with(locale: \"de-ch\", style: cv-style)\n\
              #set page(height: 60mm)\n\
              #set text(hyphenate: false)\n\
              #let short = \"{short}\"\n\
@@ -840,7 +842,13 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         std::fs::write(
             directory.path().join("ccvl.json"),
-            "{\"documents\":{\"cv\":{\"summary_fill\":{\"minimum\":60,\"target\":82,\"maximum\":100}}},\"last_line_maximum\":102}",
+            "{\"documents\":{\"cv\":{\"root\":\"cvl/cv\"},\"cover_letter\":{\"root\":\"cvl/cl\"}}}",
+        )
+        .unwrap();
+        std::fs::create_dir_all(directory.path().join("cvl/cv")).unwrap();
+        std::fs::write(
+            directory.path().join("cvl/cv/contract.toml"),
+            "last_line_maximum = 102\n[summary_fill]\nminimum = 60\ntarget = 82\nmaximum = 100\n",
         )
         .unwrap();
         std::fs::write(
@@ -880,7 +888,10 @@ mod tests {
         let workspace = workspace();
         // Showcase records ship with an empty recipient: generic salutation
         // stays valid, but measurement must surface a visible advisory.
-        for locale in ["cvl/de-ch/application.toml", "cvl/en-ch/application.toml"] {
+        for locale in [
+            "cvl/cl/left-rule/de/ch/content.toml",
+            "cvl/cl/left-rule/en/ch/content.toml",
+        ] {
             let spec = cover_letter_spec_with_application(locale);
             let warnings = recipient_warnings(&workspace, &spec).unwrap();
             assert_eq!(warnings.len(), 1, "locale: {locale}");

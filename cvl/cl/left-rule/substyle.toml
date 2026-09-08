@@ -1,0 +1,11 @@
+# left-rule: the default cover-letter substyle. Accent panel with a single
+# left rule whose outer edge aligns with the body column. Same renderer and
+# contracts as frame; panel geometry only.
+
+[cover]
+highlight_inset_pt = 8
+highlight_gap_pt = 8.4
+highlight_border_top_pt = 0
+highlight_border_right_pt = 0
+highlight_border_bottom_pt = 0
+highlight_border_left_pt = 2.5

@@ -156,23 +156,23 @@ same_document() {
 
 render_suite() {
   local destination="$1"
-  local locale
-  local pages
+  local record _document substyle language region locale pages
 
-  for locale in de-ch en-ch; do
+  for record in cvl/cv/*/*/*/content.toml; do
+    IFS=/ read -r _ _document substyle language region _ <<<"$record"
+    locale="$language-$region"
     for pages in 2 3 4; do
-      "$binary" build-cv \
-        "$locale" \
-        "$pages" \
-        --application "cvl/$locale/application.toml" \
-        --profile cvl/profile.toml \
-        --output "$destination/cv-$locale-$pages.pdf" >/dev/null
+      "$binary" build-cv "$locale" "$pages" --substyle "$substyle" \
+        --application "$record" --profile cvl/profile.toml \
+        --output "$destination/cv-$substyle-$locale-$pages.pdf" >/dev/null
     done
-    "$binary" build-cl \
-      "$locale" \
-      --application "cvl/$locale/application.toml" \
-      --profile cvl/profile.toml \
-      --output "$destination/cl-$locale.pdf" >/dev/null
+  done
+  for record in cvl/cl/*/*/*/content.toml; do
+    IFS=/ read -r _ _document substyle language region _ <<<"$record"
+    locale="$language-$region"
+    "$binary" build-cl "$locale" --substyle "$substyle" \
+      --application "$record" --profile cvl/profile.toml \
+      --output "$destination/cl-$substyle-$locale.pdf" >/dev/null
   done
 }
 
@@ -182,58 +182,55 @@ mkdir -p -- "$first_build" "$second_build"
 render_suite "$first_build"
 render_suite "$second_build"
 
-for locale in de-ch en-ch; do
+for record in cvl/cv/*/*/*/content.toml; do
+  IFS=/ read -r _ _document substyle language region _ <<<"$record"
+  locale="$language-$region"
   for pages in 2 3 4; do
-    pdf="$first_build/cv-$locale-$pages.pdf"
-    tracked="cvl/$locale/output/cv-$pages.pdf"
+    filename="cv-$substyle-$locale-$pages.pdf"
+    pdf="$first_build/$filename"
+    tracked="${record%/content.toml}/pdf/cv-$pages.pdf"
     check_pdf "$pdf" "$pages"
     check_pdf "$tracked" "$pages"
-    cmp --silent "$pdf" "$second_build/cv-$locale-$pages.pdf" || {
-      printf 'CV build is not byte-reproducible: %s %s pages\n' "$locale" "$pages" >&2
+    cmp --silent "$pdf" "$second_build/$filename" || {
+      printf 'CV build is not byte-reproducible: %s\n' "$filename" >&2
       exit 1
     }
     same_document "$pdf" "$tracked" || {
-      printf 'Tracked CV output is stale: %s %s pages\n' "$locale" "$pages" >&2
+      printf 'Tracked CV output is stale: %s\n' "$tracked" >&2
       exit 1
     }
+    pdftoppm -f 1 -l 2 -png -r 72 "$pdf" \
+      "$validation_dir/pages-$substyle-$locale-$pages" >/dev/null 2>&1
   done
+  for page in 1 2; do
+    for pages in 3 4; do
+      cmp --silent \
+        "$validation_dir/pages-$substyle-$locale-2-$page.png" \
+        "$validation_dir/pages-$substyle-$locale-$pages-$page.png" || {
+        printf 'Shared CV page changed across presets: %s %s page %s (2 vs %s)\n' \
+          "$substyle" "$locale" "$page" "$pages" >&2
+        exit 1
+      }
+    done
+  done
+done
 
-  pdf="$first_build/cl-$locale.pdf"
-  tracked="cvl/$locale/output/cl.pdf"
+for record in cvl/cl/*/*/*/content.toml; do
+  IFS=/ read -r _ _document substyle language region _ <<<"$record"
+  locale="$language-$region"
+  filename="cl-$substyle-$locale.pdf"
+  pdf="$first_build/$filename"
+  tracked="${record%/content.toml}/pdf/cl.pdf"
   check_pdf "$pdf" 1 yes
   check_pdf "$tracked" 1 yes
-  cmp --silent "$pdf" "$second_build/cl-$locale.pdf" || {
-    printf 'Cover-letter build is not byte-reproducible: %s\n' "$locale" >&2
+  cmp --silent "$pdf" "$second_build/$filename" || {
+    printf 'Cover-letter build is not byte-reproducible: %s\n' "$filename" >&2
     exit 1
   }
   same_document "$pdf" "$tracked" || {
-    printf 'Tracked cover-letter output is stale: %s\n' "$locale" >&2
+    printf 'Tracked cover-letter output is stale: %s\n' "$tracked" >&2
     exit 1
   }
-
-  for pages in 2 3 4; do
-    pdftoppm \
-      -f 1 \
-      -l 2 \
-      -png \
-      -r 72 \
-      "$first_build/cv-$locale-$pages.pdf" \
-      "$validation_dir/pages-$locale-$pages" >/dev/null 2>&1
-  done
-  for page in 1 2; do
-    cmp --silent \
-      "$validation_dir/pages-$locale-2-$page.png" \
-      "$validation_dir/pages-$locale-3-$page.png" || {
-      printf 'Shared CV page changed across presets: %s page %s (2 vs 3)\n' "$locale" "$page" >&2
-      exit 1
-    }
-    cmp --silent \
-      "$validation_dir/pages-$locale-2-$page.png" \
-      "$validation_dir/pages-$locale-4-$page.png" || {
-      printf 'Shared CV page changed across presets: %s page %s (2 vs 4)\n' "$locale" "$page" >&2
-      exit 1
-    }
-  done
 done
 
 printf 'Rust, data, font, PDF, reproducibility, CV, and cover-letter checks passed.\n'

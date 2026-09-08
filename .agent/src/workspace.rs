@@ -174,12 +174,22 @@ mod tests {
     #[test]
     fn cv_outputs_use_numeric_page_names() {
         let workspace = repository();
-        for locale in ["de-ch", "en-ch"] {
-            let root = workspace.path(format!("cvl/{locale}/output"));
-            for pages in [2, 3, 4] {
-                assert!(root.join(format!("cv-{pages}.pdf")).is_file());
-            }
-            assert!(root.join("cl.pdf").is_file());
+        for (document, substyle, lang, name) in [
+            ("cv", "standard", "de", "cv-2.pdf"),
+            ("cv", "standard", "de", "cv-3.pdf"),
+            ("cv", "standard", "de", "cv-4.pdf"),
+            ("cv", "compact", "en", "cv-2.pdf"),
+            ("cv", "compact", "en", "cv-3.pdf"),
+            ("cv", "compact", "en", "cv-4.pdf"),
+            ("cl", "left-rule", "de", "cl.pdf"),
+            ("cl", "frame", "en", "cl.pdf"),
+        ] {
+            assert!(
+                workspace
+                    .path(format!("cvl/{document}/{substyle}/{lang}/ch/pdf/{name}"))
+                    .is_file(),
+                "missing cvl/{document}/{substyle}/{lang}/ch/pdf/{name}"
+            );
         }
     }
 

@@ -44,9 +44,9 @@ pub fn load_plan(workspace: &Workspace, path: &Path) -> Result<Value> {
 
 pub fn assess(workspace: &Workspace, document: &Value, location: &str) -> Result<Assessment> {
     validate_semantics(document, location)?;
-    let rules = workspace.read_json("ccvl.json")?;
+    let rules = crate::application::document_contract(workspace, "cv")?;
     let rules = rules
-        .pointer("/documents/cv/layout_contract")
+        .pointer("/layout_contract")
         .context("missing CV layout contract")?;
     let stations = document
         .get("stations")
@@ -136,8 +136,16 @@ pub fn validate_interview(workspace: &Workspace, require_ready: bool) -> Result<
             assessment.problems.join("; ")
         );
     }
-    let de = verify_source_counts(workspace, &document, &workspace.path("cvl/de-ch/cv.typ"))?;
-    let en = verify_source_counts(workspace, &document, &workspace.path("cvl/en-ch/cv.typ"))?;
+    let de = verify_source_counts(
+        workspace,
+        &document,
+        &workspace.path("cvl/cv/src/entries-de.typ"),
+    )?;
+    let en = verify_source_counts(
+        workspace,
+        &document,
+        &workspace.path("cvl/cv/src/entries-en.typ"),
+    )?;
     ensure!(
         de.project_ids == en.project_ids,
         "CV locales use different page-3 project IDs or ordering"
@@ -227,9 +235,9 @@ pub fn validate_typst_layout(workspace: &Workspace, path: &Path) -> Result<Sourc
 }
 
 pub fn format_report(workspace: &Workspace, assessment: &Assessment) -> Result<String> {
-    let rules = workspace.read_json("ccvl.json")?;
+    let rules = crate::application::document_contract(workspace, "cv")?;
     let rules = rules
-        .pointer("/documents/cv/layout_contract")
+        .pointer("/layout_contract")
         .context("missing CV layout contract")?;
     let state = if assessment.ready() {
         "READY"
