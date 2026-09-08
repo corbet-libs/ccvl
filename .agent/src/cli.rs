@@ -329,7 +329,7 @@ pub fn run() -> Result<ExitCode> {
             substyle,
         } => watch_cv(&workspace, &locale, pages, substyle.as_deref())?,
         Command::WatchCl { locale, substyle } => {
-            watch_cl(&workspace, &locale, substyle.as_deref())?
+            watch_cl(&workspace, &locale, substyle.as_deref())?;
         }
         Command::WatchOpportunity {
             organisation_key,
@@ -427,9 +427,10 @@ fn watch_cv(
     substyle: Option<&str>,
 ) -> Result<()> {
     let locale = render::normalize_locale(locale)?;
-    let substyle = substyle
-        .map(str::to_owned)
-        .unwrap_or(crate::application::default_cv_substyle(workspace)?);
+    let substyle = substyle.map_or(
+        crate::application::default_cv_substyle(workspace)?,
+        str::to_owned,
+    );
     watch_loop(
         &format!("ccvl sources for {locale}/{substyle} {pages}-page CV"),
         || cvl_digest(workspace),
@@ -442,9 +443,10 @@ fn watch_cv(
 
 fn watch_cl(workspace: &Workspace, locale: &str, substyle: Option<&str>) -> Result<()> {
     let locale = render::normalize_locale(locale)?;
-    let substyle = substyle
-        .map(str::to_owned)
-        .unwrap_or(crate::application::default_cl_substyle(workspace)?);
+    let substyle = substyle.map_or(
+        crate::application::default_cl_substyle(workspace)?,
+        str::to_owned,
+    );
     watch_loop(
         &format!("ccvl sources for {locale}/{substyle} cover letter"),
         || cvl_digest(workspace),

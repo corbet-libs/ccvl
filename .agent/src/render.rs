@@ -323,7 +323,7 @@ pub fn opportunity_specs(
     let cover_enabled = options.cover_letter;
     let relative = workspace.relative(&application)?.display().to_string();
     let cv_substyle = resolve_cv_substyle(workspace, &document, &relative)?;
-    let cl_substyle = resolve_cl_substyle(workspace, &document, &relative)?;
+    let letter_substyle = resolve_cl_substyle(workspace, &document, &relative)?;
     let parent = application
         .parent()
         .context("application record has no parent")?;
@@ -346,7 +346,7 @@ pub fn opportunity_specs(
             &application,
             &profile,
             &pdfs.join("cl.pdf"),
-            &cl_substyle,
+            &letter_substyle,
         )?;
         spec.name = format!("cover letter {organisation}/{position}");
         specs.push(spec);
@@ -680,7 +680,7 @@ mod tests {
             "application".to_owned(),
             "/opportunities/acme/lead/application.toml".to_owned(),
         );
-        let template = fs::read_to_string(&leaf.adapter()).unwrap();
+        let template = fs::read_to_string(leaf.adapter()).unwrap();
         let text = resolved_typ_text(
             &template,
             &spec,
@@ -754,7 +754,7 @@ mod tests {
                 spec.inputs.get("shared-defaults").map(String::as_str),
                 Some("/cvl/shared/defaults.toml")
             );
-            assert!(spec.inputs.get("style").is_none());
+            assert!(!spec.inputs.contains_key("style"));
         }
         // No explicit substyle renders the family default.
         let spec = cvl_cv_spec(&workspace, "en-ch", 4, None).unwrap();
@@ -782,7 +782,7 @@ mod tests {
         let leaf = cv_leaf(&workspace, "en-ch", "standard").unwrap();
         let directory = tempfile::tempdir_in(workspace.root()).unwrap();
         let record = directory.path().join("application.toml");
-        let text = fs::read_to_string(&leaf.content())
+        let text = fs::read_to_string(leaf.content())
             .unwrap()
             .replace("cv_substyle = \"standard\"", "cv_substyle = \"compact\"");
         fs::write(&record, text).unwrap();
@@ -875,12 +875,10 @@ mod tests {
             );
         }
         let cv = delta.get("cv").and_then(|value| value.as_object());
-        for forbidden in ["bullet_indent_pt"] {
-            assert!(
-                cv.is_none_or(|table| !table.contains_key(forbidden)),
-                "horizontal knob changed by the delta: {forbidden}"
-            );
-        }
+        assert!(
+            cv.is_none_or(|table| !table.contains_key("bullet_indent_pt")),
+            "horizontal knob changed by the delta: bullet_indent_pt"
+        );
         let fill = |style: &serde_json::Value, pointer: &str| {
             style.pointer(pointer).and_then(serde_json::Value::as_f64)
         };
