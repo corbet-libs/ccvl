@@ -24,6 +24,10 @@ that same revision. The pipeline verifies the archive hash and embedded Git
 commit against `CI_COMMIT_SHA` before extracting any source. Declared variables
 have empty defaults for Crow configuration compatibility; missing source
 inputs fail closed during execution.
+An optional `CARGO_TARGET_DIR` selects an existing writable project cache.
+Crow serializes access with a one-minute lock wait, and bounds each selected
+check to 45 minutes with a 30-second forced-termination grace. An omitted
+cache variable keeps build output in the isolated workflow workspace.
 
 The staged archive avoids a source clone from GitHub. The Crow forge integration
 may still need GitHub to retrieve workflow configuration; a submission failure
