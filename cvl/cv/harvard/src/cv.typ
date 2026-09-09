@@ -1,8 +1,14 @@
+#import "/.agent/typst/paper.typ": paper-settings, resolve-paper
+#import "/.agent/typst/application.typ": load-application
 // Shared Harvard CV renderer. Each leaf supplies its inputs explicitly.
-#import "/cvl/shared/harvard/style.typ": document-style, merge-style
-#import "/cvl/shared/harvard/application.typ": cv-contract, last-line-maximum, validate-application
+#import "/cvl/shared/harvard/style.typ": document-style
+#import "/cvl/shared/harvard/application.typ": load-cv-contract, validate-application
 #import "/.agent/typst/line-contract.typ": measured-content-line, measured-paragraph, wrap-exact
 #import "/.agent/typst/profile.typ": load-profile
+
+#let cv-contract = load-cv-contract()
+// The CV closing line has its own allowance; CL paragraphs use their own bounds.
+#let last-line-maximum = cv-contract.at("last_line_maximum", default: 102)
 
 
 #let cv-renderer(
@@ -13,17 +19,22 @@
   substyle-path: none,
   shared-defaults-path: none,
   layout-path: none,
+  paper-input: "",
 ) = {
   let (profile, localized-profile) = load-profile(profile-path)
   // Merge the shared base knobs with this leaf's substyle delta (a standard
   // leaf merges an empty delta). Whitespace below comes from cv-style, never
   // from forked literals.
-  let cv-style = merge-style(merge-style(toml(shared-defaults-path), toml(substyle-path)), toml(layout-path))
   let cv-strings = toml(strings-path)
   // Locale comes from the leaf's strings file and is cross-checked against
   // the record below: a de-ch record through en-ch strings fails here.
   let doc-locale = cv-strings.locale
-  let application = toml(application-path)
+  let application = load-application(application-path)
+  let paper = resolve-paper(toml("../style.toml"), doc-locale, requested: paper-input, recorded: application.options.at(
+    "cv_paper",
+    default: none,
+  ))
+  let cv-style = paper-settings((toml(shared-defaults-path), toml(substyle-path), toml(layout-path)), paper)
   validate-application(application, expected-language: doc-locale, require-cv: true)
 
   // Style whitespace knobs from the active style; the element styles below

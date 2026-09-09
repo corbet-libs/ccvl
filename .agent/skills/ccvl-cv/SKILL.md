@@ -10,6 +10,10 @@ metadata and contract under `cvl/cv/<style>/`. Make the document legible to
 recruiters and specialists. Harvard is the shipped default; another style may
 use entirely different content fields, geometry, fonts and page presets.
 
+Read [editorial guidance](../../docs/editorial.md) for evidence, audience and
+register decisions. A general CV follows the stated audience; a targeted CV
+answers its archived posting. Do not invent a vacancy for a general document.
+
 ## Writing contract
 
 - Use the simplest language that a recruiter can understand while retaining
@@ -17,7 +21,12 @@ use entirely different content fields, geometry, fonts and page presets.
 - Lead with outcome or scale, then ownership and method. Remove filler and
   duplicated meaning.
 - Use only verified profile claims. Keywords improve retrieval but do not
-  create factual permission.
+  create factual permission. Read original supporting sources rather than
+  treating a derived CV as its own evidence. Preserve modeled versus realised
+  outcomes, estimates, dates, ownership and independent-work scope.
+- Preserve names, exact quotations and explicit user choices. Author locale IDs
+  in lowercase; use cletter/family conventions only for appropriate generated
+  prose, never a global replacement over evidence or protected text.
 - Keep capability groups mutually exclusive and collectively useful. Prefer a
   few recognisable terms over keyword stuffing.
 - Treat the checked-in showcase as visual design evidence, never as facts or
@@ -67,7 +76,8 @@ deterministic source gate and continue the collection/allocation loop until
 every fixed count passes. Never accept a successful render as proof that extra
 content is valid, and never relax the manifest to fit the draft. Restoring the
 fixed slots and iterating on the failed gate are two separately required
-actions: always do both.
+actions: always do both within the active review run's correction allowance.
+An exhausted allowance leaves the draft incomplete, never accepted.
 
 Every controlled CV line is measured against a minimum, target, and maximum
 fill percentage from `cvl/cv/harvard/contract.toml` for its actual Typst container. A sparse or
@@ -78,8 +88,27 @@ draft pass.
 ## Verification
 
 Render every affected style, substyle, locale and preset. Enforce its declared
-contract (including the station gate for Harvard) and the exact requested page
-count. Inspect every rendered page and extract the PDF text layer.
+contract (including the station gate for Harvard), requested paper dimensions
+and exact page count. Use only papers declared by the style; preserve an
+explicit selection without shrinking text to make it fit. Inspect every
+rendered page and extract the PDF text layer.
 Reject clipped content, accidental extra pages, missing glyphs, placeholders,
 or any line outside its declared bounds. Run the matching platform `measure`
 command until it passes, then run `check` before completion.
+
+
+For independent review, follow [the review protocol](../../docs/review.md) and
+route the frozen sources, selected rules, extracted text and every page to
+`ccvl-review` in fresh context. The critic checks evidence and actual output;
+an actor summary and a successful compile cannot replace that review. Keep
+errors, missing support and optional preferences distinct and cite findings.
+
+An actor–critic run allows two corrections after the initial candidate. Call
+`ccvl review begin-revision <run-dir>` before editing and
+`ccvl review prepare-revision <run-dir>` afterwards. Check every allowed
+candidate, including a mechanically failed one, before considering another.
+Re-review current artifacts for both fixes and new errors. Stale hashes,
+unavailable tools or unread pages cannot become a pass; exhausted corrections
+remain incomplete, material evidence gaps need evidence, and a material user
+choice conflict needs a decision. An optional tone preference cannot erase a
+truthful qualification or override the user's chosen wording.

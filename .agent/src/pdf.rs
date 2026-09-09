@@ -11,6 +11,101 @@ static INSTANCE_ID: LazyLock<BytesRegex> = LazyLock::new(|| {
         .expect("the rendition identifier pattern is valid")
 });
 
+static LANGUAGE_BAG: LazyLock<BytesRegex> = LazyLock::new(|| {
+    BytesRegex::new(r"(?s)(<dc:language>)(.*?)(</dc:language>)")
+        .expect("the language metadata pattern is valid")
+});
+static LANGUAGE_ITEM: LazyLock<BytesRegex> = LazyLock::new(|| {
+    BytesRegex::new(r"(<rdf:li>)([A-Za-z0-9-]+)(</rdf:li>)")
+        .expect("the language item pattern is valid")
+});
+
+/// Keep exported locale identifiers consistent with workspace identifiers.
+/// Typst emits region subtags in uppercase. Change only PDF language entries
+/// and the XMP language list; names, prose, links and other metadata survive.
+pub fn lowercase_locales(bytes: &[u8]) -> Result<Vec<u8>> {
+    let mut document = Document::load_mem(bytes).context("cannot parse exported PDF")?;
+    let mut references = Vec::new();
+    let mut changed = false;
+    for object in document.objects.values_mut() {
+        changed |= lowercase_language_entries(object, &mut references);
+        if let Object::Stream(stream) = object
+            && stream.dict.get(b"Type").and_then(Object::as_name).ok() == Some(b"Metadata")
+            && stream.dict.get(b"Subtype").and_then(Object::as_name).ok() == Some(b"XML")
+        {
+            let xml = stream.get_plain_content()?;
+            let normalized = LANGUAGE_BAG.replace_all(&xml, |bag: &regex::bytes::Captures<'_>| {
+                let items =
+                    LANGUAGE_ITEM.replace_all(&bag[2], |item: &regex::bytes::Captures<'_>| {
+                        [
+                            item[1].to_vec(),
+                            item[2].to_ascii_lowercase(),
+                            item[3].to_vec(),
+                        ]
+                        .concat()
+                    });
+                [&bag[1], items.as_ref(), &bag[3]].concat()
+            });
+            if normalized.as_ref() != xml {
+                changed = true;
+                stream.dict.remove(b"Filter");
+                stream.dict.remove(b"DecodeParms");
+                stream.set_content(normalized.into_owned());
+            }
+        }
+    }
+    for reference in references {
+        changed |= lowercase_language_string(document.get_object_mut(reference)?);
+    }
+    if !changed {
+        return Ok(bytes.to_vec());
+    }
+    let mut output = Vec::new();
+    document.save_to(&mut output)?;
+    Ok(output)
+}
+
+fn lowercase_language_entries(object: &mut Object, references: &mut Vec<ObjectId>) -> bool {
+    let mut changed = false;
+    match object {
+        Object::Array(items) => {
+            for item in items {
+                changed |= lowercase_language_entries(item, references);
+            }
+        }
+        Object::Dictionary(dictionary)
+        | Object::Stream(lopdf::Stream {
+            dict: dictionary, ..
+        }) => {
+            for (key, value) in dictionary.iter_mut() {
+                if key == b"Lang" {
+                    if let Object::Reference(reference) = value {
+                        references.push(*reference);
+                    } else {
+                        changed |= lowercase_language_string(value);
+                    }
+                } else {
+                    changed |= lowercase_language_entries(value, references);
+                }
+            }
+        }
+        _ => {}
+    }
+    changed
+}
+
+fn lowercase_language_string(object: &mut Object) -> bool {
+    if let Object::String(value, _) = object
+        && value.iter().any(u8::is_ascii_uppercase)
+    {
+        // Language tags are ASCII. Lowercasing their ASCII bytes also preserves
+        // UTF-16 BOMs and zero bytes in PDF text strings.
+        value.make_ascii_lowercase();
+        return true;
+    }
+    false
+}
+
 pub struct VerifiedPdf {
     document: Document,
 }

@@ -1,0 +1,8 @@
+# Shared CV wording for harvard, en-ch.
+# Reused only by substyles of this style.
+
+[cv]
+# One flowing paragraph. It must typeset to exactly 5 lines; the checker
+# verifies instead of you counting. (The fifth sentence exposes the adaptation
+# formula for new users; a real application rewrites it target-specifically.)
+summary = """This CV is working example, technical product demonstration and open application combining technology and innovation management with strategy and finance in regulated environments. Evidence: GenAI and RAG search at CENVION, decision analysis for Swisscom and Airbus including M&A, banking-sector and consulting across four markets. If that fits, let us speak – gladly about your mandates, goals and open questions across Switzerland or remote. To adapt it: target profile | differentiation | two evidenced results | clear value for your team."""

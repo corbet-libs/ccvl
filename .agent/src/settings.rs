@@ -6,9 +6,49 @@ use crate::{styles::StyleLeaf, workspace::Workspace};
 
 const SCHEMA: &str = ".agent/typst/document-settings.json";
 
-/// Explain exactly the family → substyle → locale merge used by document-v1.
+/// Explain the family → substyle → locale → paper merge used by document-v1.
 /// Component-level Typst overrides are intentionally outside this result.
+pub fn explain(workspace: &Workspace, leaf: &StyleLeaf, requested: Option<&str>) -> Result<Value> {
+    let record = crate::content::read_record(workspace, leaf.content())?;
+    let recorded = crate::paper::record_choice(&record, leaf.document)?;
+    let mut result = resolve_with_paper(workspace, leaf, requested.or(recorded))?;
+    if result["paper"].is_object() {
+        result["paper"]["selection_source"] = if requested.is_some() {
+            "CLI --paper".into()
+        } else if recorded.is_some() {
+            format!(
+                "{}#options.{}_paper",
+                workspace
+                    .relative(&leaf.content())?
+                    .to_string_lossy()
+                    .replace('\\', "/"),
+                leaf.document
+            )
+            .into()
+        } else {
+            format!(
+                "{}#paper.defaults.{}",
+                workspace
+                    .relative(&leaf.style_dir().join("style.toml"))?
+                    .to_string_lossy()
+                    .replace('\\', "/"),
+                leaf.locale
+            )
+            .into()
+        };
+    }
+    Ok(result)
+}
+
 pub fn resolve(workspace: &Workspace, leaf: &StyleLeaf) -> Result<Value> {
+    resolve_with_paper(workspace, leaf, None)
+}
+
+pub fn resolve_with_paper(
+    workspace: &Workspace,
+    leaf: &StyleLeaf,
+    requested: Option<&str>,
+) -> Result<Value> {
     ensure!(
         leaf.settings_adapter.as_deref() == Some("document-v1"),
         "{}/{} does not declare settings_adapter = document-v1; its renderer owns settings resolution",
@@ -22,7 +62,7 @@ pub fn resolve(workspace: &Workspace, leaf: &StyleLeaf) -> Result<Value> {
     }
     paths.push(leaf.substyle_file());
     let layout = leaf.dir.join("layout.toml");
-    if layout.is_file() {
+    if workspace.input_is_file(&layout) {
         paths.push(layout);
     }
     let mut layers = Vec::new();
@@ -32,10 +72,32 @@ pub fn resolve(workspace: &Workspace, leaf: &StyleLeaf) -> Result<Value> {
         let path = workspace.relative(&path)?;
         let source = path.to_string_lossy().replace('\\', "/");
         let value = workspace.read_toml_value(&path)?;
+        if leaf.paper.is_some() {
+            for key in ["paper", "width_mm", "height_mm"] {
+                ensure!(
+                    value.pointer(&format!("/page/{key}")).is_none(),
+                    "{source}: paper presets own page.{key}; remove the duplicate geometry setting"
+                );
+            }
+        }
         validate(&value, &schema, false)
             .with_context(|| format!("invalid settings in {source}"))?;
         merge(&mut settings, &value);
         layers.push((source, value));
+    }
+    let selected = crate::paper::select(leaf.paper.as_ref(), &leaf.locale, requested)?;
+    if let Some((id, preset)) = selected {
+        validate(&preset.settings, &schema, false)
+            .with_context(|| format!("invalid paper preset {id}"))?;
+        merge(&mut settings, &preset.settings);
+        let path = workspace.relative(&leaf.style_dir().join("style.toml"))?;
+        layers.push((
+            format!(
+                "{}#paper.sizes.{id}.settings",
+                path.to_string_lossy().replace('\\', "/")
+            ),
+            preset.settings.clone(),
+        ));
     }
     validate(&settings, &schema, true).with_context(|| {
         format!(
@@ -61,6 +123,7 @@ pub fn resolve(workspace: &Workspace, leaf: &StyleLeaf) -> Result<Value> {
     Ok(json!({
         "document": leaf.document, "style": leaf.style, "substyle": leaf.substyle,
         "locale": leaf.locale, "adapter": "document-v1",
+        "paper": selected.map(|(id, preset)| json!({"id": id, "label": preset.label, "size_pt": preset.size_pt, "selection_source": if requested.is_some() { "explicit" } else { "style locale default" }})),
         "scope": "Merged adapter inputs; renderers may apply component-level overrides",
         "sources": layers.iter().map(|(path, _)| path).collect::<Vec<_>>(),
         "settings": settings, "origins": origins,

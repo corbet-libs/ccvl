@@ -1,4 +1,6 @@
-#import "/.agent/typst/document.typ": apply-document-settings, merge-settings
+#import "/.agent/typst/paper.typ": paper-settings, resolve-paper
+#import "/.agent/typst/application.typ": load-application
+#import "/.agent/typst/document.typ": apply-document-settings
 #let render(
   application-path: none,
   profile-path: none,
@@ -6,12 +8,17 @@
   substyle-path: none,
   defaults-path: none,
   layout-path: none,
+  paper-input: "",
   pages: 1,
 ) = {
-  let record = toml(application-path)
+  let record = load-application(application-path)
   let profile = toml(profile-path)
   let chrome = toml(strings-path)
-  let config = merge-settings(merge-settings(toml(defaults-path), toml(substyle-path)), toml(layout-path))
+  let paper = resolve-paper(toml("../style.toml"), chrome.locale, requested: paper-input, recorded: record.options.at(
+    "cv_paper",
+    default: none,
+  ))
+  let config = paper-settings((toml(defaults-path), toml(substyle-path), toml(layout-path)), paper)
   let accent = rgb(config.demo.accent)
   let soft = rgb(config.demo.soft)
   let variant = config.demo.variant
@@ -25,7 +32,7 @@
   let footer() = [#v(12pt)#line(length: 100%, stroke: 0.6pt + accent)#v(6pt)#text(
       size: 9pt,
       fill: accent,
-    )[#chrome.notice #h(1fr) #chrome.paper_label]]
+    )[#chrome.notice #h(1fr) #paper.label]]
   let section(heading, body, boxed: false) = block(
     width: 100%,
     breakable: false,
@@ -44,7 +51,7 @@
       gutter: 18pt,
       align: bottom,
       [#label(chrome.label)#v(9pt)#title(profile.name)],
-      align(right)[#label(chrome.paper_label)#v(9pt)#text(size: 10pt, profile.email)],
+      align(right)[#label(paper.label)#v(9pt)#text(size: 10pt, profile.email)],
     )
     v(16pt)
     line(length: 100%, stroke: 1.2pt + accent)

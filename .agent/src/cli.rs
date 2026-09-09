@@ -1,13 +1,8 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use std::thread;
-use std::time::Duration;
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{Result, ensure};
 use clap::{Parser, Subcommand};
-use sha2::{Digest, Sha256};
-use walkdir::WalkDir;
 
 use crate::check;
 use crate::downstream;
@@ -35,6 +30,11 @@ struct Args {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Prepare and validate an independently reviewed document package.
+    Review {
+        #[command(subcommand)]
+        command: crate::review::Command,
+    },
     /// Print the compiled runtime source identity without opening a workspace.
     RuntimeId,
     /// Verify the self-contained binary and workspace.
@@ -90,6 +90,9 @@ enum Command {
         style: Option<String>,
         #[arg(long)]
         substyle: Option<String>,
+        /// Paper preset declared by the selected style.
+        #[arg(long)]
+        paper: Option<String>,
     },
     /// Create one keyed opportunity without overwriting an existing record.
     NewOpportunity {
@@ -116,6 +119,9 @@ enum Command {
         profile: Option<PathBuf>,
         #[arg(long)]
         output: Option<PathBuf>,
+        /// Paper preset declared by the selected style.
+        #[arg(long)]
+        paper: Option<String>,
     },
     /// Build one cover letter.
     BuildCl {
@@ -134,6 +140,9 @@ enum Command {
         profile: Option<PathBuf>,
         #[arg(long)]
         output: Option<PathBuf>,
+        /// Paper preset declared by the selected style.
+        #[arg(long)]
+        paper: Option<String>,
     },
     /// Build one keyed opportunity package.
     BuildOpportunity {
@@ -148,6 +157,9 @@ enum Command {
         style: Option<String>,
         #[arg(long)]
         substyle: Option<String>,
+        /// Paper preset declared by the selected style.
+        #[arg(long)]
+        paper: Option<String>,
     },
     /// Rebuild one cover letter whenever its inputs change.
     WatchCl {
@@ -158,6 +170,9 @@ enum Command {
         style: Option<String>,
         #[arg(long)]
         substyle: Option<String>,
+        /// Paper preset declared by the selected style.
+        #[arg(long)]
+        paper: Option<String>,
     },
     /// Rebuild one keyed opportunity (PDFs plus resolved .typ copies)
     /// whenever its template, record, or generated typst outputs change.
@@ -197,6 +212,12 @@ pub fn run() -> Result<ExitCode> {
     crate::runtime::verify(workspace.root())?;
     let mut exit_code = ExitCode::SUCCESS;
     match args.command {
+        Command::Review { command } => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&crate::review::run(&workspace, command)?)?
+            );
+        }
         Command::RuntimeId => unreachable!("handled before workspace discovery"),
         Command::Setup => {
             doctor(&workspace)?;
@@ -280,6 +301,7 @@ pub fn run() -> Result<ExitCode> {
             locale,
             style,
             substyle,
+            paper,
         } => {
             let document = if document == "cv" { "cv" } else { "cl" };
             let selected = crate::styles::selection(
@@ -291,7 +313,11 @@ pub fn run() -> Result<ExitCode> {
             let leaf = crate::styles::leaf(&workspace, document, &locale, &selected)?;
             println!(
                 "{}",
-                serde_json::to_string_pretty(&crate::settings::resolve(&workspace, &leaf)?)?
+                serde_json::to_string_pretty(&crate::settings::explain(
+                    &workspace,
+                    &leaf,
+                    paper.as_deref()
+                )?)?
             );
         }
         Command::NewOpportunity {
@@ -315,6 +341,7 @@ pub fn run() -> Result<ExitCode> {
             application,
             profile,
             output,
+            paper,
         } => {
             let selection = cli_selection(
                 &workspace,
@@ -326,7 +353,7 @@ pub fn run() -> Result<ExitCode> {
             let leaf = render::cv_leaf(&workspace, &locale, &selection)?;
             let application =
                 workspace.existing_inside(application.unwrap_or_else(|| leaf.content()))?;
-            let record = workspace.read_toml_value(workspace.relative(&application)?)?;
+            let record = crate::content::read_record(&workspace, &application)?;
             let pages = pages
                 .or(record
                     .pointer("/options/pages")
@@ -336,15 +363,14 @@ pub fn run() -> Result<ExitCode> {
                 .unwrap_or(leaf.default_pages);
             let profile = workspace
                 .existing_inside(profile.unwrap_or_else(|| PathBuf::from("cvl/profile.toml")))?;
-            let output = output.unwrap_or_else(|| leaf.output(pages));
-            let spec = render::cv_spec(
+            let spec = render::document_spec(
                 &workspace,
-                &leaf.locale,
+                &leaf,
                 pages,
                 &application,
                 &profile,
-                &output,
-                &selection,
+                output.as_deref(),
+                paper.as_deref(),
             )?;
             print_outputs(vec![Compiler::new(&workspace)?.render(&workspace, &spec)?]);
         }
@@ -356,6 +382,7 @@ pub fn run() -> Result<ExitCode> {
             application,
             profile,
             output,
+            paper,
         } => {
             let selection = cli_selection(
                 &workspace,
@@ -367,7 +394,7 @@ pub fn run() -> Result<ExitCode> {
             let leaf = render::cl_leaf(&workspace, &locale, &selection)?;
             let application =
                 workspace.existing_inside(application.unwrap_or_else(|| leaf.content()))?;
-            let record = workspace.read_toml_value(workspace.relative(&application)?)?;
+            let record = crate::content::read_record(&workspace, &application)?;
             let pages = pages
                 .or(record
                     .pointer("/options/cl_pages")
@@ -377,15 +404,14 @@ pub fn run() -> Result<ExitCode> {
                 .unwrap_or(leaf.default_pages);
             let profile = workspace
                 .existing_inside(profile.unwrap_or_else(|| PathBuf::from("cvl/profile.toml")))?;
-            let output = output.unwrap_or_else(|| leaf.output(pages));
-            let spec = render::cl_spec(
+            let spec = render::document_spec(
                 &workspace,
-                &leaf.locale,
+                &leaf,
                 pages,
                 &application,
                 &profile,
-                &output,
-                &selection,
+                output.as_deref(),
+                paper.as_deref(),
             )?;
             print_outputs(vec![Compiler::new(&workspace)?.render(&workspace, &spec)?]);
         }
@@ -402,6 +428,7 @@ pub fn run() -> Result<ExitCode> {
             pages,
             style,
             substyle,
+            paper,
         } => {
             watch_cv(
                 &workspace,
@@ -409,6 +436,7 @@ pub fn run() -> Result<ExitCode> {
                 pages,
                 style.as_deref(),
                 substyle.as_deref(),
+                paper.as_deref(),
             )?;
         }
         Command::WatchCl {
@@ -416,6 +444,7 @@ pub fn run() -> Result<ExitCode> {
             pages,
             style,
             substyle,
+            paper,
         } => {
             watch_cl(
                 &workspace,
@@ -423,6 +452,7 @@ pub fn run() -> Result<ExitCode> {
                 pages,
                 style.as_deref(),
                 substyle.as_deref(),
+                paper.as_deref(),
             )?;
         }
         Command::WatchOpportunity {
@@ -503,7 +533,7 @@ fn cli_selection(
             crate::styles::record_selection(
                 workspace,
                 document,
-                &workspace.read_toml_value(&location)?,
+                &crate::content::read_record(workspace, &path)?,
                 &location,
             )
         })
@@ -522,23 +552,19 @@ fn watch_cv(
     pages: Option<usize>,
     style: Option<&str>,
     substyle: Option<&str>,
+    paper: Option<&str>,
 ) -> Result<()> {
-    let selection = crate::styles::selection(workspace, "cv", style, substyle)?;
-    let leaf = render::cv_leaf(workspace, locale, &selection)?;
-    let pages = pages.unwrap_or(leaf.default_pages);
-    watch_loop(
-        &format!(
-            "ccvl sources for {}/{}/{locale} {pages}-page CV",
-            selection.style, selection.substyle
-        ),
-        || cvl_digest(workspace),
-        || {
-            Ok(vec![Compiler::new(workspace)?.render(
-                workspace,
-                &render::cvl_cv_spec(workspace, locale, pages, Some(&selection))?,
-            )?])
-        },
-    )
+    crate::watch::run(workspace, &format!("{locale} CV"), |workspace| {
+        let selection = crate::styles::selection(workspace, "cv", style, substyle)?;
+        let leaf = render::cv_leaf(workspace, locale, &selection)?;
+        let spec = render::cvl_spec_with_paper(
+            workspace,
+            &leaf,
+            pages.unwrap_or(leaf.default_pages),
+            paper,
+        )?;
+        Ok(vec![Compiler::new(workspace)?.render(workspace, &spec)?])
+    })
 }
 
 fn watch_cl(
@@ -547,149 +573,30 @@ fn watch_cl(
     pages: Option<usize>,
     style: Option<&str>,
     substyle: Option<&str>,
+    paper: Option<&str>,
 ) -> Result<()> {
-    let selection = crate::styles::selection(workspace, "cl", style, substyle)?;
-    watch_loop(
-        &format!(
-            "ccvl sources for {}/{}/{locale} cover letter",
-            selection.style, selection.substyle
-        ),
-        || cvl_digest(workspace),
-        || {
-            Ok(vec![Compiler::new(workspace)?.render(
-                workspace,
-                &render::cvl_cl_spec(workspace, locale, pages, Some(&selection))?,
-            )?])
-        },
-    )
+    crate::watch::run(workspace, &format!("{locale} cover letter"), |workspace| {
+        let selection = crate::styles::selection(workspace, "cl", style, substyle)?;
+        let leaf = render::cl_leaf(workspace, locale, &selection)?;
+        let spec = render::cvl_spec_with_paper(
+            workspace,
+            &leaf,
+            pages.unwrap_or(leaf.default_pages),
+            paper,
+        )?;
+        Ok(vec![Compiler::new(workspace)?.render(workspace, &spec)?])
+    })
 }
 
 fn watch_opportunity(workspace: &Workspace, organisation: &str, position: &str) -> Result<()> {
-    // Fail fast on an unknown record instead of looping on the error.
-    opportunity::record_path(workspace, organisation, position, true)?;
-    watch_loop(
-        &format!("opportunity sources for {organisation}/{position}"),
-        || opportunity_digest(workspace, organisation, position),
-        || render::render_opportunity(workspace, organisation, position),
+    // Reject malformed keys, while allowing a temporarily missing record to be
+    // restored without restarting the watcher.
+    opportunity::record_path(workspace, organisation, position, false)?;
+    crate::watch::run(
+        workspace,
+        &format!("opportunity {organisation}/{position}"),
+        |workspace| render::render_opportunity(workspace, organisation, position),
     )
-}
-
-fn watch_loop(
-    label: &str,
-    digest: impl Fn() -> Result<Vec<u8>>,
-    render: impl Fn() -> Result<Vec<PathBuf>>,
-) -> Result<()> {
-    println!("Watching {label}. Press Ctrl-C to stop.");
-    let mut previous = Vec::new();
-    loop {
-        let current = digest()?;
-        if current != previous {
-            print_outputs(render()?);
-            // Re-hash after rendering: built PDFs are excluded from the
-            // digest and resolved .typ copies are content-deterministic, so
-            // a quiet tree settles instead of rebuilding twice per change.
-            previous = digest()?;
-        }
-        thread::sleep(Duration::from_millis(500));
-    }
-}
-
-/// General CVL sources: style leaves and records, the shared Typst
-/// machinery and assets, plus the workspace contract. Built PDFs are
-/// excluded so a render never retriggers itself.
-fn cvl_digest(workspace: &Workspace) -> Result<Vec<u8>> {
-    digest_roots(&[
-        workspace.path("cvl"),
-        workspace.path(".agent/typst"),
-        workspace.path("ccvl.json"),
-    ])
-}
-
-/// Opportunity sources: the record's leaf adapters and their inputs, the
-/// shared renderers and knobs, the profile and workspace contract, plus the
-/// keyed record directory including its generated typst/ copies. PDFs stay
-/// out so a render never retriggers its own watcher.
-fn opportunity_digest(
-    workspace: &Workspace,
-    organisation: &str,
-    position: &str,
-) -> Result<Vec<u8>> {
-    let record = opportunity::record_path(workspace, organisation, position, true)?;
-    let directory = record
-        .parent()
-        .context("opportunity record has no parent")?
-        .to_path_buf();
-    let mut roots = vec![
-        workspace.path(".agent/typst"),
-        workspace.path("cvl/assets"),
-        workspace.path("cvl/profile.toml"),
-        workspace.path("cvl/shared"),
-        workspace.path("cvl/cv/harvard/contract.toml"),
-        workspace.path("cvl/cl/harvard/contract.toml"),
-        workspace.path("ccvl.json"),
-        directory,
-    ];
-    match render::opportunity_selection(workspace, organisation, position) {
-        Ok(selection) => {
-            if let Ok(leaf) = render::cv_leaf(workspace, &selection.locale, &selection.cv) {
-                roots.push(leaf.style_dir().to_path_buf());
-                roots.push(leaf.adapter());
-                roots.push(leaf.strings());
-                roots.push(leaf.substyle_file());
-            }
-            if let Ok(leaf) = render::cl_leaf(workspace, &selection.locale, &selection.cl) {
-                roots.push(leaf.style_dir().to_path_buf());
-                roots.push(leaf.adapter());
-                roots.push(leaf.strings());
-                roots.push(leaf.substyle_file());
-            }
-        }
-        Err(_) => roots.push(workspace.path("cvl")),
-    }
-    digest_roots(&roots)
-}
-
-fn digest_roots(roots: &[PathBuf]) -> Result<Vec<u8>> {
-    let mut paths = Vec::new();
-    for root in roots {
-        if root.is_file() {
-            if is_watched(root) {
-                paths.push(root.clone());
-            }
-            continue;
-        }
-        if !root.is_dir() {
-            continue;
-        }
-        paths.extend(
-            WalkDir::new(root)
-                .into_iter()
-                .filter_map(Result::ok)
-                .filter(|entry| entry.file_type().is_file())
-                .filter(|entry| is_watched(entry.path()))
-                .map(walkdir::DirEntry::into_path),
-        );
-    }
-    paths.sort();
-    let mut digest = Sha256::new();
-    for path in paths {
-        digest.update(path.to_string_lossy().as_bytes());
-        digest.update(fs::read(&path)?);
-    }
-    Ok(digest.finalize().to_vec())
-}
-
-/// Typst-relevant source extensions: templates, TOML records, JSON contracts,
-/// and generated customization copies plus raster assets. PDFs stay out so a
-/// render never retriggers its own watcher.
-fn is_watched(path: &Path) -> bool {
-    path.extension().is_some_and(|extension| {
-        [
-            "typ", "toml", "json", "png", "jpg", "jpeg", "webp", "svg", "ttf", "otf",
-        ]
-        .iter()
-        .any(|candidate| extension.eq_ignore_ascii_case(candidate))
-    })
 }
 
 fn print_outputs(outputs: Vec<PathBuf>) {

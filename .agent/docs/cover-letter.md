@@ -1,6 +1,11 @@
-# Cover-letter contract
+# Harvard cover-letter contract
 
-Every ccvl cover letter contains exactly six body paragraphs and five one-line
+The selected style owns a letter's content shape and geometry. This document
+describes Harvard; independent styles keep their own contracts. Universal
+[evidence and writing guidance](editorial.md) and the optional AIDA recipe are
+separate from presentation.
+
+A Harvard cover letter contains exactly six body paragraphs and five one-line
 highlights. The highlights sit between paragraphs 3 and 4. Paragraph 1 opens in
 exactly three lines; paragraph 6 mirrors it with a warm three-line close. The
 four central paragraphs carry the evidence and target case in exactly 20 lines:
@@ -12,15 +17,25 @@ contract self-describing for both people and agents.
 
 ## Paragraph map
 
-| Block | Role | Purpose | Line contract |
-|---|---|---|---:|
-| Paragraph 1 | Positioning | Name the target and establish immediate fit. | exactly 3 |
-| Paragraph 2 | Primary evidence | Prove the strongest relevant experience and results. | exactly 5 |
-| Paragraph 3 | Complementary evidence | Add a second capability domain and the career-wide pattern. | exactly 5 |
-| Highlights | Evidence index | Surface five selection dimensions without repeating the letter. | exactly 5 × 1 |
-| Paragraph 4 | Differentiation | Explain the value created by the combined evidence. | exactly 5 |
-| Paragraph 5 | Target fit | Connect that value to the specific organisation and opportunity. | exactly 5 |
-| Paragraph 6 | Warm close | Invite a conversation with warmth and low friction. | exactly 3 |
+When AIDA is selected, Harvard maps it as follows. The contract's
+`editorial` and `aida_stage` fields document this optional mapping for agents;
+the compiler enforces geometry, not rhetorical quality or recipe selection.
+
+| Block | Role | Optional AIDA stage | Purpose | Lines |
+|---|---|---|---|---:|
+| Paragraph 1 | Positioning | Attention | Establish the target or general purpose and immediate relevance. | 3 |
+| Paragraph 2 | Primary evidence | Interest | Present the strongest relevant experience and results. | 5 |
+| Paragraph 3 | Complementary evidence | Interest | Add useful complementary evidence. | 5 |
+| Highlights | Evidence index | — | Surface five supported selection dimensions without repeating prose. | 5 × 1 |
+| Paragraph 4 | Differentiation | Desire | Explain the useful contribution supported by the combined evidence. | 5 |
+| Paragraph 5 | Target fit | Desire | Connect that contribution to this employer or the declared general audience. | 5 |
+| Paragraph 6 | Warm close | Action | Invite an appropriate conversation or next step. | 3 |
+
+Do not print the stage names as drafting labels or explain what a paragraph
+would contain in a later application. Ordinary uses of those words remain
+valid. General/open letters do not need a fictional vacancy. Select evidence
+and reader benefit before remaining CV material; preserve real qualifications.
+
 
 The valediction and signature follow paragraph 6 and do not count as a seventh
 paragraph.
@@ -119,54 +134,27 @@ highlights slightly away from the geometric centre within those bounds. The
 recipient record in `application.toml` is data-only provenance and is not
 printed; only the salutation uses the recipient name.
 
-## Salutation
+## Correspondence and protected text
 
-The `name` field of `job.cl_recipient` holds the full address form, e.g.
-`"Frau Dr. Müller"` or `"Herr Müller"`. Only the honorific, academic titles,
-and surname render; first names never appear in a formal salutation. The
-rules live in the `cgreet` library
-(`https://github.com/corbet-labs/cgreet`, re-exported
-for compatibility via `ccvl::application`) and are mirrored for the renderer
-in `cvl/shared/harvard/application.typ` (`salutation-honorific`,
-`salutation-titles`, `salutation-surname`, `de-salutation`); `en-ch`
-additionally uses `salutation-last-name` (`"Dr. Jane Doe"` renders
-`Dear Doe,`).
+The `name` field of `job.cl_recipient` stores the actual supplied address form,
+for example `"Frau Dr. Müller"`. Do not infer a person's honorific or alter an
+exact name to satisfy a locale convention. Missing recipient information uses
+the supported generic fallback and produces a non-blocking diagnostic; it is
+valid for a general/open showcase. Obtain a real address form when available
+for a targeted letter, without inventing one.
 
-German salutations are locale-correct per country norm:
+Shared spelling, salutation and closing conventions belong to cletter and its
+family. ccvl's Harvard renderer retains its explicit English override:
+`en-ch` uses a title-less named form (`Dear Doe,`) and the generic
+`Dear Hiring Manager,`. Such explicit style/user choices are not replaced by
+locale inference. See [the correspondence integration](../typst/letter/README.md)
+for the consumed helpers; do not copy a competing national-norm table here.
 
-| Locale | Norm | Named | Generic | Comma |
-|---|---|---|---|---|
-| de-ch | SN 010130 | `Sehr geehrte Frau Dr. Müller` | `Sehr geehrte Damen und Herren` | none; next sentence starts uppercase |
-| de-li | SN 010130 (assumed) | same as de-ch | same as de-ch | none |
-| de-de | DIN 5008 | `Sehr geehrte Frau Dr. Müller,` | `Sehr geehrte Damen und Herren,` | comma; sentence continues lowercase |
-| de-at | DIN 5008 (ÖNORM A 1080 was withdrawn in 2018) | same as de-de | same as de-de | comma |
-
-Notes:
-
-- `Guten Tag` is informal and never used in a formal application; the
-  fallback is always `Sehr geehrte Damen und Herren`.
-- Abbreviations: the Anrede uses `Herr`, never the accusative `Herrn`
-  (which belongs only in the postal address) and never `Hr.`/`Fr.`
-  (unhöflich); `Frau` is never abbreviated. `Dr.` stays abbreviated,
-  `Prof.` normalises to the spelled-out `Professor`; `Dipl.-Ing.` and
-  `Mag.` survive. Protocol keeps only the highest title, so Professor
-  suppresses Dr.
-- Liechtenstein has no own correspondence norm on record; it renders
-  Swiss-style (no comma, `ss` spelling) given the customs and currency
-  union and Alemannic usage. Say so explicitly if a FL recipient asks.
-- A name without a parsable Herr/Frau honorific (or without a surname)
-  falls back to the generic salutation so the letter stays formally safe.
-- English (`en-ch`): the named form stays title-less by design (`Dear Doe,`)
-  to avoid misgendering from a surname alone; the generic form is
-  `Dear Hiring Manager,` (the hiring-process owner, stronger than a team
-  address and more current than `Dear Sir or Madam` / `To Whom It May
-  Concern`).
-
-The generic fallback stays valid for the target-neutral showcase, but
-`ccvl measure` (and `measure-opportunity`) reports an empty recipient — and,
-for German records, a name without Herr/Frau — as a non-blocking `WARN`,
-and `ccvl check` repeats it without failing. Provide a real address form
-such as `"Frau Dr. Müller"` for every tailored opportunity.
+Use lowercase locale identifiers. Apply shared orthographic transformations to
+appropriate generated prose only, preserving exact names, quotations, URLs
+and source evidence. If a safe boundary is unavailable, diagnose the specific
+passage. Register, evidence and relevance remain [ccvl editorial choices](editorial.md),
+not a claim that every country requires one tone or argument recipe.
 
 ## Iteration contract
 
@@ -178,3 +166,10 @@ type, or weakening the bounds.
 The public showcase is target-neutral and describes the named author. A real
 application replaces the role, company fit, evidence selection, and invitation
 while keeping every claim traceable to the private evidence base.
+
+
+Independent review follows [the review protocol](review.md). The initial
+candidate has at most two corrections in that run; check the allowance before
+editing and check/review every allowed revision before considering another.
+Underfill after the allowance, missing evidence or unread pages is an honest
+unfinished result, never permission to weaken the contract or claim readiness.

@@ -1,5 +1,6 @@
 use anyhow::{Context, Result, ensure};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -10,7 +11,7 @@ use crate::format;
 use crate::measure;
 use crate::pdf;
 use crate::public;
-use crate::render::{Compiler, DocumentSpec, cvl_spec};
+use crate::render::{Compiler, DocumentSpec};
 use crate::skills;
 use crate::styles;
 use crate::workspace::Workspace;
@@ -30,6 +31,7 @@ pub fn run_with_artifacts(workspace: &Workspace, artifacts: Option<&Path>) -> Re
         );
     }
     validate_manifest(workspace)?;
+    validate_correspondence(workspace)?;
     validate_styles(workspace)?;
     application::validate_profiles(workspace)?;
     application::validate_station_files(workspace)?;
@@ -39,6 +41,50 @@ pub fn run_with_artifacts(workspace: &Workspace, artifacts: Option<&Path>) -> Re
     format::format_typst(workspace, true)?;
     validate_embedded_fonts(workspace)?;
     render_and_verify(workspace, artifacts)
+}
+
+fn validate_correspondence(workspace: &Workspace) -> Result<()> {
+    let root = workspace.path(".agent/typst/letter");
+    let manifest = workspace.read_json(".agent/typst/letter/source.json")?;
+    let files = manifest
+        .get("files")
+        .and_then(Value::as_object)
+        .context("correspondence source manifest needs file hashes")?;
+    ensure!(!files.is_empty(), "correspondence source manifest is empty");
+    for (relative, hash) in files {
+        ensure!(
+            Path::new(relative)
+                .components()
+                .all(|component| matches!(component, std::path::Component::Normal(_))),
+            "invalid correspondence source path: {relative}"
+        );
+        let path = workspace.existing_inside(root.join(relative))?;
+        ensure!(
+            path.starts_with(&root),
+            "correspondence source escapes vendor tree: {relative}"
+        );
+        let actual = format!("{:x}", Sha256::digest(fs::read(&path)?));
+        ensure!(
+            hash.as_str() == Some(&actual),
+            "vendored correspondence source changed: {relative}; update it upstream and re-vendor"
+        );
+    }
+    for entry in walkdir::WalkDir::new(&root) {
+        let entry = entry?;
+        if entry.file_type().is_file() {
+            let relative = entry
+                .path()
+                .strip_prefix(&root)?
+                .to_string_lossy()
+                .replace('\\', "/");
+            ensure!(
+                ["README.md", "source.json"].contains(&relative.as_str())
+                    || files.contains_key(&relative),
+                "unrecorded correspondence source: {relative}"
+            );
+        }
+    }
+    Ok(())
 }
 
 fn validate_manifest(workspace: &Workspace) -> Result<()> {
@@ -79,6 +125,7 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         "cvl/README.md".to_owned(),
         "interview/README.md".to_owned(),
         "opportunities/README.md".to_owned(),
+        ".agent/schemas/review-result.schema.json".to_owned(),
     ];
     for leaf in cv_leaves(workspace)?
         .into_iter()
@@ -106,7 +153,6 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         ".crow",
         ".vscode",
         ".zed",
-        ".agent/schemas",
         ".agent/scaffolds/opportunity/application.json",
         ".agent/scaffolds/interview/profile.json",
         ".agent/scaffolds/interview/stations.json",
@@ -221,72 +267,86 @@ fn render_and_verify(workspace: &Workspace, artifacts: Option<&Path>) -> Result<
         .into_iter()
         .chain(cl_leaves(workspace)?)
     {
-        let mut verified = Vec::new();
-        let policy = leaf
-            .contract
-            .get("pdf")
-            .cloned()
-            .unwrap_or_else(|| json!({}));
-        let contacts = policy
-            .get("required_profile_fields")
-            .and_then(Value::as_array)
-            .map(|fields| {
-                fields
-                    .iter()
-                    .map(|field| {
-                        let key = field
-                            .as_str()
-                            .context("required_profile_fields must contain names")?;
-                        profile
-                            .get(key)
-                            .and_then(Value::as_str)
-                            .map(str::to_owned)
-                            .with_context(|| format!("profile has no {key}"))
-                    })
-                    .collect::<Result<Vec<_>>>()
-            })
-            .transpose()?
-            .unwrap_or_default();
-        for pages in &leaf.pages {
-            let spec = cvl_spec(workspace, &leaf, *pages)?;
-            let label = format!(
-                "{}-{}-{}-{}-{pages}",
-                leaf.document, leaf.style, leaf.substyle, leaf.locale
-            );
-            let first = render_pair(
-                workspace,
-                &compiler,
-                &spec,
-                &temporary.path().join(format!("{label}-first.pdf")),
-                &temporary.path().join(format!("{label}-second.pdf")),
-                &format!("{} is not byte-reproducible", spec.name),
-                true,
-            )?;
-            require_semantic_pdf_match(
-                &first,
-                &leaf.output(*pages),
-                &format!("{} output", spec.name),
-            )?;
-            verified.push((*pages, pdf::verify(&first, *pages, &contacts, &policy)?));
-            checked_pdfs.push((first, format!("{label}.pdf")));
-        }
-        if let Some(pages) = leaf.contract.get("shared_pages").and_then(Value::as_array) {
-            for page in pages {
-                let page = u32::try_from(
-                    page.as_u64()
-                        .context("shared_pages must contain page numbers")?,
-                )?;
-                ensure!(
-                    page > 0 && verified.iter().all(|(count, _)| *count >= page as usize),
-                    "shared page is absent from a preset"
+        let showcase = crate::render::cvl_spec(workspace, &leaf, leaf.default_pages)?;
+        let showcase_paper = showcase.inputs.get("paper").map(String::as_str);
+        let choices = leaf.paper.as_ref().map_or_else(
+            || vec![None],
+            |registry| registry.sizes.keys().map(|id| Some(id.as_str())).collect(),
+        );
+        for paper in choices {
+            let mut verified = Vec::new();
+            let selected = crate::paper::select(leaf.paper.as_ref(), &leaf.locale, paper)?;
+            let is_default = paper == showcase_paper;
+            let contract = crate::paper::contract(&leaf, selected);
+            let policy = contract.get("pdf").cloned().unwrap_or_else(|| json!({}));
+            let contacts = policy
+                .get("required_profile_fields")
+                .and_then(Value::as_array)
+                .map(|fields| {
+                    fields
+                        .iter()
+                        .map(|field| {
+                            let key = field
+                                .as_str()
+                                .context("required_profile_fields must contain names")?;
+                            profile
+                                .get(key)
+                                .and_then(Value::as_str)
+                                .map(str::to_owned)
+                                .with_context(|| format!("profile has no {key}"))
+                        })
+                        .collect::<Result<Vec<_>>>()
+                })
+                .transpose()?
+                .unwrap_or_default();
+            for pages in &leaf.pages {
+                let spec = crate::render::cvl_spec_with_paper(workspace, &leaf, *pages, paper)?;
+                let label = format!(
+                    "{}-{}-{}-{}-{pages}",
+                    leaf.document, leaf.style, leaf.substyle, leaf.locale
                 );
-                let baseline = verified[0].1.page_content(page)?;
-                for (_, pdf) in &verified[1..] {
+                let label = if is_default {
+                    label
+                } else {
+                    format!("{label}-{}", paper.unwrap())
+                };
+                let first = render_pair(
+                    workspace,
+                    &compiler,
+                    &spec,
+                    &temporary.path().join(format!("{label}-first.pdf")),
+                    &temporary.path().join(format!("{label}-second.pdf")),
+                    &format!("{} is not byte-reproducible", spec.name),
+                    true,
+                )?;
+                if is_default {
+                    require_semantic_pdf_match(
+                        &first,
+                        &spec.output,
+                        &format!("{} output", spec.name),
+                    )?;
+                }
+                verified.push((*pages, pdf::verify(&first, *pages, &contacts, &policy)?));
+                checked_pdfs.push((first, format!("{label}.pdf")));
+            }
+            if let Some(pages) = leaf.contract.get("shared_pages").and_then(Value::as_array) {
+                for page in pages {
+                    let page = u32::try_from(
+                        page.as_u64()
+                            .context("shared_pages must contain page numbers")?,
+                    )?;
                     ensure!(
-                        pdf.page_content(page)? == baseline,
-                        "shared page {page} changed across presets: {}",
-                        leaf.dir.display()
+                        page > 0 && verified.iter().all(|(count, _)| *count >= page as usize),
+                        "shared page is absent from a preset"
                     );
+                    let baseline = verified[0].1.page_content(page)?;
+                    for (_, pdf) in &verified[1..] {
+                        ensure!(
+                            pdf.page_content(page)? == baseline,
+                            "shared page {page} changed across presets: {}",
+                            leaf.dir.display()
+                        );
+                    }
                 }
             }
         }

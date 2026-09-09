@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 use crate::render::{Compiler, DocumentKind, DocumentSpec, opportunity_specs};
 use crate::workspace::Workspace;
 use anyhow::{Context, Result, ensure};
-use cgreet::recipient_salutation_warning;
+use cletter::recipient_salutation_warning;
 use ctypst::Document;
 use serde_json::Value;
 
@@ -130,9 +130,7 @@ fn summary_policy(workspace: &Workspace, spec: &DocumentSpec) -> Result<SummaryP
         .inputs
         .get("application")
         .context("summary spec has no application input")?;
-    let record = workspace.read_toml_value(
-        workspace.relative(&workspace.existing_inside(typst_path.trim_start_matches('/'))?)?,
-    )?;
+    let record = crate::content::read_record(workspace, typst_path.trim_start_matches('/'))?;
     let allow_thin = record
         .pointer("/cv/allow_thin")
         .and_then(Value::as_bool)
@@ -427,7 +425,7 @@ pub fn preference_warnings(
 /// Herr/Frau honorific. Missing application inputs (unit fixtures) yield no
 /// warning so metric-set tests stay focused.
 pub fn recipient_warnings(workspace: &Workspace, spec: &DocumentSpec) -> Result<Vec<String>> {
-    use cgreet::de_honorific_warning;
+    use cletter::de_honorific_warning;
 
     if spec.kind != DocumentKind::CoverLetter {
         return Ok(Vec::new());

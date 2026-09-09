@@ -30,6 +30,7 @@ fn independent_workspace() -> (tempfile::TempDir, Workspace) {
         &fs::read_to_string(original.path("cvl/cv/harvard/standard/en/ch/content.toml")).unwrap(),
     )
     .unwrap();
+    record.as_table_mut().unwrap().remove("wording");
     record["options"]
         .as_table_mut()
         .unwrap()
@@ -58,14 +59,14 @@ fn independent_workspace() -> (tempfile::TempDir, Workspace) {
         .as_table_mut()
         .unwrap()
         .insert("cl_substyle".into(), "standard".into());
-    record["cv"] = toml::toml! {
+    record.as_table_mut().unwrap().insert("cv".into(), toml::toml! {
         heading = "Independent layout fixture"
         body = "This fixture exercises a landscape document with columns and a serif face. It contains no career claims."
-    }.into();
-    record["cl"] = toml::toml! {
+    }.into());
+    record.as_table_mut().unwrap().insert("cl".into(), toml::toml! {
         message = "Independent letter fixture"
         note = "This letter exercises two custom-sized pages without Harvard paragraph counts, highlights, or a signature."
-    }.into();
+    }.into());
     write(
         root,
         ".agent/scaffolds/opportunity/application.toml",
@@ -254,6 +255,7 @@ fn full_workspace_check_accepts_independent_styles() {
         ".agent/scaffolds/interview/profile.toml",
         ".agent/scaffolds/interview/stations.toml",
         ".agent/tests/skill-cases.json",
+        ".agent/schemas/review-result.schema.json",
     ] {
         write(
             workspace.root(),
@@ -273,7 +275,7 @@ fn full_workspace_check_accepts_independent_styles() {
     ] {
         write(workspace.root(), relative, "# Independent fixture\n");
     }
-    for directory in [".agent/skills", ".agent/typst/fonts"] {
+    for directory in [".agent/skills", ".agent/typst/fonts", ".agent/typst/letter"] {
         for entry in walkdir::WalkDir::new(original.path(directory)) {
             let entry = entry.unwrap();
             if entry.file_type().is_file() {
@@ -283,6 +285,21 @@ fn full_workspace_check_accepts_independent_styles() {
                 fs::copy(entry.path(), target).unwrap();
             }
         }
+    }
+    // This fixture supplies its own styles and documentation. Skills may link
+    // to platform guides without importing the shipped Harvard presentation.
+    for guide in [
+        "applications",
+        "editorial",
+        "review",
+        "cover-letter",
+        "styles",
+    ] {
+        write(
+            workspace.root(),
+            &format!(".agent/docs/{guide}.md"),
+            "# Independent fixture guide\n",
+        );
     }
     // The profile is locale data, not a built-in de-ch/en-ch list.
     let mut profile: toml::Value =
@@ -301,6 +318,14 @@ fn full_workspace_check_accepts_independent_styles() {
     crate::check::run(&workspace).unwrap();
     assert!(!workspace.path("cvl/cv/harvard").exists());
     assert!(!workspace.path("cvl/cl/harvard").exists());
+    write(workspace.root(), "cvl/cv/broken/style.toml", "invalid = [");
+    let error = crate::check::run(&workspace).unwrap_err();
+    assert!(format!("{error:#}").contains("broken/style.toml"));
+    let spec = render::cvl_cv_spec(&workspace, "en-us", 1, None).unwrap();
+    render::Compiler::new(&workspace)
+        .unwrap()
+        .render(&workspace, &spec)
+        .unwrap();
 }
 
 #[test]
@@ -370,7 +395,7 @@ fn pdf_geometry_is_selected_per_locale_and_missing_locale_fails() {
     );
     assert_eq!(
         american.contract.pointer("/pdf/size_pt"),
-        Some(&json!([612, 792]))
+        Some(&json!([612.0, 792.0]))
     );
     assert!(
         render::cvl_spec(&workspace, &american, 1).unwrap().inputs["layout"]
@@ -451,4 +476,166 @@ Explicit settings must change the actual paper and embedded typeface.
         assert!(pdf::verify(&output, 1, &[], &json!({"version": "2.0"})).is_err());
         assert!(pdf::verify(&output, 1, &[], &json!({"tagged": false})).is_err());
     }
+}
+
+#[test]
+fn selected_leaf_ignores_unfinished_siblings_and_unrelated_styles() {
+    let (_temporary, workspace) = independent_workspace();
+    let path = workspace.path("cvl/cv/orbit/style.toml");
+    let text = fs::read_to_string(&path)
+        .unwrap()
+        .replace(
+            "substyles = [\"standard\"]",
+            "substyles = [\"standard\", \"unfinished\"]",
+        )
+        .replace(
+            "supports_locales = [\"en-us\"]",
+            "supports_locales = [\"en-us\", \"en-ch\"]",
+        );
+    fs::write(&path, text).unwrap();
+    write(workspace.root(), "cvl/cv/broken/style.toml", "invalid = [");
+    let selected = selection(&workspace, "cv", Some("orbit"), Some("standard")).unwrap();
+    assert!(leaf(&workspace, "cv", "en-us", &selected).is_ok());
+    assert!(leaf(&workspace, "cv", "en-ch", &selected).is_err());
+    assert!(leaves(&workspace, "cv").is_err());
+    let spec = render::cvl_cv_spec(&workspace, "en-us", 1, Some(&selected)).unwrap();
+    render::Compiler::new(&workspace)
+        .unwrap()
+        .render(&workspace, &spec)
+        .unwrap();
+}
+
+#[test]
+fn individual_build_validates_only_its_document_but_records_validate_enabled_documents() {
+    for (document, style, unrelated, other_style) in [
+        ("cv", "orbit", "cl", "postcard"),
+        ("cl", "postcard", "cv", "orbit"),
+    ] {
+        let (_temporary, workspace) = independent_workspace();
+        let record_path = workspace.path(format!(
+            "cvl/{document}/{style}/standard/en/us/content.toml"
+        ));
+        let mut record = workspace
+            .read_toml_value(workspace.relative(&record_path).unwrap())
+            .unwrap();
+        record.as_object_mut().unwrap().remove(unrelated);
+        fs::write(&record_path, toml::to_string(&record).unwrap()).unwrap();
+        write(
+            workspace.root(),
+            &format!("cvl/{unrelated}/{other_style}/style.toml"),
+            "invalid = [",
+        );
+        let selected = selection(&workspace, document, Some(style), None).unwrap();
+        let leaf = leaf(&workspace, document, "en-us", &selected).unwrap();
+        let spec = render::cvl_spec(&workspace, &leaf, leaf.default_pages).unwrap();
+        render::Compiler::new(&workspace)
+            .unwrap()
+            .render(&workspace, &spec)
+            .unwrap();
+        assert!(application::validate_record(&workspace, &record, "fixture", true).is_err());
+        if document == "cv" {
+            record["options"]["generate_cl"] = false.into();
+            application::validate_record(&workspace, &record, "fixture", true).unwrap();
+            let opportunity = workspace.path("opportunities/fixture/lead/application.toml");
+            fs::create_dir_all(opportunity.parent().unwrap()).unwrap();
+            fs::write(&opportunity, toml::to_string(&record).unwrap()).unwrap();
+            assert_eq!(
+                render::opportunity_specs(&workspace, "fixture", "lead")
+                    .unwrap()
+                    .len(),
+                1
+            );
+        }
+    }
+}
+
+#[test]
+fn extra_fonts_are_loaded_only_for_the_selected_style_even_with_a_shared_compiler() {
+    let (_temporary, workspace) = independent_workspace();
+    let original = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let mut font = fs::read(original.path(".agent/typst/fonts/Archivo-Regular.ttf")).unwrap();
+    // Give this fixture a family absent from the embedded font set. The name
+    // replacement preserves the table lengths; no font file ships in the test.
+    let mut replacements = 0;
+    for (from, to) in [
+        (b"Archivo".to_vec(), b"Fixture".to_vec()),
+        (
+            "Archivo"
+                .encode_utf16()
+                .flat_map(u16::to_be_bytes)
+                .collect(),
+            "Fixture"
+                .encode_utf16()
+                .flat_map(u16::to_be_bytes)
+                .collect(),
+        ),
+    ] {
+        for index in 0..=font.len() - from.len() {
+            if font[index..index + from.len()] == from {
+                font[index..index + from.len()].copy_from_slice(&to);
+                replacements += 1;
+            }
+        }
+    }
+    assert!(replacements > 0);
+    let font_path = workspace.path("cvl/cv/orbit/fixture.ttf");
+    fs::write(&font_path, font).unwrap();
+    let definition_path = workspace.path("cvl/cv/orbit/style.toml");
+    let definition = fs::read_to_string(&definition_path).unwrap();
+    fs::write(
+        &definition_path,
+        format!("{definition}fonts = [\"fixture.ttf\"]\n"),
+    )
+    .unwrap();
+    for (document, style, previous) in [
+        ("cv", "orbit", "EB Garamond"),
+        ("cl", "postcard", "IBM Plex Serif"),
+    ] {
+        let source = workspace.path(format!(
+            "cvl/{document}/{style}/standard/en/us/typst/{document}.typ"
+        ));
+        fs::write(
+            &source,
+            fs::read_to_string(&source)
+                .unwrap()
+                .replace(previous, "Fixture"),
+        )
+        .unwrap();
+    }
+    write(workspace.root(), "cvl/cv/broken/style.toml", "invalid = [");
+    let compiler = render::Compiler::new(&workspace).unwrap();
+    for (document, style) in [("cv", "orbit"), ("cl", "postcard"), ("cv", "orbit")] {
+        let selected = selection(&workspace, document, Some(style), None).unwrap();
+        let leaf = leaf(&workspace, document, "en-us", &selected).unwrap();
+        assert_eq!(
+            leaf.fonts,
+            if document == "cv" {
+                vec![font_path.clone()]
+            } else {
+                vec![]
+            }
+        );
+        let spec = render::cvl_spec(&workspace, &leaf, leaf.default_pages).unwrap();
+        if document == "cl" {
+            let error = compiler.render(&workspace, &spec).unwrap_err();
+            assert!(format!("{error:#}").contains("unknown font family: fixture"));
+            continue;
+        }
+        let output = compiler.render(&workspace, &spec).unwrap();
+        let pdf = lopdf::Document::load(output).unwrap();
+        let mut found_fixture = false;
+        for id in pdf.get_pages().values() {
+            for font in pdf.get_page_fonts(*id).unwrap().values() {
+                let name = font.get(b"BaseFont").unwrap().as_name().unwrap();
+                found_fixture |= String::from_utf8_lossy(name).contains("Fixture");
+            }
+        }
+        assert!(found_fixture, "selected style font must be embedded");
+    }
+    fs::write(
+        &definition_path,
+        format!("{definition}fonts = [\"missing.ttf\"]\n"),
+    )
+    .unwrap();
+    assert!(selection(&workspace, "cv", Some("orbit"), None).is_err());
 }

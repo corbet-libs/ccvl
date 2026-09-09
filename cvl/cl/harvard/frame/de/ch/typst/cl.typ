@@ -4,6 +4,7 @@
 #let profile-path = sys.inputs.at("profile", default: "/cvl/profile.toml")
 #let strings-path = sys.inputs.at("strings", default: "/cvl/cl/harvard/frame/de/ch/strings.toml")
 #let substyle-path = sys.inputs.at("substyle", default: "/cvl/cl/harvard/frame/substyle.toml")
+#let paper-input = sys.inputs.at("paper", default: "")
 #let layout-path = sys.inputs.at("layout", default: "/cvl/cl/harvard/frame/de/ch/layout.toml")
 #let shared-defaults-path = sys.inputs.at("shared-defaults", default: "/cvl/shared/harvard/defaults.toml")
 #render-cl(
@@ -13,4 +14,5 @@
   substyle-path: substyle-path,
   shared-defaults-path: shared-defaults-path,
   layout-path: layout-path,
+  paper-input: paper-input,
 )

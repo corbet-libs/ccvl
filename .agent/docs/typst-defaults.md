@@ -1,6 +1,6 @@
 # Explicit document defaults
 
-This audit targets the pinned **Typst 0.15.1**, through **ctypst 0.2.0** in
+This audit targets the pinned **Typst 0.15.1**, through **ctypst 0.3.2** in
 `Cargo.lock`. Revisit it when either dependency changes. It covers settings
 used by the shipped text documents, their components, and PDF export; it is
 not a universal schema for every possible Typst element.
@@ -10,8 +10,10 @@ not a universal schema for every possible Typst element.
 1. `cvl/shared/<style>/defaults.toml`: that family's base design, where its
    CV and CL deliberately share settings.
 2. `cvl/<document>/<style>/<substyle>/substyle.toml`: substyle overrides.
-3. `<substyle>/<language>/<country>/layout.toml`: paper and locale overrides.
-4. The renderer: explicit component styling, such as heading size, grid
+3. `<substyle>/<language>/<country>/layout.toml`: locale overrides.
+4. The selected named paper preset in `style.toml`: explicit paper settings
+   and expected PDF dimensions, with a declared default per locale.
+5. The renderer: explicit component styling, such as heading size, grid
    columns, borders, internal spacing and intentional per-region overrides.
 
 The shipped renderers deep-merge these files in that order. `layout` is an
@@ -33,7 +35,7 @@ metrics and rendering constraints.
 `bash ./ccvl explain-style cv en-us --style test-style-1 --substyle sidebar`
 reports the merged inputs and source path for each effective value, without
 rendering. It covers the declared adapter merge, not component-level Typst
-show/set rules. For example, `page.paper` comes from the US leaf layout, while
+show/set rules. For example, `page.paper` comes from the chosen paper preset, while
 `text.font` comes from the family defaults.
 
 The adapter accepts `left`, `center`, `right`, `start` and `end` block alignment;
@@ -44,8 +46,10 @@ paper requires both dimensions; named paper rejects unused custom dimensions.
 
 **Language does not determine paper.** The examples explicitly choose A4 for
 `en-ch` and US Letter for `en-us`; these are style choices, not an engine
-country-to-paper rule. A US English A4 document is valid too: change its layout
-and geometry contract together. The short `en` CLI alias means `en-ch` and
+country-to-paper rule. A US English A4 document is valid too: select `--paper a4`
+with either test style. A command-line paper overrides the record's optional
+`cv_paper` or `cl_paper`, which overrides the style's locale default.
+The short `en` CLI alias means `en-ch` and
 never implies US Letter. Orientation is a separate `flipped` setting.
 
 | Paper | Portrait millimetres | Portrait PDF points | Landscape PDF points |
@@ -54,9 +58,10 @@ never implies US Letter. Orientation is a separate `flipped` setting.
 | US Letter | 215.9 × 279.4 | 612 × 792 | 792 × 612 |
 
 `paper = "custom"` in the adapter takes explicit `width_mm` and `height_mm`.
-A style's `[pdf.by_locale.<locale>].size_pt` checks the actual output dimensions;
-it does not set them. Every declared locale needs an override if this table
-is present. Do not hide overflow by changing a requested page count.
+The selected paper preset declares expected PDF dimensions independently of
+its renderer settings. These checks do not set page geometry. Styles without
+paper presets can retain fixed geometry in their PDF contract; they cannot
+accept a paper override. Do not hide overflow by changing a requested page count.
 
 ## Page and text decisions
 
@@ -67,7 +72,7 @@ The explicit values below are checked-in choices. See the official
 
 | Setting | Typst 0.15.1 default | Shipped choice / location |
 | --- | --- | --- |
-| Paper | A4 | Every locale layout declares A4 or `us-letter` |
+| Paper | A4 | Named style presets, explicit locale defaults and optional document selection |
 | Orientation / columns | Portrait / 1 | Harvard and style 1 portrait; style 2 landscape; 1 page column, renderer grids compose content |
 | Margins | `auto`, scaled from the shorter edge (25 mm on A4) | Explicit 12 mm top/bottom, 15 mm left/right |
 | Bleed / binding | 0 / auto from direction | 0 / left for these left-to-right documents |
@@ -152,7 +157,7 @@ pretending a TOML field configures an unsupported export feature.
 
 Implementation sources:
 [Typst PDF options at v0.15.1](https://github.com/typst/typst/blob/v0.15.1/crates/typst-pdf/src/lib.rs),
-[ctypst 0.2.0 PDF adapter](https://docs.rs/crate/ctypst/0.2.0/source/src/pdf.rs).
+[ctypst 0.3.2 PDF adapter](https://docs.rs/crate/ctypst/0.3.2/source/src/pdf.rs).
 The native check validates PDF contracts, and Linux checks independently use
 qpdf/Poppler plus rendering and repeat-build comparisons. These are useful
 technical checks; visual review and accessible reading-order review still
