@@ -1,0 +1,37 @@
+# Manual validation only. Native bundle publication has separate gates.
+# SPDX-FileCopyrightText: 2026 Julian Y. Richard Corbet
+# SPDX-License-Identifier: FSL-1.1-ALv2
+when:
+  - event: manual
+skip_clone: true
+variables:
+  - name: SOURCE_ARCHIVE
+    default: ""
+  - name: SOURCE_SHA256
+    default: ""
+  - name: CHECKS
+    default: rust
+steps:
+  - name: verified-source
+    image: bash
+    commands:
+      - |
+        set -eu
+        : "${SOURCE_ARCHIVE:?Set SOURCE_ARCHIVE to a staged git archive}"
+        : "${SOURCE_SHA256:?Set SOURCE_SHA256 to its SHA-256}"
+        printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ARCHIVE" | sha256sum --check --strict
+        test "$(git get-tar-commit-id < "$SOURCE_ARCHIVE")" = "$CI_COMMIT_SHA"
+        tar --extract --touch --file "$SOURCE_ARCHIVE" --no-same-owner
+  - name: checks
+    image: bash
+    depends_on: [verified-source]
+    environment:
+      CARGO_BUILD_JOBS: "2"
+      RUST_TEST_THREADS: "2"
+    commands:
+      - |
+        set -eu
+        case "$CHECKS" in
+          rust|lint|documents) bash .agent/scripts/ci-check.sh "$CHECKS" ;;
+          *) echo 'Choose rust, lint, or documents' >&2; exit 2 ;;
+        esac

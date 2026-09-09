@@ -1,16 +1,8 @@
 name: Skill evaluation
 
+# Secret-bearing model evaluation belongs on a trusted internal worker.
+# Keep the provider implementation as a reference while Crow routing is prepared.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".agent/skills/**"
-      - ".github/workflows/skill-eval.yml"
-      - "Cargo.lock"
-      - "Cargo.toml"
-      - "rust-toolchain.toml"
-      - ".agent/src/**"
-      - ".agent/tests/skill-cases.json"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +15,7 @@ concurrency:
 jobs:
   evaluate:
     name: Small-model behavioural evaluation
-    if: github.repository == 'corbet-labs/ccvl'
+    if: false # Hosted access to provider credentials is disabled.
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
