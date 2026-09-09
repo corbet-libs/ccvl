@@ -1,7 +1,7 @@
 # Harvard cover-letter contract: the frozen paragraph, fill, and rhythm
-# budgets every cover-letter substyle (left-rule, frame) satisfies. Moved
-# from ccvl.json documents.cover_letter; the engine reads this file instead
-# of the manifest.
+# budgets Harvard cover-letter substyles (left-rule, frame) satisfy.
+# Other styles declare their own geometry. Editorial fields are advisory
+# metadata for agents; mechanical checks do not evaluate rhetoric.
 
 id = "harvard"
 api = 1
@@ -13,8 +13,9 @@ widow_or_orphan_lines = 0
 
 [[paragraphs]]
 number = 1
+aida_stage = "attention"
 role = "positioning"
-purpose = "Name the target and establish immediate fit."
+purpose = "Establish the target or general purpose and immediate relevance."
 
 [paragraphs.lines]
 minimum = 3
@@ -23,6 +24,7 @@ maximum = 3
 
 [[paragraphs]]
 number = 2
+aida_stage = "interest"
 role = "primary-evidence"
 purpose = "Prove the strongest relevant experience and results."
 
@@ -33,6 +35,7 @@ maximum = 5
 
 [[paragraphs]]
 number = 3
+aida_stage = "interest"
 role = "complementary-evidence"
 purpose = "Add complementary evidence and the career-wide pattern."
 
@@ -43,6 +46,7 @@ maximum = 5
 
 [[paragraphs]]
 number = 4
+aida_stage = "desire"
 role = "differentiation"
 purpose = "Explain the value created by the combined evidence."
 
@@ -53,8 +57,9 @@ maximum = 5
 
 [[paragraphs]]
 number = 5
+aida_stage = "desire"
 role = "target-fit"
-purpose = "Connect that value to the specific organisation and opportunity."
+purpose = "Connect supported value to this organisation or the declared general audience."
 
 [paragraphs.lines]
 minimum = 5
@@ -63,6 +68,7 @@ maximum = 5
 
 [[paragraphs]]
 number = 6
+aida_stage = "action"
 role = "warm-close"
 purpose = "Close warmly with a low-friction invitation to talk."
 
@@ -127,7 +133,6 @@ maximum = 60
 [pdf]
 version = "1.7"
 tagged = true
-size_pt = [595.2756, 841.8898]
 font_pattern = "^[A-Z]{6}\\+Archivo-(Bold|Italic|Medium|Regular)$"
 required_profile_fields = ["name", "email", "phone_label"]
 minimum_text_chars = 100
@@ -152,3 +157,12 @@ maximum = 1
 kind = "cl-highlight-center"
 minimum = 1
 maximum = 1
+
+
+[editorial]
+optional_recipe = "aida"
+recipe_independent_of_visual_style = true
+priority = ["role-or-audience-fit", "relevant-experience", "demonstrated-results-and-skills", "supported-motivation", "remaining-cv-material"]
+print_drafting_labels = false
+# Universal evidence and register guidance remains in .agent/docs/editorial.md.
+# Locale spelling/correspondence conventions belong to cletter/family.

@@ -6,11 +6,13 @@ path = [
   ".agent/build.rs",
   ".agent/scripts/**",
   ".agent/skills/**",
+  ".agent/schemas/**",
   ".agent/src/**",
   ".agent/tests/**",
   ".agent/typst/**/*.toml",
   ".agent/typst/**/*.json",
   ".agent/typst/**/*.typ",
+  ".agent/typst/letter/vendor/**",
   ".crow.yaml",
   ".github/workflows/**",
   ".gitattributes",
@@ -59,6 +61,7 @@ path = [
   ".agent/docs/signature.md",
   "cvl/profile.toml",
   "cvl/*/*/*/*/*/content.toml",
+  "cvl/*/*/content/*/*/wording.toml",
   "cvl/cv/harvard/src/entries-*.typ",
   "cvl/assets/signature.png",
   "interview/stations.toml",
@@ -101,3 +104,9 @@ path = [
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"
 SPDX-License-Identifier = "FSL-1.1-ALv2"
+
+[[annotations]]
+path = [".agent/typst/letter/vendor/cgreet/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"
+SPDX-License-Identifier = "MIT OR Apache-2.0"

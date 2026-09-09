@@ -39,9 +39,9 @@ fn cvl_outputs_use_numeric_page_names() {
 #[test]
 fn opportunity_record_selects_its_locale_pages_and_documents() {
     let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let mut document = workspace
-        .read_toml_value("cvl/cv/harvard/standard/en/ch/content.toml")
-        .unwrap();
+    let mut document =
+        crate::content::read_record(&workspace, "cvl/cv/harvard/standard/en/ch/content.toml")
+            .unwrap();
     document["options"]["language"] = "en-ch".into();
     document["options"]["pages"] = 3.into();
     document["options"]["generate_cl"] = false.into();
@@ -237,9 +237,9 @@ fn mismatched_record_selection_fails_before_compiling() {
     let leaf = cv_leaf(&workspace, "en-ch", &selection("standard")).unwrap();
     let directory = tempfile::tempdir_in(workspace.root()).unwrap();
     let record = directory.path().join("application.toml");
-    let text = fs::read_to_string(leaf.content())
-        .unwrap()
-        .replace("cv_substyle = \"standard\"", "cv_substyle = \"compact\"");
+    let mut resolved = crate::content::read_record(&workspace, leaf.content()).unwrap();
+    resolved["options"]["cv_substyle"] = "compact".into();
+    let text = toml::to_string(&resolved).unwrap();
     fs::write(&record, text).unwrap();
     let output = directory.path().join("cv.pdf");
     let error = cv_spec(
@@ -348,5 +348,73 @@ fn selection(substyle: &str) -> Selection {
     Selection {
         style: "harvard".to_owned(),
         substyle: substyle.to_owned(),
+    }
+}
+
+#[test]
+fn alternate_papers_have_real_dimensions_labels_and_standalone_parity() {
+    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let compiler = Compiler::new(&workspace).unwrap();
+    let temporary = tempfile::tempdir().unwrap();
+    for (document, style, substyle, locale, paper, label) in [
+        (
+            "cv",
+            "test-style-1",
+            "sidebar",
+            "en-ch",
+            "us-letter",
+            "US-LETTER",
+        ),
+        ("cl", "test-style-1", "topbar", "en-us", "a4", "A4"),
+        ("cv", "test-style-2", "cards", "en-us", "a4", "A4"),
+        (
+            "cl",
+            "test-style-2",
+            "timeline",
+            "en-ch",
+            "us-letter",
+            "US-LETTER",
+        ),
+    ] {
+        let selected =
+            styles::selection(&workspace, document, Some(style), Some(substyle)).unwrap();
+        let leaf = styles::leaf(&workspace, document, locale, &selected).unwrap();
+        let mut spec =
+            cvl_spec_with_paper(&workspace, &leaf, leaf.default_pages, Some(paper)).unwrap();
+        let original = compiler.compile(&workspace, &spec).unwrap();
+        spec.output = temporary.path().join(format!("{document}-{style}.pdf"));
+        compiler.export(&spec, &original).unwrap();
+        crate::pdf::verify(
+            &spec.output,
+            spec.expected_pages,
+            &[],
+            &spec.contract["pdf"],
+        )
+        .unwrap();
+        let mut wrong = spec.contract["pdf"].clone();
+        wrong["size_pt"] = serde_json::json!([100, 100]);
+        assert!(crate::pdf::verify(&spec.output, spec.expected_pages, &[], &wrong).is_err());
+        let pdf = lopdf::Document::load(&spec.output).unwrap();
+        let text = pdf.extract_text(&[1]).unwrap();
+        assert!(
+            text.contains(label),
+            "selected paper label is absent: {text}"
+        );
+        let template = fs::read_to_string(&spec.source).unwrap();
+        let text = resolved_typ_text(&template, &spec, "fixture", "acme", "lead");
+        let standalone = compiler
+            .engine
+            .compile(
+                CompileRequest::new("standalone.typ")
+                    .source_file("standalone.typ", text)
+                    .pages(PageConstraint::Exactly(spec.expected_pages)),
+            )
+            .unwrap();
+        assert!(
+            compiler.engine.pdf(&original, 0).unwrap()
+                == compiler.engine.pdf(&standalone.document, 0).unwrap(),
+            "alternate standalone copy differs: {}",
+            spec.name
+        );
     }
 }

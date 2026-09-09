@@ -40,6 +40,13 @@ allocation](profile-interview.md).
 fields needed to render the CV and cover letter. It is not a second rich
 profile or evidence store.
 
+General document wording can be shared between substyles of the same
+document, style and locale. Its owner is
+`cvl/<cv|cl>/<style>/content/<language>/<country>/wording.toml`;
+each leaf's `content.toml` keeps its metadata, source reference and explicit
+wording overrides. Different styles keep independent wording. See
+[Styles](styles.md) for the merge rules.
+
 ## Opportunity identity
 
 The stable identity is its path:
@@ -54,18 +61,22 @@ is `application.toml`; rendered PDFs belong in the adjacent `pdfs/`
 directory and the resolved standalone Typst copies they were built from in
 the adjacent `typst/` directory.
 
+Opportunity records are self-contained and cannot use shared wording
+references. Tailored claims must come from the candidate's verified evidence
+or explicit approval; the public showcase is not a source of candidate facts.
+
 ## Locale and language codes
 
-Locale and language codes are always lowercase: `de-ch`, never `de-CH`.
+Locale and language codes are always lowercase, for example `de-ch`.
 This covers `options.language` in every `application.toml`, the locale keys
 in `ccvl.json` and `cvl/profile.toml`, the `expected-language` assertions in
 the Typst templates, and every locale argument passed to the correspondence
 libraries. The correspondence family (`cgreet`, `cfarewell`, `cink`,
-`cletter`) keeps canonical BCP 47 table keys internally but resolves inputs
-case-insensitively, so lowercase input yields exactly the same output.
-Rendered PDFs still carry canonical BCP 47 metadata (`/Lang(de-CH)`) because
-the Typst engine canonicalizes the `lang`/`region` text properties itself;
-that is engine output, not a code we write.
+`cdate`, `cletter`) stores and returns lowercase locale identifiers and accepts
+mixed-case input. ccvl also normalizes PDF language entries and XMP language
+lists to lowercase during export. It preserves prose, names, links and other
+metadata. Separate ISO country identifiers in correspondence country tables
+are country codes, not locale identifiers.
 
 The record owns:
 
@@ -74,6 +85,8 @@ The record owns:
 - language and application date;
 - whether a cover letter is required (`options.generate_cl`);
 - selected CV `pages` and optional letter `cl_pages`, within each style's presets;
+- optional `options.cv_paper` / `options.cl_paper`, chosen from the selected
+  style's declared papers; omissions use its explicit locale default;
 - `options.cv_style` / `options.cl_style` and their `cv_substyle` / `cl_substyle`,
   with explicit workspace and style defaults;
 - style-owned `[cv]` / `[cl]` content fields: Harvard uses a five-line summary

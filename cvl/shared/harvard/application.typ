@@ -7,103 +7,9 @@
 // cvl/cl/harvard/contract.toml. Substyle membership (which cv/cl look a record
 // selects) is enforced in Rust before the compile; here the selection keys
 // only need to be strings when present.
-#let cover-letter-contract = toml("/cvl/cl/harvard/contract.toml")
-#let cv-contract = toml("/cvl/cv/harvard/contract.toml")
-// CV Summary closing-line allowance. Cover-letter paragraphs use their own
-// body maximum and do not inherit this allowance.
-#let last-line-maximum = cv-contract.at("last_line_maximum", default: 102)
-
-// Last whitespace-separated token of a recipient name for the salutation.
-// "Dr. Jane Doe" -> "Doe"; single-token and hyphenated names survive;
-// empty/whitespace yields "" so callers fall back to the generic greeting.
-#let salutation-last-name(name) = {
-  let trimmed = name.trim()
-  if trimmed == "" {
-    ""
-  } else {
-    let tokens = trimmed.split(regex("\\s+")).filter(token => token != "")
-    tokens.last()
-  }
-}
-
-// Locale-correct German salutations (SN 010130 for ch/li, DIN 5008 for
-// de/at; at follows DIN since ÖNORM A 1080 was withdrawn in 2018).
-//
-// The recipient `name` field holds the full address form, e.g.
-// "Frau Dr. Müller" or "Herr Müller". Only the honorific, academic titles,
-// and surname render; first names never appear in a formal salutation.
-//
-// - Honorific: "Frau" -> Frau, "Herr"/"Herrn" -> Herr. Abbreviations such as
-//   "Hr."/"Fr." are rejected (unhöflich); the Anrede always uses "Herr",
-//   never the accusative "Herrn" (which belongs only in the postal address)
-//   and never abbreviates "Frau".
-// - Titles: "Dr." stays abbreviated, "Prof." normalises to the spelled-out
-//   "Professor"; "Dipl.-Ing." and "Mag." survive. Protocol keeps only the
-//   highest title, so Professor suppresses Dr.
-// - Punctuation: ch and li use no comma (the next sentence starts uppercase);
-//   de and at use a comma (the sentence continues lowercase).
-// - No parsable honorific or surname falls back to the generic
-//   "Sehr geehrte Damen und Herren" so the letter stays formally safe;
-//   the Rust gate warns so a human supplies Herr/Frau.
-#let salutation-honorific(name) = {
-  let tokens = name.trim().split(regex("\\s+")).filter(token => token != "")
-  if tokens.len() == 0 { "" } else {
-    let first = tokens.first()
-    if first.match(regex("^(?i)frau\\.?$")) != none { "frau" } else if first.match(regex("^(?i)herrn?\\.?$")) != none {
-      "herr"
-    } else { "" }
-  }
-}
-
-#let salutation-title-kind(token) = {
-  if token.match(regex("^(?i)dr\\.?$")) != none { "Dr." } else if token.match(regex("^(?i)prof(\\.|essor)?$")) != none {
-    "Professor"
-  } else if token.match(regex("^(?i)dipl\\.?-?ing\\.?$")) != none { "Dipl.-Ing." } else if (
-    token.match(regex("^(?i)dipling$")) != none
-  ) { "Dipl.-Ing." } else if token.match(regex("^(?i)mag(\\.|ister)?$")) != none { "Mag." } else { "" }
-}
-
-#let salutation-titles(name) = {
-  let tokens = name.trim().split(regex("\\s+")).filter(token => token != "")
-  let kept = ()
-  for token in tokens {
-    let kind = salutation-title-kind(token)
-    if kind != "" and kind not in kept { kept.push(kind) }
-  }
-  // Protocol: Professor outranks Dr.; never stack both.
-  if "Professor" in kept { ("Professor",) } else { kept }
-}
-
-#let salutation-surname(name) = {
-  let tokens = name.trim().split(regex("\\s+")).filter(token => token != "")
-  let significant = tokens.filter(token => (
-    salutation-title-kind(token) == ""
-      and token.match(regex("^(?i)(herrn?|frau)\\.?$")) == none
-      and token.match(regex("^(?i)(mr|mrs|ms|miss|phd|ma|ba|bsc|msc)\\.?$")) == none
-  ))
-  if significant.len() == 0 { "" } else { significant.last() }
-}
-
-#let de-salutation(name, region: "ch") = {
-  assert(
-    region in ("ch", "li", "de", "at"),
-    message: "de-salutation region must be ch, li, de, or at",
-  )
-  let comma = if region == "ch" or region == "li" { "" } else { "," }
-  let honorific = salutation-honorific(name)
-  let surname = salutation-surname(name)
-  if honorific == "" or surname == "" {
-    "Sehr geehrte Damen und Herren" + comma
-  } else {
-    let titles = salutation-titles(name)
-    let title-part = if titles.len() == 0 { "" } else { " " + titles.join(" ") }
-    if honorific == "frau" {
-      "Sehr geehrte Frau" + title-part + " " + surname + comma
-    } else {
-      "Sehr geehrter Herr" + title-part + " " + surname + comma
-    }
-  }
-}
+// Loading a contract is explicit and local to the requested document.
+#let load-cover-letter-contract() = toml("/cvl/cl/harvard/contract.toml")
+#let load-cv-contract() = toml("/cvl/cv/harvard/contract.toml")
 
 #let require-fields(value, fields, scope) = {
   for field in fields {
@@ -119,7 +25,7 @@
 ) = {
   require-fields(
     application,
-    ("schema_version", "revision", "options", "job", "cv"),
+    ("schema_version", "revision", "options", "job"),
     "application",
   )
   assert(
@@ -133,12 +39,17 @@
     ("language", "pages", "generate_cl", "application_date"),
     "application.options",
   )
-  assert(
-    options.pages in (2, 3, 4),
-    message: "application.options.pages must be 2, 3, or 4",
-  )
+  if require-cv {
+    assert(
+      options.pages in (2, 3, 4),
+      message: "application.options.pages must be 2, 3, or 4",
+    )
+  }
   // Rust validates per-document substyle membership before compilation.
-  for key in ("cv_substyle", "cl_substyle") {
+  let selection-keys = (
+    (if require-cv { ("cv_substyle",) } else { () }) + (if require-cl { ("cl_substyle",) } else { () })
+  )
+  for key in selection-keys {
     let value = options.at(key, default: "")
     assert(
       type(value) == str,
@@ -180,12 +91,13 @@
     "application.job.cl_recipient",
   )
 
-  require-fields(application.cv, ("summary",), "application.cv")
-  assert(
-    type(application.cv.summary) == str,
-    message: "application.cv.summary must be one flowing paragraph",
-  )
   if require-cv {
+    require-fields(application, ("cv",), "application")
+    require-fields(application.cv, ("summary",), "application.cv")
+    assert(
+      type(application.cv.summary) == str,
+      message: "application.cv.summary must be one flowing paragraph",
+    )
     assert(
       application.cv.summary.trim() != "",
       message: "application.cv.summary is required",
@@ -196,7 +108,9 @@
     type(options.generate_cl) == bool,
     message: "application.options.generate_cl must be a boolean",
   )
-  if options.generate_cl {
+  if require-cl {
+    let cover-letter-contract = load-cover-letter-contract()
+    assert(options.generate_cl, message: "the cover-letter renderer requires options.generate_cl to be true")
     require-fields(application, ("cl",), "application")
     let letter = application.cl
     require-fields(letter, ("paragraphs", "highlights"), "application.cl")
@@ -262,14 +176,5 @@
         )
       }
     }
-  } else {
-    assert(
-      "cl" not in application,
-      message: "a disabled cover letter may not retain hidden content",
-    )
-    assert(
-      not require-cl,
-      message: "the cover-letter renderer requires options.generate_cl to be true",
-    )
   }
 }

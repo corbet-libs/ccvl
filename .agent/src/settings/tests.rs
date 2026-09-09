@@ -32,9 +32,9 @@ fn explanation_preserves_precedence_and_reports_each_winning_source() {
     );
     assert_eq!(
         compact["origins"]["/page/paper"],
-        "cvl/cv/harvard/compact/en/ch/layout.toml"
+        "cvl/cv/harvard/style.toml#paper.sizes.a4.settings"
     );
-    assert_eq!(compact["sources"].as_array().unwrap().len(), 3);
+    assert_eq!(compact["sources"].as_array().unwrap().len(), 4);
     let letter = resolve(
         &workspace,
         &selected(&workspace, "test-style-1", "sidebar", "en-us"),
@@ -44,7 +44,7 @@ fn explanation_preserves_precedence_and_reports_each_winning_source() {
     assert_eq!(letter["settings"]["text"]["font"], "IBM Plex Serif");
     assert_eq!(
         letter["origins"]["/page/paper"],
-        "cvl/cv/test-style-1/sidebar/en/us/layout.toml"
+        "cvl/cv/test-style-1/style.toml#paper.sizes.us-letter.settings"
     );
     // An independent renderer is never assigned this schema or a guessed merge.
     let mut custom = selected(&workspace, "test-style-1", "sidebar", "en-us");

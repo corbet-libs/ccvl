@@ -17,6 +17,17 @@ default_substyle = "standard"
 # defaults = "tokens.toml"
 # fonts = ["assets/Example-Regular.ttf"]
 # settings_adapter = "document-v1" # optional shared settings protocol
+
+# Optional paper selection; omission keeps renderer-owned fixed geometry.
+[paper.defaults]
+en-us = "us-letter"
+
+[paper.sizes.us-letter]
+size_pt = [612, 792]
+label = "US Letter"
+
+[paper.sizes.us-letter.settings.page]
+paper = "us-letter"
 ```
 
 The workspace manifest names the document roots and their `default_style`.
@@ -34,17 +45,113 @@ substyle and locale it expects:
 The contents of `substyle.toml` and `strings.toml` belong to the style.
 A style importing `.agent/typst/document.typ` declares
 `settings_adapter = "document-v1"`. This opts into the family → substyle →
-locale deep merge and shared validation. The adapter reserves only `page`,
+locale → selected paper deep merge and shared validation. The adapter reserves only `page`,
 `text`, `paragraph` and `block`; additional tables remain style-owned.
 Omit this field for an independent renderer with its own settings schema.
 
-`content.toml` uses the common application envelope (options and job metadata)
-with style-owned `[cv]` and `[cl]` tables. The record's document selection must
-match its directory. A style may share code between its substyles in any
-internal arrangement. Neither a shared renderer nor `src/` is mandatory.
+`content.toml` keeps the application envelope (options and job metadata) and
+the selected document's style-owned `[cv]` or `[cl]` fields. The record's
+document selection must match its directory. A style may share code between
+its substyles in any internal arrangement. Neither a shared renderer nor
+`src/` is mandatory.
+
+## Wording within a style
+
+Substyles can share wording for the same document, style, language and country.
+Each style owns its source, even when two styles happen to contain equal text.
+
+```text
+cvl/cv/harvard/
+├── content/en/ch/wording.toml       # shared [cv] wording
+├── standard/en/ch/content.toml     # reference and local record metadata
+└── compact/en/ch/content.toml      # reference and explicit [cv] exceptions
+```
+
+The leaf declares the source visibly:
+
+```toml
+[wording]
+source = "../../../content/en/ch/wording.toml"
+```
+
+The source contains only `[cv]` for a CV style or `[cl]` for a letter style.
+It must be this style's `content/<language>/<country>/wording.toml`; references
+to another style, document or locale fail. Sources cannot reference more sources.
+Private opportunity records remain self-contained and cannot import showcase
+wording.
+
+| File | What to edit there |
+| --- | --- |
+| Style's `wording.toml` | Wording shared by its substyles |
+| Leaf's `content.toml` | Record metadata and explicit wording exceptions |
+
+An optional `[cv]` or `[cl]` table in the leaf overrides the shared fields.
+Nested tables merge by field; a supplied scalar or array replaces the entire
+value. Arrays are never appended or patched by position. No text is rewritten
+or shortened automatically. A leaf can keep all its wording inline by omitting
+`[wording]`.
+
+Renderers using shared wording import `load-application` from
+`.agent/typst/application.typ` and call it with the supplied application path.
+This applies the same source/override rules when compiling a Typst entry point
+directly. Reading the raw leaf with `toml(application-path)` would bypass its
+shared wording. Independent renderers using inline content can keep their
+own loader.
+
+The CLI also canonicalizes source paths and rejects symlinks that cross the
+owning style or locale. Typst's loader can check the declared path and owner,
+but cannot resolve filesystem symlinks; use the CLI checks before publishing.
+
+## Paper selection
+
+The optional `paper` registry in `style.toml` lists the supported named presets
+under `paper.sizes` and chooses one for every supported locale under
+`paper.defaults`. Its IDs are style-owned; A4, US Letter and custom shapes can
+all be declared. A style without this registry retains its fixed geometry and
+rejects document paper selections.
+
+Each preset owns its `settings`, display `label` and expected PDF `size_pt`.
+Dimensions are the actual output width and height in points: a landscape style
+declares `[792, 612]` for US Letter. Preset settings are the last adapter layer;
+independent renderers can consume their own fields. Avoid duplicate paper
+defaults in locale layouts. The PDF dimensions verify the renderer's output
+rather than resizing it.
+
+Shipped renderers import `resolve-paper` and `paper-settings` from
+`.agent/typst/paper.typ`. Resolve the style's own metadata and locale with
+`requested: paper-input` and the record's owning `cv_paper` or `cl_paper` as
+`recorded`. The result exposes `id`, `label`, `size_pt` and `settings`.
+`paper-settings((family, substyle, layout), preset)` validates and merges the
+layers; render any paper label from the resolved preset. Each entry point
+forwards `sys.inputs.at("paper", default: "")` to its renderer. Generated
+opportunity copies retain the resolved selection in that default.
+
+| Selection source | Precedence |
+| --- | --- |
+| `--paper <name>` on a document build or watcher | First |
+| `options.cv_paper` / `options.cl_paper` in its record | Second |
+| Selected style's `paper.defaults.<locale>` | Default |
+
+Unsupported selections fail explicitly. ccvl never shrinks text or changes the
+requested page count to fit another size. The style's locale-default paper
+keeps existing output names; alternatives use a paper suffix such as
+`cv-1-us-letter.pdf` or `cl-a4.pdf` in the same output folder. Document discovery
+follows each leaf record's effective selection, preserving the existing 36
+showcase entries while those records retain their defaults. Full checks compare
+those selected outputs with tracked PDFs and render the other declared papers
+into temporary validation outputs.
+
+```sh
+bash ./ccvl build-cv en-us --style test-style-1 --substyle sidebar --paper a4
+bash ./ccvl build-cl en-ch --style test-style-2 --substyle timeline --paper us-letter
+bash ./ccvl explain-style cv en-us --style test-style-1 --paper a4
+```
+
+## Rendering interface
 
 The Typst entry point receives these `sys.inputs`: `application`, `profile`,
-`locale`, `pages`, `strings`, `substyle`; optionally `shared-defaults` and
+`locale`, `pages`, `strings`, `substyle`, and the resolved `paper` ID when the
+style declares paper presets; optionally `shared-defaults` and
 `contract` when the style supplies them, plus `layout` when the leaf has a
 `layout.toml`. File values are absolute workspace
 paths. Use `sys.inputs.at("application", default: "/path/to/content.toml")`
@@ -85,6 +192,10 @@ bash ./ccvl build-cv en-ch 4 --style harvard --substyle compact
 bash ./ccvl build-cl en-ch --style harvard --substyle frame
 ```
 
+An individual build resolves its selected style and extra fonts. A broken
+unrelated style does not prevent that build. `check`, `public-check` and full
+document enumeration continue to inspect the complete workspace.
+
 Inspect the merged adapter inputs without compiling or creating outputs:
 
 ```sh
@@ -94,8 +205,10 @@ bash ./ccvl explain-style cl en-ch --style harvard --substyle frame
 
 The JSON lists sources in precedence order, merged `settings`, and `origins`
 keyed by JSON Pointer (for example `/page/paper`). A value retains the last
-source that actually supplies it, including equal-value overrides. The result
-explains adapter inputs; component-specific renderer overrides such as header
+source that actually supplies it, including equal-value overrides. It also
+reports the selected `paper` and whether the CLI, record or locale default
+selected it. Preset values still cite their style-definition source.
+The explanation covers adapter inputs; component-specific renderer overrides such as header
 font size are outside its scope. A renderer that has not opted in receives a
 clear unsupported-adapter error instead of a guessed explanation.
 
@@ -107,7 +220,8 @@ applications repositories. Private content stays downstream.
 `test-style-1` uses a root `layout.typ`, with `sidebar` and `topbar` portrait
 compositions. `test-style-2` uses `parts/composition.typ`, with `cards` and
 `timeline` landscape compositions. Both ship CV and CL entry points for
-`en-ch` A4 and `en-us` US Letter. Neither imports Harvard. They share only the
+default `en-ch` A4 and `en-us` US Letter, with either paper selectable in either
+locale. Harvard currently declares A4 only. Neither demo imports Harvard. They share only the
 optional neutral settings adapter, the profile, and the engine interface.
 
 See [the gallery](../../cvl/README.md) for PDFs and visible comparisons,
@@ -119,3 +233,21 @@ bash ./ccvl build-cv en-us --style test-style-1 --substyle sidebar
 bash ./ccvl build-cv en-us 2 --style test-style-2 --substyle cards
 bash ./ccvl build-cl en-ch --style test-style-2 --substyle timeline
 ```
+
+
+## Writing recipes and shared conventions
+
+Visual styles own content fields, paragraph/line geometry, fonts, page counts
+and supported papers. AIDA is an optional writing recipe independent of those
+choices. A style may document how its fields map to that progression without
+forcing other styles to adopt its shape. Harvard's advisory `editorial` and
+paragraph `aida_stage` metadata document its six-paragraph mapping; they do not
+add semantic checks to the compiler. [Editorial guidance](editorial.md) owns
+universal evidence and writing decisions.
+
+Author locale identifiers in lowercase. Shared spelling, greeting and closing
+conventions belong upstream in cletter/family; consume them while retaining
+explicit user/style overrides and preserving protected names, quotes and
+original evidence. A locale does not automatically override the selected paper.
+[Independent review](review.md) checks the actual selected contracts and pages,
+including general documents without a vacancy.

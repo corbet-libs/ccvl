@@ -41,6 +41,8 @@ language → country:
 ```text
 cvl/cv/harvard/{standard,compact}/{de,en}/ch/{content.toml,strings.toml,typst/,pdf/}
 cvl/cl/harvard/{left-rule,frame}/{de,en}/ch/{content.toml,strings.toml,typst/,pdf/}
+cvl/cv/harvard/content/{de,en}/ch/wording.toml
+cvl/cl/harvard/content/{de,en}/ch/wording.toml
 cvl/shared/harvard/{style.typ,defaults.toml,application.typ}
 ```
 
@@ -48,10 +50,16 @@ Each style owns its `style.toml`, optional `contract.toml` and content scaffold,
 and all of its layout code. Harvard uses a `src/` folder within each document
 style. Other styles are siblings of Harvard and may organise their internals
 differently. Shared Harvard tokens and helpers are explicitly Harvard-owned.
+Wording sources belong to one document/style/locale and may be referenced only
+by its substyles. Leaf records keep visible references, metadata and explicit
+exceptions; private opportunity records remain self-contained.
 
 The engine discovers style metadata, resolves record/profile inputs, compiles
 the selected entry point, and verifies its declared page and measurement rules.
 Fonts, shapes, page geometry and content structure belong to the style.
+Individual builds validate the selected style and its inputs. Full workspace
+checks still validate every registered style, so isolated builds do not hide
+broken experiments from release validation.
 Records select `cv_style`/`cl_style` and `cv_substyle`/`cl_substyle` under
 `options`; workspace and style metadata declare the defaults. See
 [styles.md](styles.md) for the interface and [../../cvl/README.md](../../cvl/README.md)
@@ -68,7 +76,8 @@ opportunities/<organisation-key>/<position-key>/application.toml
 The job directory owns the posting, attributable organisation and role
 research, fit analysis, tailored Summary, optional cover letter, interview
 preparation, submission record, and outcome. The application record selects
-its locale and CV page count. Rendered `cv.pdf` and optional `cl.pdf` go in
+its locale, page presets and optional document papers from the selected styles.
+Rendered `cv.pdf` and optional `cl.pdf` go in
 its local `pdfs/` directory; the resolved standalone Typst copies they were
 built from go in its local `typst/` directory.
 

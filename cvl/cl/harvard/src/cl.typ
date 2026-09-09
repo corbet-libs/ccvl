@@ -1,12 +1,15 @@
+#import "/.agent/typst/paper.typ": paper-settings, resolve-paper
+#import "/.agent/typst/application.typ": load-application
 // Shared Harvard cover letter; inputs belong to the calling leaf.
-#import "/cvl/shared/harvard/style.typ": document-style, merge-style
-#import "/cvl/shared/harvard/application.typ": (
-  cover-letter-contract, de-salutation, salutation-last-name, validate-application,
-)
+#import "/cvl/shared/harvard/style.typ": document-style
+#import "/cvl/shared/harvard/application.typ": load-cover-letter-contract, validate-application
 #import "/.agent/typst/line-contract.typ": line-contract-mode, measured-content-line, measured-paragraph
 #import "/.agent/typst/profile.typ": load-profile
-#import "/.agent/typst/letter/farewell.typ": closing as farewell-closing
-#import "/.agent/typst/letter/ink.typ": signature-image
+#import "/.agent/typst/letter/letter.typ": (
+  closing as farewell-closing, de-salutation, opening, salutation-last-name, signature-image,
+)
+
+#let cover-letter-contract = load-cover-letter-contract()
 
 
 #let highlight-text(value) = {
@@ -45,18 +48,23 @@
   substyle-path: none,
   shared-defaults-path: none,
   layout-path: none,
+  paper-input: "",
 ) = {
   let (profile, localized-profile) = load-profile(profile-path)
   // Merge the shared base knobs with this leaf's substyle delta (panel
   // geometry only). Whitespace and accents below come from cl-style, never
   // from forked literals.
-  let cl-style = merge-style(merge-style(toml(shared-defaults-path), toml(substyle-path)), toml(layout-path))
   let cl-strings = toml(strings-path)
   // Locale comes from the leaf's strings file and is cross-checked against
   // the record below: a de-ch record through en-ch strings fails here.
   let doc-locale = cl-strings.locale
   let doc-region = doc-locale.split("-").last()
-  let application = toml(application-path)
+  let application = load-application(application-path)
+  let paper = resolve-paper(toml("../style.toml"), doc-locale, requested: paper-input, recorded: application.options.at(
+    "cl_paper",
+    default: none,
+  ))
+  let cl-style = paper-settings((toml(shared-defaults-path), toml(substyle-path), toml(layout-path)), paper)
   validate-application(application, expected-language: doc-locale, require-cl: true)
   let cover = cl-style.cover
   let header-after = cl-style.header.after_pt * 1pt
@@ -87,9 +95,9 @@
   let salutation = if doc-locale == "de-ch" {
     [#de-salutation(recipient.name, region: doc-region)]
   } else if salutation-name != "" {
-    [Dear #salutation-name,]
+    [#opening(doc-locale, name: salutation-name, override: "Dear " + salutation-name + ",")]
   } else {
-    [Dear Hiring Manager,]
+    [#opening(doc-locale, override: "Dear Hiring Manager,")]
   }
   let closing = [#farewell-closing(if doc-locale == "de-ch" { "de-ch" } else { "en" })]
 

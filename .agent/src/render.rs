@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
@@ -7,7 +8,7 @@ use anyhow::{Context, Result, ensure};
 use ctypst::{CompileRequest, Document, Engine, PageConstraint};
 use serde_json::Value;
 
-use crate::application::validate_record;
+use crate::application::{validate_document_record, validate_record};
 use crate::opportunity;
 use crate::stations;
 use crate::styles::{self, Selection, StyleLeaf};
@@ -29,10 +30,12 @@ pub struct DocumentSpec {
     pub expected_pages: usize,
     pub selection: Selection,
     pub contract: Value,
+    pub fonts: Vec<PathBuf>,
 }
 
 pub struct Compiler {
     engine: Engine,
+    font_engines: RefCell<BTreeMap<Vec<PathBuf>, Engine>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -44,28 +47,36 @@ struct OpportunityOptions {
 
 impl Compiler {
     pub fn new(workspace: &Workspace) -> Result<Self> {
-        let additional_fonts = styles::font_paths(workspace)?
-            .iter()
-            .map(fs::read)
-            .collect::<std::io::Result<Vec<_>>>()?;
-        let engine = Engine::builder()
-            .root(workspace.root())
-            .fonts(ctypst::fonts::documents())
-            .fonts(additional_fonts)
-            .build()
-            .context("cannot initialize embedded Typst engine")?;
-        Ok(Self { engine })
+        Ok(Self {
+            engine: build_engine(workspace, &[])?,
+            font_engines: RefCell::new(BTreeMap::new()),
+        })
     }
 
     pub fn compile(&self, workspace: &Workspace, spec: &DocumentSpec) -> Result<Document> {
         let source = workspace.relative(&workspace.existing_inside(&spec.source)?)?;
         let source = source.to_string_lossy().replace('\\', "/");
-        self.engine
-            .compile(
-                CompileRequest::new(source)
-                    .inputs(spec.inputs.clone())
-                    .pages(PageConstraint::Exactly(spec.expected_pages)),
-            )
+        let mut engines = self.font_engines.borrow_mut();
+        let engine = if spec.fonts.is_empty() {
+            &self.engine
+        } else {
+            if !engines.contains_key(&spec.fonts) {
+                engines.insert(spec.fonts.clone(), build_engine(workspace, &spec.fonts)?);
+            }
+            engines
+                .get(&spec.fonts)
+                .expect("selected font engine exists")
+        };
+        let report = engine.compile_tracked(
+            CompileRequest::new(source)
+                .inputs(spec.inputs.clone())
+                .pages(PageConstraint::Exactly(spec.expected_pages)),
+        );
+        for path in report.dependencies {
+            workspace.observe_input(path);
+        }
+        report
+            .result
             .map(|output| output.document)
             .with_context(|| format!("cannot compile {}", spec.name))
     }
@@ -88,6 +99,7 @@ impl Compiler {
             "Typst did not create a PDF for {}",
             spec.name
         );
+        let bytes = crate::pdf::lowercase_locales(&bytes)?;
         if let Some(parent) = spec.output.parent() {
             fs::create_dir_all(parent)
                 .with_context(|| format!("cannot create {}", parent.display()))?;
@@ -96,6 +108,22 @@ impl Compiler {
             .with_context(|| format!("cannot write {}", spec.output.display()))?;
         Ok(spec.output.clone())
     }
+}
+
+fn build_engine(workspace: &Workspace, fonts: &[PathBuf]) -> Result<Engine> {
+    let additional_fonts = fonts
+        .iter()
+        .map(|path| {
+            fs::read(workspace.existing_inside(path)?)
+                .with_context(|| format!("cannot read selected style font {}", path.display()))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    Engine::builder()
+        .root(workspace.root())
+        .fonts(ctypst::fonts::documents())
+        .fonts(additional_fonts)
+        .build()
+        .context("cannot initialize embedded Typst engine")
 }
 
 fn source_date_epoch() -> Result<i64> {
@@ -146,13 +174,23 @@ pub fn cvl_cl_spec(
 }
 
 pub fn cvl_spec(workspace: &Workspace, leaf: &StyleLeaf, pages: usize) -> Result<DocumentSpec> {
+    cvl_spec_with_paper(workspace, leaf, pages, None)
+}
+
+pub fn cvl_spec_with_paper(
+    workspace: &Workspace,
+    leaf: &StyleLeaf,
+    pages: usize,
+    paper: Option<&str>,
+) -> Result<DocumentSpec> {
     document_spec(
         workspace,
         leaf,
         pages,
         &leaf.content(),
         &workspace.path("cvl/profile.toml"),
-        &leaf.output(pages),
+        None,
+        paper,
     )
 }
 
@@ -171,7 +209,8 @@ pub fn cv_spec(
         pages,
         application,
         profile,
-        output,
+        Some(output),
+        None,
     )
 }
 
@@ -190,17 +229,20 @@ pub fn cl_spec(
         pages,
         application,
         profile,
-        output,
+        Some(output),
+        None,
     )
 }
 
-fn document_spec(
+#[allow(clippy::too_many_arguments)]
+pub fn document_spec(
     workspace: &Workspace,
     leaf: &StyleLeaf,
     pages: usize,
     application: &Path,
     profile: &Path,
-    output: &Path,
+    output: Option<&Path>,
+    paper: Option<&str>,
 ) -> Result<DocumentSpec> {
     ensure!(
         leaf.pages.contains(&pages),
@@ -210,9 +252,17 @@ fn document_spec(
         leaf.pages
     );
     let relative = workspace.relative(&workspace.existing_inside(application)?)?;
-    let record = workspace.read_toml_value(&relative)?;
+    let mut record = crate::content::read_record(workspace, &relative)?;
+    crate::paper::record_choice(&record, leaf.document)?;
+    if let Some(paper) = paper {
+        record
+            .get_mut("options")
+            .and_then(Value::as_object_mut)
+            .context("options must be a table")?
+            .insert(format!("{}_paper", leaf.document), paper.into());
+    }
     let location = relative.display().to_string();
-    validate_record(workspace, &record, &location, true)?;
+    validate_document_record(workspace, &record, &location, true, leaf.document)?;
     let selected = styles::record_selection(workspace, leaf.document, &record, &location)?;
     ensure!(
         selected == leaf.selection(),
@@ -230,8 +280,10 @@ fn document_spec(
     if leaf.document == "cv" && leaf.contract.get("layout_contract").is_some() {
         stations::validate_style(workspace, &leaf.style, true)?;
     }
+    let requested_paper = crate::paper::record_choice(&record, leaf.document)?;
+    let selected_paper = crate::paper::select(leaf.paper.as_ref(), &leaf.locale, requested_paper)?;
     if leaf.settings_adapter.is_some() {
-        crate::settings::resolve(workspace, leaf)?;
+        crate::settings::resolve_with_paper(workspace, leaf, requested_paper)?;
     }
     let mut inputs = BTreeMap::from([
         ("application".to_owned(), workspace.typst_path(application)?),
@@ -244,15 +296,18 @@ fn document_spec(
             workspace.typst_path(&leaf.substyle_file())?,
         ),
     ]);
+    if let Some((id, _)) = selected_paper {
+        inputs.insert("paper".to_owned(), id.to_owned());
+    }
     if let Some(path) = &leaf.defaults {
         inputs.insert("shared-defaults".to_owned(), workspace.typst_path(path)?);
     }
     let layout = leaf.dir.join("layout.toml");
-    if layout.is_file() {
+    if workspace.input_is_file(&layout) {
         inputs.insert("layout".to_owned(), workspace.typst_path(&layout)?);
     }
     let contract_path = leaf.style_dir().join("contract.toml");
-    if contract_path.is_file() {
+    if workspace.input_is_file(&contract_path) {
         inputs.insert("contract".to_owned(), workspace.typst_path(&contract_path)?);
     }
     Ok(DocumentSpec {
@@ -266,11 +321,15 @@ fn document_spec(
             DocumentKind::CoverLetter
         },
         source: leaf.adapter(),
-        output: output.to_path_buf(),
+        output: output.map_or_else(
+            || leaf.output_for_paper(pages, selected_paper.map(|(id, _)| id)),
+            Path::to_path_buf,
+        ),
         inputs,
         expected_pages: pages,
         selection: leaf.selection(),
-        contract: leaf.contract.clone(),
+        contract: crate::paper::contract(leaf, selected_paper),
+        fonts: leaf.fonts.clone(),
     })
 }
 
@@ -302,10 +361,12 @@ pub fn list_documents(workspace: &Workspace) -> Result<Value> {
         .chain(styles::leaves(workspace, "cl")?)
     {
         for pages in &leaf.pages {
+            let spec = cvl_spec(workspace, &leaf, *pages)?;
             entries.push(serde_json::json!({
                 "document": leaf.document, "style": leaf.style, "substyle": leaf.substyle,
-                "locale": leaf.locale, "pages": pages,
-                "content": workspace.relative(&leaf.content())?, "output": workspace.relative(&leaf.output(*pages))?,
+                "locale": leaf.locale, "pages": pages, "paper": spec.inputs.get("paper"),
+                "supported_papers": leaf.paper.as_ref().map(|registry| registry.sizes.keys().collect::<Vec<_>>()),
+                "content": workspace.relative(&leaf.content())?, "output": workspace.relative(&spec.output)?,
                 "shared_pages": leaf.contract.get("shared_pages").unwrap_or(&serde_json::json!([])),
                 "require_image": leaf.contract.pointer("/pdf/require_image").and_then(Value::as_bool).unwrap_or(false),
             }));
@@ -320,7 +381,7 @@ pub fn opportunity_specs(
     position: &str,
 ) -> Result<Vec<DocumentSpec>> {
     let application = opportunity::record_path(workspace, organisation, position, true)?;
-    let document = workspace.read_toml_value(workspace.relative(&application)?)?;
+    let document = crate::content::read_record(workspace, &application)?;
     validate_record(
         workspace,
         &document,
@@ -333,7 +394,6 @@ pub fn opportunity_specs(
     let cover_enabled = options.cover_letter;
     let relative = workspace.relative(&application)?.display().to_string();
     let cv_selection = styles::record_selection(workspace, "cv", &document, &relative)?;
-    let letter_selection = styles::record_selection(workspace, "cl", &document, &relative)?;
     let parent = application
         .parent()
         .context("application record has no parent")?;
@@ -350,6 +410,7 @@ pub fn opportunity_specs(
     )?];
     specs[0].name = format!("CV {organisation}/{position}");
     if cover_enabled {
+        let letter_selection = styles::record_selection(workspace, "cl", &document, &relative)?;
         let letter_pages = document
             .pointer("/options/cl_pages")
             .and_then(Value::as_u64)
@@ -393,41 +454,6 @@ fn opportunity_options(document: &Value) -> Result<OpportunityOptions> {
         pages,
         cover_letter: cover_enabled,
     })
-}
-
-/// Locale and substyles selected by one keyed opportunity record, without
-/// building its full render specs. Lets the opportunity watcher scope its
-/// digest to the record's own leaf templates.
-pub struct OpportunitySelection {
-    pub locale: String,
-    pub cv: Selection,
-    pub cl: Selection,
-}
-
-pub fn opportunity_selection(
-    workspace: &Workspace,
-    organisation: &str,
-    position: &str,
-) -> Result<OpportunitySelection> {
-    let application = opportunity::record_path(workspace, organisation, position, true)?;
-    let relative = workspace.relative(&application)?.display().to_string();
-    let document = workspace.read_toml_value(workspace.relative(&application)?)?;
-    let options = opportunity_options(&document)?;
-    Ok(OpportunitySelection {
-        locale: options.locale,
-        cv: styles::record_selection(workspace, "cv", &document, &relative)?,
-        cl: styles::record_selection(workspace, "cl", &document, &relative)?,
-    })
-}
-
-/// Locale selected by one keyed opportunity record, without building its
-/// full render specs.
-pub fn opportunity_locale(
-    workspace: &Workspace,
-    organisation: &str,
-    position: &str,
-) -> Result<String> {
-    Ok(opportunity_selection(workspace, organisation, position)?.locale)
 }
 
 pub fn render_opportunity(

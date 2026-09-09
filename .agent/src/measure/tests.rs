@@ -20,6 +20,7 @@ fn cover_letter_spec() -> DocumentSpec {
             style: "harvard".into(),
             substyle: "left-rule".into(),
         },
+        fonts: Vec::new(),
         contract: crate::styles::contract(&workspace(), "cl", "harvard").unwrap(),
     }
 }
@@ -38,6 +39,7 @@ fn cv_spec(application: &str) -> DocumentSpec {
             style: "harvard".into(),
             substyle: "standard".into(),
         },
+        fonts: Vec::new(),
         contract: crate::styles::contract(&workspace(), "cv", "harvard").unwrap(),
     }
 }
@@ -175,8 +177,10 @@ fn closing_line_spill_renders_without_wrapping() {
     let spill = "Damit unterstütze ich Leverage Experts pragmatisch in Performance-, Portfolio- und Transformationsmandaten.";
     let source = format!(
         "#import \"/.agent/typst/line-contract.typ\": measured-lines\n\
-             #import \"/cvl/shared/harvard/style.typ\": document-style, merge-style\n\
-             #let cv-style = merge-style(merge-style(toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\")), toml(\"/cvl/cv/harvard/standard/de/ch/layout.toml\"))\n\
+             #import \"/cvl/shared/harvard/style.typ\": document-style\n\
+             #import \"/.agent/typst/paper.typ\": resolve-paper, paper-settings\n\
+             #let preset = resolve-paper(toml(\"/cvl/cv/harvard/style.toml\"), \"de-ch\")\n\
+             #let cv-style = paper-settings((toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\"), toml(\"/cvl/cv/harvard/standard/de/ch/layout.toml\")), preset)\n\
              #show: document-style.with(locale: \"de-ch\", style: cv-style)\n\
              #set page(height: 60mm)\n\
              #set text(hyphenate: false)\n\
@@ -218,8 +222,10 @@ fn paragraph_closing_spill_renders_without_wrapping() {
     let spill = "Donaudampfschifffahrtsgesellschaftskapitän Gioacchino Rossini encountered extraordinary circumstances daily.";
     let source = format!(
         "#import \"/.agent/typst/line-contract.typ\": measured-paragraph\n\
-             #import \"/cvl/shared/harvard/style.typ\": document-style, merge-style\n\
-             #let cv-style = merge-style(merge-style(toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\")), toml(\"/cvl/cv/harvard/standard/de/ch/layout.toml\"))\n\
+             #import \"/cvl/shared/harvard/style.typ\": document-style\n\
+             #import \"/.agent/typst/paper.typ\": resolve-paper, paper-settings\n\
+             #let preset = resolve-paper(toml(\"/cvl/cv/harvard/style.toml\"), \"de-ch\")\n\
+             #let cv-style = paper-settings((toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\"), toml(\"/cvl/cv/harvard/standard/de/ch/layout.toml\")), preset)\n\
              #show: document-style.with(locale: \"de-ch\", style: cv-style)\n\
              #set page(height: 60mm)\n\
              #set text(hyphenate: false)\n\
@@ -384,6 +390,7 @@ fn cover_letter_spec_with_application(application: &str) -> DocumentSpec {
             style: "harvard".into(),
             substyle: "left-rule".into(),
         },
+        fonts: Vec::new(),
         contract: crate::styles::contract(&workspace(), "cl", "harvard").unwrap(),
     }
 }
@@ -436,7 +443,7 @@ fn typst_salutation_helper_keeps_only_the_last_token() {
         .fonts(ctypst::fonts::documents())
         .build()
         .unwrap();
-    let source = "#import \"/cvl/shared/harvard/application.typ\": salutation-last-name, de-salutation\n\
+    let source = "#import \"/.agent/typst/letter/letter.typ\": salutation-last-name, de-salutation\n\
             #assert(salutation-last-name(\"Dr. Jane Doe\") == \"Doe\", message: \"title prefix\")\n\
             #assert(salutation-last-name(\"Ms Test Person\") == \"Person\", message: \"multi-token\")\n\
             #assert(salutation-last-name(\"Madonna\") == \"Madonna\", message: \"single token\")\n\
@@ -462,4 +469,80 @@ fn typst_salutation_helper_keeps_only_the_last_token() {
                 .pages(ctypst::PageConstraint::Exactly(1)),
         )
         .unwrap();
+}
+
+#[test]
+fn summary_counsel_uses_shared_wording_and_leaf_exceptions_like_typst() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let leaf = "cvl/cv/harvard/standard/en/ch/content.toml";
+    let shared = "cvl/cv/harvard/content/en/ch/wording.toml";
+    for relative in [leaf, shared, ".agent/typst/application.typ"] {
+        std::fs::create_dir_all(root.join(relative).parent().unwrap()).unwrap();
+    }
+    std::fs::write(
+        root.join("ccvl.json"),
+        json!({"documents": {
+            "cv": {"root": "cvl/cv"}, "cover_letter": {"root": "cvl/cl"}
+        }})
+        .to_string(),
+    )
+    .unwrap();
+    std::fs::write(root.join("cvl/cv/harvard/style.toml"),
+        "id = \"harvard\"\napi = 1\ndocuments = [\"cv\"]\nsupports_locales = [\"en-ch\"]\npages = [4]\ndefault_pages = 4\nsubstyles = [\"standard\"]\ndefault_substyle = \"standard\"\n"
+    ).unwrap();
+    std::fs::copy(
+        workspace().path(".agent/typst/application.typ"),
+        root.join(".agent/typst/application.typ"),
+    )
+    .unwrap();
+    let workspace = Workspace::at(root).unwrap();
+    let spec = cv_spec(leaf);
+    let source = format!(
+        "#import \"/.agent/typst/application.typ\": load-application\n#set text(font: \"Archivo\")\n#metadata(load-application(\"/{leaf}\").cv.allow_thin) <thin-policy>\nPolicy fixture.\n"
+    );
+    for (shared_allowance, leaf_override, expected) in [
+        (true, None, true),
+        (true, Some(false), false),
+        (false, Some(true), true),
+        (false, None, false),
+    ] {
+        std::fs::write(
+            root.join(shared),
+            format!("[cv]\nsummary = \"Evidence.\"\nallow_thin = {shared_allowance}\n"),
+        )
+        .unwrap();
+        let exception = leaf_override
+            .map(|value| format!("[cv]\nallow_thin = {value}\n"))
+            .unwrap_or_default();
+        std::fs::write(
+            root.join(leaf),
+            format!("[wording]\nsource = \"../../../content/en/ch/wording.toml\"\n{exception}"),
+        )
+        .unwrap();
+        let failures = summary_failures(&workspace, &spec, &[summary_metric(9.2)]).unwrap();
+        assert_eq!(failures.is_empty(), expected);
+        let warnings = preference_warnings(&workspace, &spec, &[summary_metric(9.2)]).unwrap();
+        assert_eq!(
+            warnings
+                .iter()
+                .any(|warning| warning.contains("explicitly wanted")),
+            expected
+        );
+        let engine = ctypst::Engine::builder()
+            .root(root)
+            .fonts(ctypst::fonts::documents())
+            .build()
+            .unwrap();
+        let output = engine
+            .compile(
+                ctypst::CompileRequest::new("fixture.typ")
+                    .source_file("fixture.typ", source.clone()),
+            )
+            .unwrap();
+        assert_eq!(
+            ctypst::query_json(&output.document, "thin-policy").unwrap(),
+            vec![json!(expected)]
+        );
+    }
 }

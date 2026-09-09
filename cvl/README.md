@@ -20,35 +20,41 @@ cvl/
 ├── cv/
 │   ├── harvard/
 │   │   ├── style.toml, contract.toml, scaffold.toml
+│   │   ├── content/{de,en}/ch/wording.toml
 │   │   ├── src/                         # Harvard's internal arrangement
 │   │   ├── standard/{de,en}/ch/<leaf>
 │   │   └── compact/{de,en}/ch/<leaf>
 │   ├── test-style-1/
 │   │   ├── style.toml, contract.toml, scaffold.toml
+│   │   ├── content/en/{ch,us}/wording.toml
 │   │   ├── layout.typ                   # this style puts its renderer here
 │   │   ├── sidebar/en/{ch,us}/<leaf>
 │   │   └── topbar/en/{ch,us}/<leaf>
 │   └── test-style-2/
 │       ├── style.toml, contract.toml, scaffold.toml
+│       ├── content/en/{ch,us}/wording.toml
 │       ├── parts/composition.typ        # a different internal arrangement
 │       ├── cards/en/{ch,us}/<leaf>
 │       └── timeline/en/{ch,us}/<leaf>
 └── cl/
     ├── harvard/{style.toml,contract.toml,scaffold.toml,src/}
+    │   ├── content/{de,en}/ch/wording.toml
     │   ├── left-rule/{de,en}/ch/<leaf>
     │   └── frame/{de,en}/ch/<leaf>
     ├── test-style-1/{style.toml,contract.toml,scaffold.toml,layout.typ}
+    │   ├── content/en/{ch,us}/wording.toml
     │   ├── sidebar/en/{ch,us}/<leaf>
     │   └── topbar/en/{ch,us}/<leaf>
     └── test-style-2/{style.toml,contract.toml,scaffold.toml,parts/composition.typ}
+        ├── content/en/{ch,us}/wording.toml
         ├── cards/en/{ch,us}/<leaf>
         └── timeline/en/{ch,us}/<leaf>
 
 Each substyle directory also has substyle.toml.
 Each <leaf> contains:
-├── content.toml                         # common envelope, style-owned fields
+├── content.toml                         # wording reference, metadata, exceptions
 ├── strings.toml                         # translated labels and chrome
-├── layout.toml                          # explicit paper, language, region, direction
+├── layout.toml                          # locale-specific layout and text settings
 ├── typst/{cv|cl}.typ                     # engine entry point with input defaults
 ├── pdf/{cv-N|cl}.pdf                     # checked-in outputs
 └── preview/*.png                        # actual rendered pages
@@ -59,6 +65,21 @@ Each style owns these choices. A substyle varies a design within its parent;
 `frame` and `left-rule` belong to Harvard. The two test families import no
 Harvard code. The optional `.agent/typst/document.typ` adapter only applies
 explicit settings; a style can use its own Typst setup instead.
+
+## Where to edit wording
+
+| Change | File |
+| --- | --- |
+| Text shared by a style's substyles | `<style>/content/<language>/<country>/wording.toml` |
+| A wording exception for one substyle | Its leaf's `content.toml` |
+| A tailored private application | Its opportunity's `application.toml` |
+
+Every leaf names its shared source under `[wording].source`. Sharing stays
+inside the same document/style/language/country. Harvard, test-style-1 and
+test-style-2 each own independent wording; CV and letter sources are separate.
+Nested fields merge, while arrays replace whole arrays. Private opportunity
+records remain self-contained. See [the interface](../.agent/docs/styles.md)
+for the exact source and override rules.
 
 ## What ships
 
@@ -108,15 +129,22 @@ the selected contract. That interface is the common denominator.
 
 Records use `options.cv_style`, `options.cl_style`, `options.cv_substyle`,
 `options.cl_substyle`, `options.language`, `options.pages` and optional
-`options.cl_pages`. Missing selections use explicit manifest/style defaults.
-The shipped renderers merge **family defaults → substyle → locale layout**.
+`options.cl_pages`, `options.cv_paper` and `options.cl_paper`. Missing selections
+use explicit manifest/style defaults. The shipped renderers merge
+**family defaults → substyle → locale layout → selected paper preset**.
 Language and paper are separate decisions: these examples choose A4 for CH and
 Letter for US, but the engine imposes no country-to-paper mapping.
+
+Harvard currently supports A4. Both test styles support A4 and US Letter in
+either locale. `--paper` selects a supported paper without changing folders;
+nondefault papers add their name to the PDF filename, preserving the default
+showcase. Unsupported choices fail instead of shrinking text or adding pages.
 
 ```sh
 bash ./ccvl build-cv en-us --style test-style-1 --substyle sidebar
 bash ./ccvl build-cv en-ch 2 --style test-style-2 --substyle cards
 bash ./ccvl build-cl en-us --style test-style-2 --substyle timeline
+bash ./ccvl build-cv en-us --style test-style-1 --substyle sidebar --paper a4
 bash ./ccvl list-documents
 ```
 

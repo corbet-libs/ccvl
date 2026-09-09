@@ -1,5 +1,7 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result, bail};
 use serde_json::Value;
@@ -7,6 +9,7 @@ use serde_json::Value;
 #[derive(Clone, Debug)]
 pub struct Workspace {
     root: PathBuf,
+    observed: Option<Arc<Mutex<BTreeSet<PathBuf>>>>,
 }
 
 impl Workspace {
@@ -35,7 +38,10 @@ impl Workspace {
         if !root.join("ccvl.json").is_file() {
             bail!("{} is not a ccvl workspace", root.display());
         }
-        Ok(Self { root })
+        Ok(Self {
+            root,
+            observed: None,
+        })
     }
 
     #[must_use]
@@ -48,6 +54,52 @@ impl Workspace {
         self.root.join(relative)
     }
 
+    /// Start an independent input observation scope for one watched build.
+    #[must_use]
+    pub fn tracked(&self) -> Self {
+        Self {
+            root: self.root.clone(),
+            observed: Some(Arc::default()),
+        }
+    }
+
+    #[must_use]
+    pub fn observed_inputs(&self) -> BTreeSet<PathBuf> {
+        self.observed
+            .as_ref()
+            .map(|paths| {
+                paths
+                    .lock()
+                    .expect("input observation lock poisoned")
+                    .clone()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Observe an attempted input, including absent paths and symlink names.
+    pub fn observe_input(&self, path: impl AsRef<Path>) {
+        if let Some(observed) = &self.observed {
+            let path = self.path(path);
+            let mut observed = observed.lock().expect("input observation lock poisoned");
+            observed.insert(path.clone());
+            if let Ok(resolved) = path.canonicalize()
+                && resolved.starts_with(&self.root)
+            {
+                observed.insert(resolved);
+            }
+        }
+    }
+
+    pub fn input_is_file(&self, path: impl AsRef<Path>) -> bool {
+        self.observe_input(&path);
+        self.path(path).is_file()
+    }
+
+    pub fn read_text(&self, path: impl AsRef<Path>) -> Result<String> {
+        let path = self.existing_inside(path)?;
+        fs::read_to_string(&path).with_context(|| format!("cannot read {}", path.display()))
+    }
+
     pub fn existing_inside(&self, value: impl AsRef<Path>) -> Result<PathBuf> {
         let value = value.as_ref();
         let candidate = if value.is_absolute() {
@@ -55,6 +107,7 @@ impl Workspace {
         } else {
             self.root.join(value)
         };
+        self.observe_input(&candidate);
         let resolved = candidate
             .canonicalize()
             .with_context(|| format!("cannot resolve {}", value.display()))?;
@@ -82,6 +135,7 @@ impl Workspace {
     }
 
     pub fn read_json(&self, relative: impl AsRef<Path>) -> Result<Value> {
+        self.observe_input(&relative);
         read_json(&self.path(relative))
     }
 
@@ -90,6 +144,7 @@ impl Workspace {
     /// Only plain TOML data (strings, integers, booleans, arrays, tables)
     /// is supported; datetimes have no meaning in ccvl records.
     pub fn read_toml_value(&self, relative: impl AsRef<Path>) -> Result<Value> {
+        self.observe_input(&relative);
         read_toml_value(&self.path(relative))
     }
 }

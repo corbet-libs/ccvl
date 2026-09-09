@@ -1,6 +1,5 @@
 # Explicit settings for test-style-2; deliberately independent of Harvard.
 [page]
-paper = "a4"
 flipped = false
 columns = 1
 margin_top_mm = 12

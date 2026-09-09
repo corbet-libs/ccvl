@@ -1,8 +1,17 @@
 # Reusable Typst helpers
 
-This directory contains neutral profile, measurement and explicit-settings
-adapters and the bundled font set. Each style chooses which helpers to import. Document geometry and
+This directory contains neutral profile, application, measurement and explicit-settings
+adapters. Each style chooses which helpers to import. Document geometry and
 presentation code live under `cvl/<document>/<style>/`.
+
+`application.typ` resolves a leaf's explicit shared wording and local overrides.
+It makes no assumptions about a style's content fields. Its `load-application`
+function also accepts a self-contained opportunity record.
+
+`paper.typ` resolves a style-declared paper preset from a requested ID, the
+record's document selection or the locale default. Its `paper-settings` helper
+validates and merges adapter layers with the selected preset. Renderers use
+the resolved label when printing a paper name.
 
 The shipped Harvard styles share helpers in `cvl/shared/harvard/` and keep their
 CV and letter renderers in their own `src/` folders. Harvard's application

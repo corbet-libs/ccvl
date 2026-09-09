@@ -3,6 +3,9 @@
 schema_version = 4
 revision = 0
 
+[wording]
+source = "../../../content/en/us/wording.toml"
+
 [options]
 language = "en-us"
 pages = 1
@@ -36,23 +39,4 @@ company = ""
 address_line_1 = ""
 address_line_2 = ""
 
-[cv]
-title = "One record. A different visual language."
-intro = "This document demonstrates an independent style and a scoped substyle. It uses the approved workspace profile with explanatory test content."
-[[cv.sections]]
-title = "Identity and content"
-body = "Profile fields supply the name and contact details. This style defines its own section fields; the demonstration makes no employment or achievement claims."
-[[cv.sections]]
-title = "Layout and hierarchy"
-body = "The parent style owns geometry and typography. Its substyles rearrange the same content into visibly different compositions."
-[[cv.sections]]
-title = "Locale and paper"
-body = "English does not imply US paper. The en-ch leaf explicitly selects A4; en-us explicitly selects US Letter. Both are rendered and verified."
-[[cv.sections]]
-title = "Checks and outputs"
-body = "Every declared page preset has a PDF. Geometry, fonts, text extraction and reproducibility are checked against the selected style."
-[cl]
-subject = "An independent cover-letter composition"
-opening = "This is demonstration text for comparing styles and substyles."
-body = ["The letter uses the same approved profile and common record envelope as the CV. Its content fields and arrangement belong to the selected letter style.", "The layout file explicitly chooses paper size, orientation, language and region. Font, spacing and text-shaping choices are recorded in the style settings.", "Switch the substyle to compare the arrangement while keeping the content constant. A style may use any geometry its renderer and declared page presets support."]
-closing = "Demonstration complete. This document is not a job application."
+# Add [cv] below only for substyle-specific wording overrides.

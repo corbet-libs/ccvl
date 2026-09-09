@@ -39,6 +39,10 @@ while company and role research belongs to its concrete opportunity.
   `interview/` and `opportunities/` README scaffolds are intentional.
 - Never submit an application, send a message, sign a document, or accept a
   declaration without an explicit instruction for that exact external action.
+- Preserve original evidence, names, exact quotes, factual qualifiers and user
+  choices. Shared locale conventions belong to cletter/family; AIDA is an
+  optional writing recipe independent of visual style. Author locale IDs in
+  lowercase.
 - Preserve the requested locale and page variant. A successful compile is not
   enough: verify exact page count, a usable PDF text layer, and rendered layout.
 - Follow the selected style’s declared layout contract. For Harvard, profile
@@ -55,8 +59,10 @@ order instead of blending their data ownership:
 - profile ingestion or claim reconciliation: `ccvl-profile`;
 - a new style, substyle, locale layout or presentation defaults: `ccvl-style`;
 - CV wording, content structure, rendering, or ATS work in an existing style: `ccvl-cv`;
-- a concrete vacancy, its company research, or application package:
-  `ccvl-apply`;
+- a concrete vacancy, company research, an application package or general/open
+  cover-letter wording: `ccvl-apply`;
+- an independent evidence/editorial/rendered-page review: `ccvl-review` in fresh
+  context, using the immutable review package and its bounded correction protocol;
 - preparation for an interview attached to an opportunity: `ccvl-interview`;
 - skill-gap analysis or a learning plan: `ccvl-upskill`;
 - recorded interviews, rejections, offers, or calibration: `ccvl-outcome`.

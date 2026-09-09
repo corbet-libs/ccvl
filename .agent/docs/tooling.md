@@ -32,18 +32,27 @@ instruction to rewrite and repeat the measurement.
 
 `bash ./ccvl watch-cv <locale> [pages]`, `bash ./ccvl watch-cl <locale>`,
 and `bash ./ccvl watch-opportunity <organisation-key> <position-key>`
-rebuild on every change instead of exiting. CV and cover-letter watchers accept
+rebuild when an input changes and stay running after compile errors. CV and cover-letter watchers accept
 `--style <name>` and `--substyle <name>`; omissions use the record or configured
 defaults. Letters also accept `--pages <count>`.
-The watcher hashes the style-major
-locale templates (`cvl/cv/` and `cvl/cl/` style/substyle trees with their `typst/`
-pointers), the shared `.agent/typst` machinery, `cvl/profile.toml`,
-`ccvl.json`, the relevant record, and the generated opportunity
-`typst/*.typ` copies; any change re-renders the PDFs (plus the resolved
-`.typ` copies for opportunities). Built PDFs are excluded from the hash so a
-render never retriggers itself. The loop uses the embedded engine and a
-standard-library polling interval, so no extra runtime or file-watching
-dependency is needed. `just watch <organisation-key> <position-key>`
+Both document watchers accept `--paper <name>`; precedence is the command-line
+selection, the record's document paper, then the style's locale default.
+Unsupported papers fail explicitly and the watcher waits for corrected inputs.
+The watcher observes the files read while resolving and compiling the selected
+document: workspace and style metadata, wording, settings, profile, declared
+fonts, and transitive Typst imports and data/image reads. It hashes these inputs
+every 500 ms without an extension filter or prescribed renderer folder layout.
+Unrelated styles and generated outputs do not trigger a rebuild merely by
+changing. A PDF or image explicitly read by a renderer is still an input.
+Rebuilding an opportunity refreshes its PDFs and resolved `.typ` copies.
+
+Missing files and symlink replacement are detected. After an error, the watcher
+retains the last working dependencies plus newly attempted inputs so fixing or
+creating an input recovers automatically. A successful build replaces that set.
+Dependency discovery or an edit during compilation causes one settling build
+before the output is reported, preventing a concurrent edit from being missed.
+The loop uses the embedded engine and standard-library polling, so no extra
+runtime or file-watching dependency is needed. `just watch <organisation-key> <position-key>`
 delegates to `watch-opportunity`; the `justfile` lists the remaining
 shortcuts.
 

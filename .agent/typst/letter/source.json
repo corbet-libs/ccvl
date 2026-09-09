@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/corbet-labs/cletter",
+  "version": "0.1.2",
+  "files": {
+    "generated/tables.typ": "bd2fba4542b3c7aec3d9512591ce77350c35929ab618599676dba8547148f619",
+    "letter.typ": "068aaa29b6f90df4de644f18cf5512a3d85861d475f6e8ea27b4570cc9fa3126",
+    "vendor/cdate/LICENSES/FSL-1.1-ALv2.txt": "a164e251c8f07141d743b6f6b36a93f41e664d67968ccab0a7f9448183517e61",
+    "vendor/cdate/typst/date.typ": "5fdacf4af14b0cabc78fe14718b58689901956d4d94d51a7e1d2fa63c54d6c78",
+    "vendor/cdate/typst/generated/dates.typ": "f8e6d790df57d37f787485c51a9bfdb41c229981c0916eac8eeffe86d6503fa1",
+    "vendor/cfarewell/LICENSES/FSL-1.1-ALv2.txt": "a164e251c8f07141d743b6f6b36a93f41e664d67968ccab0a7f9448183517e61",
+    "vendor/cfarewell/typst/farewell.typ": "1a6614195544b973eb465ee535b2ccf735e767c97aa32ba8daf772576b1716ac",
+    "vendor/cfarewell/typst/generated/closing.typ": "b7af17ae1ef4851fd57dca690e960508d390f48ec1c6ba6f36212cdcf92e4c1f",
+    "vendor/cgreet/LICENSES/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "vendor/cgreet/LICENSES/MIT.txt": "567462da97ddd294c09ca55b84072415bf6e9647400dc38c2c8364f41a4f4865",
+    "vendor/cgreet/tables/de.json": "f14fc6efedce618b2cf62e8cae4e857e1e0a4744fa66f8317ec6a4ef8af096dc",
+    "vendor/cgreet/typst/greet.typ": "f8692c94864fd784dfdbbc258b20e9ea160c12ec55b4ab98441c14d9743a5524",
+    "vendor/cink/LICENSES/FSL-1.1-ALv2.txt": "a164e251c8f07141d743b6f6b36a93f41e664d67968ccab0a7f9448183517e61",
+    "vendor/cink/typst/ink.typ": "9d9363546c54dbdccafc74f0a9622c06c24f8eb8f54288a15410a3b4e4c8b585",
+    "vendor/manifest.json": "ea622f49d2faa878e5ce2aaca43debb901cfe6cdd0cb02325297e8f12ab67d69"
+  }
+}

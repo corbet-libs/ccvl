@@ -3,7 +3,6 @@ id = "harvard"
 api = 1
 
 [page]
-paper = "a4"
 flipped = false
 columns = 1
 margin_top_mm = 12

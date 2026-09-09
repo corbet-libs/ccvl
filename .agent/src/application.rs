@@ -53,14 +53,24 @@ const PROFILE_TOP: &[&str] = &[
     "localized",
 ];
 
-/// Greeting rules live in the `cgreet` library
-/// (`https://github.com/corbet-labs/cgreet`, mirrored for the renderer in
-/// `cvl/shared/harvard/application.typ`) and are re-exported here so existing paths
-/// keep working.
-pub use cgreet::{
+/// Correspondence rules live in cletter and its subordinate libraries.
+/// The renderer uses the same upstream facade's pinned Typst sources.
+pub use cletter::{
     Region, de_honorific_warning, de_salutation, recipient_salutation_warning,
     salutation_honorific, salutation_last_name, salutation_surname, salutation_titles,
 };
+
+/// Non-mutating correspondence guidance for a selected explicit locale.
+/// Reviewers decide whether a match is prose or protected original content.
+pub fn locale_conventions(locale: &str) -> Result<Value> {
+    let locale = crate::styles::normalize_locale(locale)?;
+    Ok(serde_json::json!({
+        "locale": locale,
+        "provider": "cletter",
+        "orthography_replacements": cletter::orthography_replacements(&locale),
+        "scope": "Apply to authored prose only. Preserve names, exact quotes, URLs, source material and explicit user choices.",
+    }))
+}
 
 pub use crate::styles::{Selection, StyleLeaf};
 
@@ -116,9 +126,9 @@ pub fn validate_all(workspace: &Workspace) -> Result<()> {
         .into_iter()
         .chain(cl_leaves(workspace)?)
     {
-        let record = read_toml_value(&leaf.content())?;
+        let record = crate::content::read_record(workspace, leaf.content())?;
         let relative = workspace.relative(&leaf.content())?.display().to_string();
-        validate_record(workspace, &record, &relative, true)?;
+        validate_document_record(workspace, &record, &relative, true, leaf.document)?;
         ensure!(
             record.pointer("/options/language").and_then(Value::as_str)
                 == Some(leaf.locale.as_str()),
@@ -143,7 +153,12 @@ pub fn validate_all(workspace: &Workspace) -> Result<()> {
                 let record = position?.path().join("application.toml");
                 if record.is_file() {
                     let relative = workspace.relative(&record)?.display().to_string();
-                    validate_record(workspace, &read_toml_value(&record)?, &relative, true)?;
+                    validate_record(
+                        workspace,
+                        &crate::content::read_record(workspace, &record)?,
+                        &relative,
+                        true,
+                    )?;
                 }
             }
         }
@@ -214,6 +229,38 @@ pub fn validate_record(
     location: &str,
     require_text: bool,
 ) -> Result<()> {
+    validate_record_scope(workspace, application, location, require_text, None)
+}
+
+/// Validate shared record metadata and only the requested document's rules.
+/// Full records and workspace checks still validate every enabled document.
+pub fn validate_document_record(
+    workspace: &Workspace,
+    application: &Value,
+    location: &str,
+    require_text: bool,
+    document: &str,
+) -> Result<()> {
+    ensure!(
+        matches!(document, "cv" | "cl"),
+        "unknown document: {document}"
+    );
+    validate_record_scope(
+        workspace,
+        application,
+        location,
+        require_text,
+        Some(document),
+    )
+}
+
+fn validate_record_scope(
+    workspace: &Workspace,
+    application: &Value,
+    location: &str,
+    require_text: bool,
+    document: Option<&str>,
+) -> Result<()> {
     let object = object_at(application, "")?;
     ensure_no_unknown(
         object,
@@ -239,6 +286,8 @@ pub fn validate_record(
             "cv_substyle",
             "cl_substyle",
             "cl_pages",
+            "cv_paper",
+            "cl_paper",
         ],
         location,
     )?;
@@ -256,14 +305,6 @@ pub fn validate_record(
         .get("pages")
         .and_then(Value::as_u64)
         .context("options.pages is missing")?;
-    let cv_selection = crate::styles::record_selection(workspace, "cv", application, location)?;
-    let cv_style = crate::styles::definition(workspace, "cv", &cv_selection.style)?;
-    ensure!(
-        cv_style.pages.contains(&usize::try_from(pages)?),
-        "{location}.options.pages: unsupported by CV style {}",
-        cv_selection.style
-    );
-    let cv_contract = crate::styles::contract(workspace, "cv", &cv_selection.style)?;
     let generate_cl = options
         .get("generate_cl")
         .and_then(Value::as_bool)
@@ -272,20 +313,6 @@ pub fn validate_record(
         .get("application_date")
         .and_then(Value::as_str)
         .context("options.application_date is missing")?;
-    let letter_selection = crate::styles::record_selection(workspace, "cl", application, location)?;
-    let letter_style = crate::styles::definition(workspace, "cl", &letter_selection.style)?;
-    if let Some(pages) = options.get("cl_pages") {
-        let pages = usize::try_from(
-            pages
-                .as_u64()
-                .context("options.cl_pages must be a positive page count")?,
-        )?;
-        ensure!(
-            letter_style.pages.contains(&pages),
-            "{location}.options.cl_pages: unsupported by letter style {}",
-            letter_selection.style
-        );
-    }
 
     let job = object_at(application, "/job")?;
     let mut allowed = JOB_FIELDS.to_vec();
@@ -320,32 +347,79 @@ pub fn validate_record(
             .with_context(|| format!("{location}.job.cl_recipient.{field} is missing"))?;
     }
 
-    let cv = object_at(application, "/cv")?;
-    validate_content_fields(cv, &cv_contract, location)?;
-    if cv_contract.get("summary_lines").is_some() {
-        let summary = cv
-            .get("summary")
-            .and_then(Value::as_str)
-            .context("cv.summary is missing")?;
+    if document != Some("cl") {
+        let cv_selection = crate::styles::record_selection(workspace, "cv", application, location)?;
+        let cv_style = crate::styles::definition(workspace, "cv", &cv_selection.style)?;
+        if !language.is_empty() {
+            crate::paper::select(
+                cv_style.paper.as_ref(),
+                language,
+                crate::paper::record_choice(application, "cv")?,
+            )?;
+        }
         ensure!(
-            !require_text || !summary.trim().is_empty(),
-            "{location}.cv.summary: a rendered summary cannot be empty"
+            cv_style.pages.contains(&usize::try_from(pages)?),
+            "{location}.options.pages: unsupported by CV style {}",
+            cv_selection.style
         );
-        if let Some(allow_thin) = cv.get("allow_thin") {
+        let cv_contract = crate::styles::contract(workspace, "cv", &cv_selection.style)?;
+        let cv = object_at(application, "/cv")?;
+        validate_content_fields(cv, &cv_contract, location)?;
+        if cv_contract.get("summary_lines").is_some() {
+            let summary = cv
+                .get("summary")
+                .and_then(Value::as_str)
+                .context("cv.summary is missing")?;
             ensure!(
-                allow_thin.is_boolean(),
-                "{location}.cv.allow_thin must be a boolean"
+                !require_text || !summary.trim().is_empty(),
+                "{location}.cv.summary: a rendered summary cannot be empty"
             );
+            if let Some(allow_thin) = cv.get("allow_thin") {
+                ensure!(
+                    allow_thin.is_boolean(),
+                    "{location}.cv.allow_thin must be a boolean"
+                );
+            }
         }
     }
 
+    if document == Some("cv") {
+        return Ok(());
+    }
+
     if !generate_cl {
+        ensure!(
+            document != Some("cl"),
+            "{location}: cover-letter generation is disabled"
+        );
         ensure!(
             object.get("cl").is_none(),
             "{location}.cl: a disabled cover letter may not retain hidden content"
         );
         return Ok(());
     }
+    let letter_selection = crate::styles::record_selection(workspace, "cl", application, location)?;
+    let letter_style = crate::styles::definition(workspace, "cl", &letter_selection.style)?;
+    if !language.is_empty() {
+        crate::paper::select(
+            letter_style.paper.as_ref(),
+            language,
+            crate::paper::record_choice(application, "cl")?,
+        )?;
+    }
+    if let Some(pages) = options.get("cl_pages") {
+        let pages = usize::try_from(
+            pages
+                .as_u64()
+                .context("options.cl_pages must be a positive page count")?,
+        )?;
+        ensure!(
+            letter_style.pages.contains(&pages),
+            "{location}.options.cl_pages: unsupported by letter style {}",
+            letter_selection.style
+        );
+    }
+
     let cl = object_at(application, "/cl")?;
     let letter_contract = crate::styles::contract(workspace, "cl", &letter_selection.style)?;
     validate_content_fields(cl, &letter_contract, location)?;

@@ -11,6 +11,9 @@ use serde_json::Value;
 
 use crate::workspace::Workspace;
 
+mod contract;
+use contract::validate_contract;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Selection {
     pub style: String,
@@ -29,6 +32,7 @@ pub struct Definition {
     pub substyles: Vec<String>,
     pub defaults: Option<String>,
     pub settings_adapter: Option<String>,
+    pub paper: Option<crate::paper::Registry>,
     #[serde(default)]
     pub fonts: Vec<String>,
 }
@@ -44,7 +48,9 @@ pub struct StyleLeaf {
     pub pages: Vec<usize>,
     pub default_pages: usize,
     pub defaults: Option<PathBuf>,
+    pub fonts: Vec<PathBuf>,
     pub settings_adapter: Option<String>,
+    pub paper: Option<crate::paper::Registry>,
     pub contract: Value,
 }
 
@@ -93,16 +99,35 @@ impl StyleLeaf {
 
     #[must_use]
     pub fn output(&self, pages: usize) -> PathBuf {
+        self.output_for_paper(pages, None)
+    }
+
+    #[must_use]
+    pub fn output_for_paper(&self, pages: usize, paper: Option<&str>) -> PathBuf {
         let name = if self.document == "cl" && pages == self.default_pages {
             "cl.pdf".to_owned()
         } else {
             format!("{}-{pages}.pdf", self.document)
         };
+        let name = if let Some(paper) = paper.filter(|id| {
+            self.paper
+                .as_ref()
+                .and_then(|registry| registry.defaults.get(&self.locale))
+                .map(String::as_str)
+                != Some(*id)
+        }) {
+            format!(
+                "{}-{paper}.pdf",
+                name.strip_suffix(".pdf").expect("PDF name")
+            )
+        } else {
+            name
+        };
         self.dir.join("pdf").join(name)
     }
 }
 
-fn atom(value: &str, label: &str) -> Result<()> {
+pub(crate) fn atom(value: &str, label: &str) -> Result<()> {
     ensure!(
         !value.is_empty()
             && value
@@ -166,7 +191,7 @@ pub fn definition(workspace: &Workspace, document: &str, name: &str) -> Result<D
     atom(name, "style")?;
     let directory = root(workspace, document)?.join(name);
     let path = directory.join("style.toml");
-    let text = fs::read_to_string(&path).with_context(|| {
+    let text = workspace.read_text(&path).with_context(|| {
         format!(
             "unknown {document} style {name:?}: missing {}",
             path.display()
@@ -232,6 +257,11 @@ pub fn definition(workspace: &Workspace, document: &str, name: &str) -> Result<D
         "{}: unknown settings_adapter; expected document-v1 or omit for a custom renderer",
         path.display()
     );
+    if let Some(paper) = &definition.paper {
+        paper
+            .validate(&definition.supports_locales)
+            .with_context(|| format!("invalid {}", path.display()))?;
+    }
     for relative in definition.defaults.iter().chain(definition.fonts.iter()) {
         workspace.existing_inside(directory.join(relative))?;
     }
@@ -261,7 +291,7 @@ pub fn definitions(workspace: &Workspace, document: &str) -> Result<Vec<Definiti
 
 pub fn contract(workspace: &Workspace, document: &str, style: &str) -> Result<Value> {
     let path = root(workspace, document)?.join(style).join("contract.toml");
-    if path.is_file() {
+    if workspace.input_is_file(&path) {
         let value = workspace.read_toml_value(workspace.relative(&path)?)?;
         validate_contract(&value).with_context(|| format!("invalid {}", path.display()))?;
         Ok(value)
@@ -270,166 +300,118 @@ pub fn contract(workspace: &Workspace, document: &str, style: &str) -> Result<Va
     }
 }
 
-fn validate_contract(value: &Value) -> Result<()> {
-    for key in [
-        "content_fields",
-        "metric_rules",
-        "shared_pages",
-        "paragraphs",
-        "paragraph_regions",
-        "source_files",
-    ] {
-        if let Some(value) = value.get(key) {
-            ensure!(value.is_array(), "{key} must be an array");
-        }
-    }
-    for key in ["content_fields", "source_files"] {
-        if let Some(values) = value.get(key).and_then(Value::as_array) {
-            ensure!(
-                values.iter().all(Value::is_string),
-                "{key} must contain strings"
-            );
-        }
-    }
-    if let Some(pages) = value.get("shared_pages").and_then(Value::as_array) {
-        ensure!(
-            pages.iter().all(|p| p.as_u64().is_some_and(|p| p > 0)),
-            "shared_pages must contain positive page numbers"
-        );
-    }
-    if let Some(rules) = value.get("metric_rules").and_then(Value::as_array) {
-        for rule in rules {
-            ensure!(
-                rule.get("kind")
-                    .and_then(Value::as_str)
-                    .is_some_and(|kind| !kind.is_empty()),
-                "metric rule must have a kind"
-            );
-            for key in ["minimum", "maximum"] {
-                if let Some(count) = rule.get(key) {
-                    ensure!(
-                        count.as_u64().is_some(),
-                        "metric {key} must be a non-negative count"
-                    );
-                }
-            }
-            let minimum = rule.get("minimum").and_then(Value::as_u64).unwrap_or(0);
-            ensure!(
-                rule.get("maximum")
-                    .and_then(Value::as_u64)
-                    .is_none_or(|maximum| maximum >= minimum),
-                "metric count bounds are reversed"
-            );
-        }
-    }
-    if let Some(policy) = value.get("pdf") {
-        ensure!(policy.is_object(), "pdf must be a table");
-        if let Some(version) = policy.get("version") {
-            ensure!(
-                version.as_str().is_some_and(|v| !v.is_empty()),
-                "PDF version must be non-empty text"
-            );
-        }
-        if let Some(tagged) = policy.get("tagged") {
-            ensure!(tagged.is_boolean(), "PDF tagged must be a boolean");
-        }
-        if let Some(overrides) = policy.get("by_locale") {
-            for (locale, policy) in overrides.as_object().context("by_locale must be a table")? {
-                ensure!(
-                    normalize_locale(locale)? == *locale,
-                    "PDF locale must be canonical"
-                );
-                ensure!(
-                    policy.get("by_locale").is_none(),
-                    "nested PDF locale overrides are not supported"
-                );
-                validate_contract(&serde_json::json!({"pdf": policy}))?;
-            }
-        }
-        if let Some(size) = policy.get("size_pt") {
-            let size = size.as_array().context("size_pt must be an array")?;
-            ensure!(
-                size.len() == 2
-                    && size
-                        .iter()
-                        .all(|n| n.as_f64().is_some_and(|n| n.is_finite() && n > 0.0)),
-                "size_pt must contain positive width and height"
-            );
-        }
-        if let Some(pattern) = policy.get("font_pattern") {
-            regex::Regex::new(pattern.as_str().context("font_pattern must be text")?)?;
-        }
-        if let Some(required) = policy.get("required_profile_fields") {
-            ensure!(
-                required
-                    .as_array()
-                    .is_some_and(|fields| fields.iter().all(Value::is_string)),
-                "required_profile_fields must contain field names"
-            );
-        }
-        if let Some(required) = policy.get("require_image") {
-            ensure!(required.is_boolean(), "require_image must be boolean");
-        }
-        if let Some(minimum) = policy.get("minimum_text_chars") {
-            ensure!(
-                minimum.as_u64().is_some_and(|n| n > 0),
-                "minimum_text_chars must be positive"
-            );
-        }
-    }
-    Ok(())
+/// One resolved style supplies either its requested leaf or its complete set.
+/// Resolving a document never opens another style's definition or assets.
+struct ResolvedStyle {
+    document: &'static str,
+    definition: Definition,
+    directory: PathBuf,
+    defaults: Option<PathBuf>,
+    fonts: Vec<PathBuf>,
+    contract: Value,
 }
 
-pub fn leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<StyleLeaf>> {
-    let mut leaves = Vec::new();
-    for style in definitions(workspace, document)? {
-        let directory = root(workspace, document)?.join(&style.id);
-        let contract = contract(workspace, document, &style.id)?;
-        let defaults = style
+impl ResolvedStyle {
+    fn new(workspace: &Workspace, document: &'static str, definition: Definition) -> Result<Self> {
+        let directory = root(workspace, document)?.join(&definition.id);
+        let defaults = definition
             .defaults
             .as_ref()
             .map(|path| workspace.existing_inside(directory.join(path)))
             .transpose()?;
-        for substyle in &style.substyles {
-            workspace.read_toml_value(
-                workspace.relative(&directory.join(substyle).join("substyle.toml"))?,
-            )?;
-            for locale in &style.supports_locales {
-                let (language, country) = locale.split_once('-').expect("validated locale");
-                let mut resolved_contract = contract.clone();
-                if let Some(overrides) = contract.pointer("/pdf/by_locale") {
-                    let policy = overrides
-                        .get(locale)
+        let fonts = definition
+            .fonts
+            .iter()
+            .map(|path| workspace.existing_inside(directory.join(path)))
+            .collect::<Result<BTreeSet<_>>>()?
+            .into_iter()
+            .collect();
+        let contract = contract(workspace, document, &definition.id)?;
+        if definition.paper.is_some() {
+            ensure!(
+                contract.pointer("/pdf/size_pt").is_none()
+                    && contract
+                        .pointer("/pdf/by_locale")
                         .and_then(Value::as_object)
-                        .with_context(|| format!("missing PDF policy for {locale}"))?;
-                    let pdf = resolved_contract
-                        .get_mut("pdf")
-                        .and_then(Value::as_object_mut)
-                        .context("PDF policy must be a table")?;
-                    pdf.remove("by_locale");
-                    pdf.extend(policy.clone());
-                }
-                let leaf = StyleLeaf {
-                    document,
-                    style: style.id.clone(),
-                    substyle: substyle.clone(),
-                    locale: locale.clone(),
-                    dir: directory.join(substyle).join(language).join(country),
-                    pages: style.pages.clone(),
-                    default_pages: style.default_pages,
-                    defaults: defaults.clone(),
-                    settings_adapter: style.settings_adapter.clone(),
-                    contract: resolved_contract,
-                };
-                for path in [leaf.content(), leaf.strings(), leaf.adapter()] {
-                    workspace.existing_inside(&path).with_context(|| {
-                        format!(
-                            "incomplete {document}/{}/{substyle}/{locale} leaf",
-                            style.id
-                        )
-                    })?;
-                }
-                leaves.push(leaf);
+                        .is_none_or(|locales| locales
+                            .values()
+                            .all(|policy| policy.get("size_pt").is_none())),
+                "paper preset size_pt owns geometry; remove duplicate PDF size_pt from contract.toml"
+            );
+        }
+        Ok(Self {
+            document,
+            definition,
+            directory,
+            defaults,
+            fonts,
+            contract,
+        })
+    }
+
+    fn leaf(&self, workspace: &Workspace, substyle: &str, locale: &str) -> Result<StyleLeaf> {
+        let style = &self.definition;
+        ensure!(
+            style.substyles.iter().any(|name| name == substyle)
+                && style.supports_locales.iter().any(|name| name == locale),
+            "no {} leaf for {}/{substyle}/{locale}",
+            self.document,
+            style.id
+        );
+        let substyle_file =
+            workspace.existing_inside(self.directory.join(substyle).join("substyle.toml"))?;
+        workspace.read_toml_value(workspace.relative(&substyle_file)?)?;
+        let (language, country) = locale.split_once('-').expect("validated locale");
+        let mut resolved_contract = self.contract.clone();
+        if let Some(overrides) = self.contract.pointer("/pdf/by_locale") {
+            let policy = overrides
+                .get(locale)
+                .and_then(Value::as_object)
+                .with_context(|| format!("missing PDF policy for {locale}"))?;
+            let pdf = resolved_contract
+                .get_mut("pdf")
+                .and_then(Value::as_object_mut)
+                .context("PDF policy must be a table")?;
+            pdf.remove("by_locale");
+            pdf.extend(policy.clone());
+        }
+        let mut leaf = StyleLeaf {
+            document: self.document,
+            style: style.id.clone(),
+            substyle: substyle.to_owned(),
+            locale: locale.to_owned(),
+            dir: self.directory.join(substyle).join(language).join(country),
+            pages: style.pages.clone(),
+            default_pages: style.default_pages,
+            defaults: self.defaults.clone(),
+            fonts: self.fonts.clone(),
+            settings_adapter: style.settings_adapter.clone(),
+            paper: style.paper.clone(),
+            contract: resolved_contract,
+        };
+        leaf.contract = crate::paper::contract(
+            &leaf,
+            crate::paper::select(leaf.paper.as_ref(), locale, None)?,
+        );
+        for path in [leaf.content(), leaf.strings(), leaf.adapter()] {
+            workspace.existing_inside(&path).with_context(|| {
+                format!(
+                    "incomplete {}/{}/{substyle}/{locale} leaf",
+                    self.document, style.id
+                )
+            })?;
+        }
+        Ok(leaf)
+    }
+}
+
+pub fn leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<StyleLeaf>> {
+    let mut leaves = Vec::new();
+    for definition in definitions(workspace, document)? {
+        let style = ResolvedStyle::new(workspace, document, definition)?;
+        for substyle in &style.definition.substyles {
+            for locale in &style.definition.supports_locales {
+                leaves.push(style.leaf(workspace, substyle, locale)?);
             }
         }
     }
@@ -443,19 +425,12 @@ pub fn leaf(
     selection: &Selection,
 ) -> Result<StyleLeaf> {
     let locale = normalize_locale(locale)?;
-    leaves(workspace, document)?
-        .into_iter()
-        .find(|leaf| {
-            leaf.style == selection.style
-                && leaf.substyle == selection.substyle
-                && leaf.locale == locale
-        })
-        .with_context(|| {
-            format!(
-                "no {document} leaf for {}/{}/{locale}",
-                selection.style, selection.substyle
-            )
-        })
+    let definition = definition(workspace, document, &selection.style)?;
+    ResolvedStyle::new(workspace, document, definition)?.leaf(
+        workspace,
+        &selection.substyle,
+        &locale,
+    )
 }
 
 pub fn selection(
@@ -500,19 +475,6 @@ pub fn record_selection(
             .map(|name| name.filter(|name| !name.is_empty()))
     };
     selection(workspace, document, name("style")?, name("substyle")?)
-}
-
-pub fn font_paths(workspace: &Workspace) -> Result<Vec<PathBuf>> {
-    let mut paths = BTreeSet::new();
-    for document in ["cv", "cl"] {
-        for style in definitions(workspace, document)? {
-            let directory = root(workspace, document)?.join(&style.id);
-            for font in style.fonts {
-                paths.insert(workspace.existing_inside(directory.join(font))?);
-            }
-        }
-    }
-    Ok(paths.into_iter().collect())
 }
 
 #[cfg(test)]

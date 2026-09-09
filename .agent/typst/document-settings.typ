@@ -38,9 +38,13 @@
       )
   )
 }
-#let validate-settings(settings) = {
+#let validate-settings(settings, partial: false) = {
+  assert(type(settings) == dictionary, message: "adapter settings must be a table")
   for (group, rules) in schema {
-    assert(group in settings, message: "missing adapter settings " + group)
+    if not (group in settings) {
+      assert(partial, message: "missing adapter settings " + group)
+      continue
+    }
     let values = settings.at(group)
     assert(type(values) == dictionary, message: group + " must be a table")
     for (key, value) in values {
@@ -48,10 +52,13 @@
       assert(key in rules, message: "unknown adapter setting " + field)
       assert(field-valid(value, rules.at(key)), message: "invalid " + field + " = " + repr(value))
     }
-    for (key, rule) in rules {
-      assert(rule.at("optional", default: false) or key in values, message: "missing " + group + "." + key)
+    if not partial {
+      for (key, rule) in rules {
+        assert(rule.at("optional", default: false) or key in values, message: "missing " + group + "." + key)
+      }
     }
   }
+  if partial { return none }
   if settings.page.paper == "custom" {
     assert(
       "width_mm" in settings.page and "height_mm" in settings.page,

@@ -26,8 +26,9 @@ rejects a disabled letter that retains hidden content). Schema version 4
 contains:
 
 - `options`: language, CV `pages`, optional `cl_pages`, cover-letter switch,
-  application date, `cv_style` / `cl_style` and `cv_substyle` / `cl_substyle`.
-  Missing selections use the explicit workspace and style defaults;
+  application date, `cv_style` / `cl_style`, `cv_substyle` / `cl_substyle`, and
+  optional `cv_paper` / `cl_paper`. Papers must be declared by the selected
+  style. Missing selections use the explicit workspace and style/locale defaults;
 - `job`: vacancy, organisation, source, description, context, notes, and
   recipient (`job.cl_recipient.name` holds the full address form such as
   `"Frau Dr. Müller"` for the locale-correct salutation; empty falls back
@@ -87,9 +88,29 @@ bash ./ccvl watch-opportunity <organisation-key> <position-key>
 just watch <organisation-key> <position-key>
 ```
 
-The watcher hashes the record's style-major locale templates
-(`cvl/cv/`, `cvl/cl/`, and their `typst/` pointers), the shared Typst machinery (`.agent/typst/**/*.typ`), `cvl/profile.toml`,
-`ccvl.json`, the opportunity record, and the generated `typst/*.typ`
-copies, then rebuilds the PDFs plus the resolved copies on change.
+The watcher follows the opportunity record, selected style metadata/settings
+and fonts, and the files actually read by Typst. Changes to unrelated styles or
+generated outputs do not trigger it. Relevant edits rebuild the PDFs and
+resolved copies; compilation errors leave the watcher waiting for corrected or
+newly created inputs. See [watch mode](tooling.md#watch-mode) for dependency and
+recovery behavior.
 `watch-cv` and `watch-cl` provide the same loop for one general locale
 document.
+
+
+## Purpose, writing and independent review
+
+This keyed package represents a targeted application. Its archived posting
+establishes requirements; candidate evidence or explicit confirmations establish
+capabilities. Read [editorial guidance](editorial.md) before drafting. AIDA is
+an optional writing recipe that can fit any selected style; Harvard supplies
+its own six-paragraph mapping. A general/open letter remains in the appropriate
+`cvl/cl/<style>/` wording owner and does not create an invented vacancy.
+
+Run [the actor–critic protocol](review.md) to bind independent findings to actual
+sources, current PDF text and every page. Review records stay private beside
+the opportunity; large frozen artifacts can use the documented ignored cache.
+Two corrections follow the initial candidate, with allowance consumed before
+each edit and every allowed revision checked. Errors, evidence gaps and
+optional preferences remain distinct. A ready review never authorises sending,
+signing, declarations or submission.

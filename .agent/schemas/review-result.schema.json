@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ccvl.dev/schemas/review-result.schema.json",
+  "title": "ccvl independent review result, version 1",
+  "description": "Runtime additionally validates manifest identity, exact cited excerpts and locators, source/page/regression coverage, pinned rules, prior finding closure, freshness and declared budgets.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fresh_context": {
+          "const": true
+        }
+      },
+      "required": [
+        "agent_id",
+        "model",
+        "fresh_context"
+      ]
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifacts_read": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "unavailable": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "not_applicable": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence_pass": {
+          "type": "boolean"
+        },
+        "presentation_pass": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "artifacts_read",
+        "unavailable",
+        "not_applicable",
+        "evidence_pass",
+        "presentation_pass"
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "regression_checked": {
+      "type": "boolean"
+    },
+    "changed_artifacts_reviewed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "input_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Measured usage, or null when the external orchestration exposes no telemetry. Known overages are rejected; ccvl cannot monitor a provider."
+    },
+    "output_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Measured usage, or null when the external orchestration exposes no telemetry. Known overages are rejected; ccvl cannot monitor a provider."
+    }
+  },
+  "required": [
+    "schema_version",
+    "revision",
+    "manifest_sha256",
+    "reviewer",
+    "coverage",
+    "findings",
+    "regression_checked",
+    "changed_artifacts_reviewed",
+    "input_tokens",
+    "output_tokens"
+  ],
+  "$defs": {
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "excerpt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "artifact",
+        "sha256",
+        "locator",
+        "excerpt"
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "error",
+            "uncertainty",
+            "preference"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "support",
+            "attribution-scope",
+            "consistency",
+            "relevance",
+            "language",
+            "presentation"
+          ]
+        },
+        "material": {
+          "type": "boolean"
+        },
+        "explicit_requirement": {
+          "type": "boolean",
+          "default": false
+        },
+        "materiality_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rule": {
+          "$ref": "#/$defs/citation"
+        },
+        "location": {
+          "$ref": "#/$defs/citation"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          },
+          "minItems": 1
+        },
+        "correction_constraint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "open",
+            "fixed-and-verified",
+            "disputed-with-evidence",
+            "optional-suggestion-declined"
+          ]
+        },
+        "verification": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "category",
+        "material",
+        "materiality_reason",
+        "confidence",
+        "rule",
+        "location",
+        "evidence",
+        "correction_constraint",
+        "resolution",
+        "verification"
+      ]
+    }
+  }
+}

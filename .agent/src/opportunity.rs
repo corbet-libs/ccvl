@@ -21,7 +21,7 @@ pub fn record_path(
     let record = workspace.path(format!(
         "opportunities/{organisation}/{position}/application.toml"
     ));
-    if require_exists && !record.is_file() {
+    if require_exists && !workspace.input_is_file(&record) {
         bail!(
             "opportunity record does not exist: opportunities/{organisation}/{position}/application.toml"
         );

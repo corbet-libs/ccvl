@@ -7,5 +7,6 @@
   substyle-path: sys.inputs.at("substyle", default: "/cvl/cv/test-style-2/cards/substyle.toml"),
   defaults-path: sys.inputs.at("shared-defaults", default: "/cvl/shared/test-style-2/defaults.toml"),
   layout-path: sys.inputs.at("layout", default: "/cvl/cv/test-style-2/cards/en/us/layout.toml"),
+  paper-input: sys.inputs.at("paper", default: ""),
   pages: int(sys.inputs.at("pages", default: "2")),
 )

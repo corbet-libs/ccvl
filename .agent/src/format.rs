@@ -13,6 +13,9 @@ pub fn format_typst(workspace: &Workspace, check: bool) -> Result<()> {
             if !entry.file_type().is_file()
                 || entry
                     .path()
+                    .starts_with(workspace.path(".agent/typst/letter"))
+                || entry
+                    .path()
                     .extension()
                     .is_none_or(|extension| extension != "typ")
             {

@@ -11,3 +11,14 @@ default_substyle = "left-rule"
 substyles = ["left-rule", "frame"]
 default_pages = 1
 defaults = "../../shared/harvard/defaults.toml"
+
+[paper.defaults]
+de-ch = "a4"
+en-ch = "a4"
+
+[paper.sizes.a4]
+size_pt = [595.2756, 841.8898]
+label = "A4"
+
+[paper.sizes.a4.settings.page]
+paper = "a4"

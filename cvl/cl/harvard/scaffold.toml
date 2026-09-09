@@ -1,4 +1,10 @@
 # Empty Harvard letter fields for a new opportunity.
+# The optional AIDA writing recipe is independent of visual style.
+# Harvard maps it onto six paragraphs: attention; interest; interest;
+# desire; desire; action. Stage labels are drafting metadata, never output.
+# Preserve 3|5|5|5|5|3 body lines (26), plus five one-line highlights
+# rendered between paragraphs 3 and 4. Each claim needs actual evidence.
+# Other styles own their own structure; the neutral scaffold stays neutral.
 highlights = [
   "",
   "",
