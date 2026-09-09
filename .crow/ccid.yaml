@@ -8,6 +8,7 @@ variables:
   CI_TOOL_ARCHIVE: {default: ""}
   CI_TOOL_SHA256: {default: ""}
   CHECKS: {default: rust}
+  RUST_TOOLCHAIN: {default: "1.94.0"}
   CI_JOBS: {default: ""}
   CI_TEST_THREADS: {default: ""}
   CI_MEMORY_MB: {default: ""}
