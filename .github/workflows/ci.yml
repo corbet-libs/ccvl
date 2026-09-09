@@ -85,7 +85,9 @@ jobs:
 
       - name: Check workflows and shell scripts
         run: |
-          actionlint -shellcheck shellcheck
+          # The legacy private workflows intentionally remain disabled.
+          actionlint -ignore '^constant expression "false" in condition\. remove the if: section$' \
+            -shellcheck shellcheck .github/workflows/*.yml
           shellcheck .agent/scripts/*.sh .agent/tests/*.sh ccvl
 
       - name: Verify bootstrap and existing compiler selection
