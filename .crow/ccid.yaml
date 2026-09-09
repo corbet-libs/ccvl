@@ -1,4 +1,5 @@
-# Replace 99f65658262db4c2321233ad01e7e1a5f52a406c with one verified ccid commit before committing this adapter.
+# SPDX-FileCopyrightText: 2026 Julian Y. Richard Corbet
+# SPDX-License-Identifier: FSL-1.1-ALv2
 when:
   - event: manual
 skip_clone: true
@@ -8,7 +9,7 @@ variables:
   CI_TOOL_ARCHIVE: {default: ""}
   CI_TOOL_SHA256: {default: ""}
   CHECKS: {default: rust}
-  RUST_TOOLCHAIN: {default: "1.94.0"}
+  RUST_TOOLCHAIN: {default: ""}
   CI_JOBS: {default: ""}
   CI_TEST_THREADS: {default: ""}
   CI_MEMORY_MB: {default: ""}

@@ -40,7 +40,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     env:
-      RUST_TOOLCHAIN: 1.94.0
+      RUST_TOOLCHAIN: stable
       CARGO_INCREMENTAL: "0"
     steps:
       - name: Check out the exact source
@@ -48,11 +48,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install exact Rust toolchain
+      - name: Install current stable Rust
         shell: bash
         run: |
           rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          test "$(rustc "+$RUST_TOOLCHAIN" --version | awk '{print $2}')" = "$RUST_TOOLCHAIN"
+          rustup run "$RUST_TOOLCHAIN" rustc --version
 
       - name: Reuse compiled dependencies
         uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c
@@ -79,6 +79,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
+          & .\.agent\tests\test_bootstrap.ps1
           & .\.agent\tests\test_runtime.ps1 -Binary "$PWD\target\release\ccvl.exe"
 
       - name: Package that exact binary with its workspace

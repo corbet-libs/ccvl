@@ -1,10 +1,18 @@
 # Selecting CI checks
 
+GitHub Actions is preferred when available for public source checks. Pushes to
+`main` and pull requests run Rust and lint checks automatically. Six-platform
+release preparation and publication remain an explicit manual dispatch. Crow
+provides manually selected fallback checks when Actions is unavailable; do not
+run both providers for the same validation without a missing result or changed
+input. Private downstream data and credential-bearing jobs stay on trusted
+internal workers.
+
 On a provisioned build worker, use `bash .agent/scripts/ci-check.sh <check>...`:
 
 | Check | Coverage |
 |---|---|
-| `rust` (default) | Exact Rust 1.94.0 formatting, locked unit/document tests and Clippy |
+| `rust` (default) | Stable Rust formatting, locked unit/document tests and Clippy |
 | `lint` | Actionlint, ShellCheck, and REUSE with preinstalled tools |
 | `documents` | Locked Linux release build and independent PDF/text/layout verification |
 
@@ -13,11 +21,16 @@ and test-thread budget through the shared `ccid` adapter. A direct invocation
 without those environment settings retains conservative script defaults.
 Run only checks whose inputs changed or whose results are
 missing. Private downstream data must remain on trusted internal workers.
-Both rustup-managed and directly provisioned exact Rust versions are supported.
-An explicitly selected `RUST_TOOLCHAIN` override permits supplementary checks
-with another installed version; the compiler identity is printed and those
-results do not replace the pinned 1.94.0 release gate. No implicit fallback or
-toolchain installation occurs.
+GitHub-hosted jobs install the current stable channel and report the actual
+compiler version. Crow reuses suitable preinstalled Rust, preferring an installed
+stable channel and otherwise the provisioned rustup default or standalone
+compiler. `Cargo.toml` declares the minimum supported version, not an exact
+compiler requirement. `RUST_TOOLCHAIN` can explicitly select another installed
+stable compiler; a missing selection fails visibly. No worker toolchain
+installation occurs. Lint checks likewise reuse existing tools, including
+installed Nix store packages omitted from the worker's PATH. The lightweight
+bootstrap and CI-selector behavior tests run with lint; Windows bootstrap
+selection is also tested in the native release matrix.
 
 The manual Crow `ccid` workflow accepts `CHECKS=rust`, `lint`, or `documents`.
 Its `.ci/ccid.toml` selectors invoke the same commands. The operator submission
@@ -45,3 +58,13 @@ in `releases.md` remain required. A registry dependency that is not published
 still blocks a locked build; a provisional path-patched lock is not release
 evidence. Private sync and external model evaluation require their own trusted
 workflows and are not part of this validation pipeline.
+
+The manual Crow `downstream-sync` workflow stages a verified source archive and
+a Git bundle containing the same commit and its ancestry. It builds the public
+gate with existing Rust in a dedicated, locked cache, then merges into the
+private downstream and runs its boundary and document checks. Immediately before
+pushing it rechecks public `main`; changed or unavailable upstream metadata
+prevents publication. Existing private SSH credentials remain on the internal
+worker. The operator helper reads `.ci/archives.toml` to stage Git history only
+for this workflow. Lint includes isolated tests for stale upstream and failed
+document gates; those fixtures do not substitute for a real downstream run.

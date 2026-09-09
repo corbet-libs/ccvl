@@ -19,14 +19,14 @@ create_fake() {
   chmod 0755 "$directory/$name"
 }
 
-create_exact_rustup() {
+create_stable_rustup() {
   local directory="$1"
   mkdir -p "$directory"
   printf '%s\n' \
     '#!/bin/sh' \
     'case "$*" in' \
-    '  "run 1.94.0 rustc --version") printf "%s\n" "rustc 1.94.0 (test)" ;;' \
-    '  "run 1.94.0 cargo --version") printf "%s\n" "cargo 1.94.0 (test)" ;;' \
+    '  "run stable rustc --version") printf "%s\n" "rustc 1.94.0 (test)" ;;' \
+    '  "run stable cargo --version") printf "%s\n" "cargo 1.94.0 (test)" ;;' \
     '  *) exit 1 ;;' \
     'esac' > "$directory/rustup"
   chmod 0755 "$directory/rustup"
@@ -64,6 +64,22 @@ complete_output="$(
 [[ "$complete_output" == *'missing bootstrap commands: none'* ]]
 [[ "$complete_output" == *'No ccvl build changes required.'* ]]
 
+# A newer standalone stable compiler is reused; an old/prerelease compiler is not.
+for rust_version in 1.97.0 1.100.0 1.93.9 1.94.0-nightly invalid; do
+  create_fake "$complete_bin" rustc "rustc $rust_version (test)"
+  version_output="$(
+    CCVL_BOOTSTRAP_PROBE_PATH="$complete_bin" \
+    CCVL_BOOTSTRAP_CACHE_ROOT="$scratch/version-$rust_version" \
+    CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
+    CCVL_BOOTSTRAP_TEST_MANAGER=apt \
+      bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
+  )"
+  case "$rust_version" in
+    1.97.0 | 1.100.0) [[ "$version_output" == *"Rust toolchain: system $rust_version"* ]] ;;
+    *) [[ "$version_output" == *'Rust toolchain: install stable '* ]] ;;
+  esac
+done
+
 empty_cache="$scratch/empty-cache"
 empty_output="$(
   CCVL_BOOTSTRAP_PROBE_PATH="$empty_bin" \
@@ -72,7 +88,7 @@ empty_output="$(
   CCVL_BOOTSTRAP_TEST_MANAGER=apt \
     bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
-[[ "$empty_output" == *'Rust toolchain: install 1.94.0 with pinned rustup-init 1.29.1'* ]]
+[[ "$empty_output" == *'Rust toolchain: install stable with pinned rustup-init 1.29.1'* ]]
 [[ "$empty_output" == *'ccvl binary: install'* ]]
 [[ "$empty_output" == *'missing bootstrap commands: checksum compiler downloader'* ]]
 [[ "$empty_output" == *'host packages: coreutils build-essential curl'* ]]
@@ -101,12 +117,12 @@ partial_output="$(
     bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
 [[ "$partial_output" == *'platform: Linux-aarch64'* ]]
-[[ "$partial_output" == *'Rust toolchain: install 1.94.0 with pinned rustup-init 1.29.1'* ]]
+[[ "$partial_output" == *'Rust toolchain: install stable with pinned rustup-init 1.29.1'* ]]
 [[ "$partial_output" == *'ccvl binary: install'* ]]
 [[ "$partial_output" == *'missing bootstrap commands: none'* ]]
 
 managed_cache="$scratch/managed-cache"
-create_fake "$managed_cache/cargo/bin" rustup 'rustc 1.94.0 (test)'
+create_stable_rustup "$managed_cache/cargo/bin"
 mark_binary_ready "$managed_cache"
 managed_output="$(
   CCVL_BOOTSTRAP_FORCE_LOCAL=1 \
@@ -133,7 +149,7 @@ system_rustup_bin="$scratch/system-rustup-bin"
 for command_name in curl sha256sum cc; do
   create_fake "$system_rustup_bin" "$command_name"
 done
-create_exact_rustup "$system_rustup_bin"
+create_stable_rustup "$system_rustup_bin"
 system_rustup_cache="$scratch/system-rustup-cache"
 mark_binary_ready "$system_rustup_cache"
 system_rustup_output="$(
@@ -146,6 +162,24 @@ system_rustup_output="$(
 [[ "$system_rustup_output" == *'Rust toolchain: system 1.94.0'* ]]
 [[ "$system_rustup_output" == *'ccvl binary: ready'* ]]
 
+# A versioned provisioned default works even without a stable alias.
+cat > "$system_rustup_bin/rustup" <<'EOF'
+#!/bin/sh
+case "$*" in
+  'toolchain list') printf '%s\n' '1.97.0-test-host (default)' ;;
+  'run 1.97.0-test-host rustc --version') printf '%s\n' 'rustc 1.97.0 (test)' ;;
+  'run 1.97.0-test-host cargo --version') printf '%s\n' 'cargo 1.97.0 (test)' ;;
+  *) exit 1 ;;
+esac
+EOF
+versioned_rustup_output="$(
+  CCVL_BOOTSTRAP_PROBE_PATH="$system_rustup_bin" \
+  CCVL_BOOTSTRAP_CACHE_ROOT="$scratch/versioned-system-cache" \
+  CCVL_BOOTSTRAP_TEST_PLATFORM=Linux-x86_64 \
+    bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
+)"
+[[ "$versioned_rustup_output" == *'Rust toolchain: system 1.97.0'* ]]
+
 mac_empty_bin="$scratch/mac-empty-bin"
 mkdir -p "$mac_empty_bin"
 create_fake "$mac_empty_bin" shasum
@@ -156,7 +190,7 @@ mac_empty_output="$(
   CCVL_BOOTSTRAP_TEST_PLATFORM=Darwin-aarch64 \
     bash "$repo_root/.agent/scripts/bootstrap.sh" plan --from-source
 )"
-[[ "$mac_empty_output" == *'Rust toolchain: install 1.94.0 with Homebrew rustup'* ]]
+[[ "$mac_empty_output" == *'Rust toolchain: install stable with Homebrew rustup'* ]]
 [[ "$mac_empty_output" == *'missing bootstrap commands: homebrew rustup'* ]]
 [[ "$mac_empty_output" == *'host packages: Homebrew rustup'* ]]
 [[ "$mac_empty_output" == *'Homebrew install action:'* ]]
@@ -178,7 +212,7 @@ mac_partial_output="$(
 [[ "$mac_partial_output" == *'host packages: rustup'* ]]
 [[ "$mac_partial_output" != *'Homebrew install action:'* ]]
 
-create_fake "$mac_prefix/bin" rustup 'rustc 1.94.0 (test)'
+create_stable_rustup "$mac_prefix/bin"
 mac_complete_cache="$scratch/mac-complete-cache"
 mark_binary_ready "$mac_complete_cache"
 mac_complete_output="$(

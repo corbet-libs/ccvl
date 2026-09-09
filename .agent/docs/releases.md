@@ -51,7 +51,11 @@ are runtime inputs rather than compiled code and do not force recompilation.
 Setup verifies both the download checksum and embedded source identity before
 installing it. It never labels an arbitrary downloaded binary as current and
 never silently falls back to compilation. Developers use `setup --from-source`
-to request a local build with the pinned toolchain.
+to request a local build with a suitable installed stable compiler, or a
+repository-local stable toolchain when none meets the `Cargo.toml` minimum.
+Release CI installs current stable and records its resolved compiler version.
+The channel file remains part of the runtime source identity; download hashes,
+source fingerprints, and all six native gates remain mandatory.
 
 ## Reusing work
 

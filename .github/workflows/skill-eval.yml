@@ -16,7 +16,7 @@ jobs:
   evaluate:
     name: Small-model behavioural evaluation
     if: false # Hosted access to provider credentials is disabled.
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, linux]
     timeout-minutes: 60
     steps:
       - name: Check out source
@@ -24,27 +24,22 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install exact Rust toolchain
-        env:
-          RUST_TOOLCHAIN: 1.94.0
-        run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          test "$(rustc "+$RUST_TOOLCHAIN" --version | awk '{print $2}')" = "$RUST_TOOLCHAIN"
-
       - name: Validate evaluator and skill contracts
-        env:
-          RUST_TOOLCHAIN: 1.94.0
-        run: cargo "+$RUST_TOOLCHAIN" test --locked --all-features
+        run: |
+          source .agent/scripts/rust-toolchain.sh
+          ccvl_select_rust_toolchain
+          "${CCVL_CARGO_COMMAND[@]}" test --locked --all-features
 
       - name: Evaluate every skill with a small free model
         id: evaluation
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: openai/gpt-oss-20b
-          RUST_TOOLCHAIN: 1.94.0
         run: |
+          source .agent/scripts/rust-toolchain.sh
+          ccvl_select_rust_toolchain
           set +e
-          cargo "+$RUST_TOOLCHAIN" run --quiet --locked -- skill-eval \
+          "${CCVL_CARGO_COMMAND[@]}" run --quiet --locked -- skill-eval \
             --cases .agent/tests/skill-cases.json \
             --skills-root .agent/skills \
             --output .agent/cache/ai-skill-eval/report.json \

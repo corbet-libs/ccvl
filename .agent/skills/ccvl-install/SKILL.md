@@ -1,6 +1,6 @@
 ---
 name: ccvl-install
-description: Prepare or repair the native ccvl binary and locked Rust toolchain required to build and verify documents.
+description: Prepare or repair the native ccvl binary and stable Rust toolchain required to build and verify documents.
 ---
 
 # Install ccvl tooling
@@ -13,7 +13,7 @@ rendering the checked-in general CVL.
 1. Detect the host. Run `bash ./ccvl bootstrap` on Linux/macOS or
    `.\ccvl.cmd bootstrap` on native Windows. Do not improvise a parallel
    installer, require Git knowledge, or route Windows users through WSL.
-2. If it reports that the prebuilt binary or the exact Rust toolchain plus
+2. If it reports that the prebuilt binary or a suitable stable Rust toolchain plus
    repository-local binary are ready, run the matching platform `check`
    command and stop changing the environment.
 3. If the user explicitly requested setup or installation, run the matching
@@ -25,9 +25,9 @@ rendering the checked-in general CVL.
 4. If the harness cannot support the platform, report its exact boundary and
    use `.agent/docs/tooling.md`; do not guess package names.
 5. Do not replace an existing package strategy or working global toolchain. The
-   repository-local `ccvl` binary is built from `Cargo.lock` with Rust
-   1.94.0; when that exact toolchain is not already available, the managed
-   toolchain belongs in the repository-local cache.
+   repository-local `ccvl` binary is built from `Cargo.lock` with stable Rust
+   meeting the `Cargo.toml` minimum. Reuse a suitable installed compiler; when
+   none is available, the stable toolchain belongs in the repository-local cache.
 6. Never widen filesystem permissions, enable package lifecycle scripts, add a
    hidden hook, or weaken `.gitignore` to make setup pass.
 7. Confirm that the bundled Archivo files are real fonts and that the embedded
@@ -39,7 +39,7 @@ Use the repository commands for rendering. The native binary embeds the Typst
 external document runtime nor discovers system fonts.
 
 The required tools and their roles are listed in `.agent/docs/tooling.md`.
-The pinned Rust toolchain, `Cargo.lock`, and checksum-pinned bootstrap are
+The stable Rust channel, `Cargo.toml` minimum, `Cargo.lock`, and checksum-pinned bootstrap are
 authoritative for all six supported OS/architecture pairs. Prefer the
 non-privileged, repository-local bootstrap; use a native package manager only
 for a missing bootstrap command or compiler prerequisite it cannot provide. Do

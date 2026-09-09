@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Julian Y. Richard Corbet
+# SPDX-License-Identifier: FSL-1.1-ALv2
+schema = 1
+
+[archives.upstream]
+kind = "git-bundle"
+revision = "source"
+archive_variable = "UPSTREAM_SOURCE_BUNDLE"
+digest_variable = "UPSTREAM_SOURCE_SHA256"
+workflows = ["downstream-sync"]

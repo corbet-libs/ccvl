@@ -8,10 +8,14 @@ cargo_home="$cache_root/cargo"
 rustup_home="$cache_root/rustup"
 target_dir="$cache_root/target"
 binary="$local_bin/ccvl"
-rust_version="$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$repo_root/rust-toolchain.toml")"
+rust_channel="$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$repo_root/rust-toolchain.toml")"
 
 # shellcheck source=.agent/scripts/tool-versions.sh
 source "$repo_root/.agent/scripts/tool-versions.sh"
+# shellcheck source=.agent/scripts/rust-toolchain.sh
+source "$repo_root/.agent/scripts/rust-toolchain.sh"
+rust_minimum="$(ccvl_rust_minimum "$repo_root")"
+[[ -n "$rust_minimum" ]] || { echo 'Cargo.toml does not declare rust-version.' >&2; exit 2; }
 
 usage() {
   cat <<'EOF'
@@ -39,7 +43,7 @@ case "$mode" in
     ;;
 esac
 
-[[ -n "$rust_version" ]] || {
+[[ -n "$rust_channel" ]] || {
   printf 'rust-toolchain.toml does not declare a Rust channel.\n' >&2
   exit 2
 }
@@ -71,7 +75,7 @@ esac
 
 version_matches() {
   local output="$1"
-  [[ "$output" == "rustc $rust_version" || "$output" == "rustc $rust_version "* ]]
+  ccvl_rust_version_supported "$output" "$rust_minimum"
 }
 
 find_brew() {
@@ -108,17 +112,14 @@ managed_rust_matches() {
     rustup="$cargo_home/bin/rustup"
     [[ -x "$rustup" ]] || return 1
   fi
-  output="$({
-    cd "${TMPDIR:-/tmp}"
-    CARGO_HOME="$cargo_home" RUSTUP_HOME="$rustup_home" \
-      "$rustup" run "$rust_version" rustc --version
-  } 2>/dev/null)" || return 1
-  version_matches "$output" || return 1
-  {
-    cd "${TMPDIR:-/tmp}"
-    CARGO_HOME="$cargo_home" RUSTUP_HOME="$rustup_home" \
-      "$rustup" run "$rust_version" cargo --version >/dev/null 2>&1
-  }
+  managed_toolchain="$(
+    export CARGO_HOME="$cargo_home" RUSTUP_HOME="$rustup_home"
+    ccvl_existing_rustup_toolchain "$rustup" "$rust_minimum"
+  )" || return 1
+  output="$(CARGO_HOME="$cargo_home" RUSTUP_HOME="$rustup_home" \
+    "$rustup" run "$managed_toolchain" rustc --version)" || return 1
+  managed_rust_version="${output#rustc }"
+  managed_rust_version="${managed_rust_version%% *}"
 }
 
 system_kind=none
@@ -127,16 +128,13 @@ system_rustup=
 if [[ "${CCVL_BOOTSTRAP_FORCE_LOCAL:-0}" != 1 ]]; then
   candidate_rustup="$(probe rustup)" || candidate_rustup=
   if [[ -n "$candidate_rustup" ]]; then
-    candidate_output="$({
-      cd "${TMPDIR:-/tmp}"
-      "$candidate_rustup" run "$rust_version" rustc --version
-    } 2>/dev/null)" || candidate_output=
-    if version_matches "$candidate_output" && {
-      cd "${TMPDIR:-/tmp}"
-      "$candidate_rustup" run "$rust_version" cargo --version >/dev/null 2>&1
-    }; then
+    system_toolchain="$(ccvl_existing_rustup_toolchain "$candidate_rustup" "$rust_minimum")" || system_toolchain=
+    if [[ -n "$system_toolchain" ]]; then
+      candidate_output="$("$candidate_rustup" run "$system_toolchain" rustc --version)"
       system_kind=rustup
       system_rustup="$candidate_rustup"
+      system_rust_version="${candidate_output#rustc }"
+      system_rust_version="${system_rust_version%% *}"
     fi
   fi
   if [[ "$system_kind" == none && -z "$candidate_rustup" ]]; then
@@ -151,6 +149,8 @@ if [[ "${CCVL_BOOTSTRAP_FORCE_LOCAL:-0}" != 1 ]]; then
       if version_matches "$candidate_output"; then
         system_kind=standalone
         system_cargo="$candidate_cargo"
+        system_rust_version="${candidate_output#rustc }"
+        system_rust_version="${system_rust_version%% *}"
       fi
     fi
   fi
@@ -268,14 +268,14 @@ if [[ "$from_source" != 1 ]]; then
   printf '  Rust toolchain: not required (precompiled runtime)\n'
 else
 case "$toolchain_state" in
-  managed) printf '  Rust toolchain: managed %s\n' "$rust_version" ;;
-  system) printf '  Rust toolchain: system %s\n' "$rust_version" ;;
+  managed) printf '  Rust toolchain: managed %s\n' "$managed_rust_version" ;;
+  system) printf '  Rust toolchain: system %s\n' "$system_rust_version" ;;
   install)
     if [[ "$platform" == Darwin-* ]]; then
-      printf '  Rust toolchain: install %s with Homebrew rustup\n' "$rust_version"
+      printf '  Rust toolchain: install %s with Homebrew rustup\n' "$rust_channel"
     else
       printf '  Rust toolchain: install %s with pinned rustup-init %s\n' \
-        "$rust_version" "$CCVL_RUSTUP_VERSION"
+        "$rust_channel" "$CCVL_RUSTUP_VERSION"
     fi
     ;;
 esac
@@ -433,17 +433,17 @@ if [[ "$binary_state" == install && "$toolchain_state" == install && "$fetched_b
       exit 2
     }
     CARGO_HOME="$cargo_home" RUSTUP_HOME="$rustup_home" \
-      "$rustup" toolchain install "$rust_version" --profile minimal
+      "$rustup" toolchain install "$rust_channel" --profile minimal
   else
     rustup_init="$bootstrap_tmp/$CCVL_RUSTUP_ASSET"
     fetch "$CCVL_RUSTUP_URL" "$rustup_init"
     verify_sha256 "$CCVL_RUSTUP_SHA256" "$rustup_init"
     chmod 0755 "$rustup_init"
     CARGO_HOME="$cargo_home" RUSTUP_HOME="$rustup_home" \
-      "$rustup_init" -y --no-modify-path --profile minimal --default-toolchain "$rust_version"
+      "$rustup_init" -y --no-modify-path --profile minimal --default-toolchain "$rust_channel"
   fi
   managed_rust_matches || {
-    printf 'Managed Rust %s is unavailable after installation.\n' "$rust_version" >&2
+    printf 'Managed Rust %s is unavailable after installation.\n' "$rust_channel" >&2
     exit 2
   }
   toolchain_state=managed
@@ -462,7 +462,7 @@ if [[ "$binary_state" == install && "$fetched_binary" == 0 ]]; then
       (
         cd "$bootstrap_tmp"
         CARGO_HOME="$cargo_home" RUSTUP_HOME="$rustup_home" CARGO_TARGET_DIR="$target_dir" \
-          "$rustup" run "$rust_version" cargo "${cargo_args[@]}"
+          "$rustup" run "$managed_toolchain" cargo "${cargo_args[@]}"
       )
       ;;
     system)
@@ -470,7 +470,7 @@ if [[ "$binary_state" == install && "$fetched_binary" == 0 ]]; then
         (
           cd "$bootstrap_tmp"
           CARGO_HOME="$cargo_home" CARGO_TARGET_DIR="$target_dir" \
-            "$system_rustup" run "$rust_version" cargo "${cargo_args[@]}"
+            "$system_rustup" run "$system_toolchain" cargo "${cargo_args[@]}"
         )
       else
         (
