@@ -8,8 +8,10 @@ On a provisioned build worker, use `bash .agent/scripts/ci-check.sh <check>...`:
 | `lint` | Actionlint, ShellCheck, and REUSE with preinstalled tools |
 | `documents` | Locked Linux release build and independent PDF/text/layout verification |
 
-The command uses existing tools and defaults to one Cargo job and two Rust
-test threads. Run only checks whose inputs changed or whose results are
+The command uses existing tools. Crow supplies a memory-bounded parallel job
+and test-thread budget through the shared `ccid` adapter. A direct invocation
+without those environment settings retains conservative script defaults.
+Run only checks whose inputs changed or whose results are
 missing. Private downstream data must remain on trusted internal workers.
 Both rustup-managed and directly provisioned exact Rust versions are supported.
 An explicitly selected `RUST_TOOLCHAIN` override permits supplementary checks
@@ -17,18 +19,20 @@ with another installed version; the compiler identity is printed and those
 results do not replace the pinned 1.94.0 release gate. No implicit fallback or
 toolchain installation occurs.
 
-The manual Crow `verify` workflow accepts `CHECKS=rust`, `lint`, or `documents`.
-Its required execution inputs are `SOURCE_ARCHIVE` and `SOURCE_SHA256`: stage
-a `git archive` of the exact committed revision on the worker, and dispatch
-that same revision. The pipeline verifies the archive hash and embedded Git
-commit against `CI_COMMIT_SHA` before extracting any source. Declared variables
-have empty defaults for Crow configuration compatibility; missing source
-inputs fail closed during execution.
-Crow uses `ci-targets/ccvl` under `CARGO_HOME` (or `$HOME/.cargo`) for compiled
-output; an optional `CARGO_TARGET_DIR` overrides that writable project cache.
-Crow serializes access with a one-minute lock wait, and bounds each selected
-check to 45 minutes with a 30-second forced-termination grace. An omitted
-cache variable uses the worker's Cargo home, which must persist for reuse.
+The manual Crow `ccid` workflow accepts `CHECKS=rust`, `lint`, or `documents`.
+Its `.ci/ccid.toml` selectors invoke the same commands. The operator submission
+helper stages the exact committed source archive, verifies locally available
+LFS and submodule inputs, and supplies the pinned shared tool archive and
+binary with their SHA-256 digests. Missing inputs fail closed. The adapter
+checks the source commit against `CI_COMMIT_SHA` before execution.
+
+Compiled targets live in persistent dedicated Cargo storage, namespaced by
+canonical repository identity. An explicit `CARGO_TARGET_DIR` is honored.
+The shared tool locks the actual target directory, retains unchanged source
+freshness, and cleans its owned source scratch. Worker package-cache settings
+remain authoritative. `CI_JOBS`, `CI_TEST_THREADS`, `CI_MEMORY_MB` and
+`CI_TIMEOUT` permit explicit bounded overrides; memory admission still applies.
+The superseded single-core `verify` workflow has been removed.
 
 The staged archive avoids a source clone from GitHub. The Crow forge integration
 may still need GitHub to retrieve workflow configuration; a submission failure

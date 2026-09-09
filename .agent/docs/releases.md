@@ -8,8 +8,11 @@ neither Git nor Rust is required.
 
 ## Required delivery path
 
-Every push to `main` runs the CI workflow. Its reusable Binaries job builds all
-six standard native runner targets: Linux x86_64/aarch64, macOS x86_64/arm64,
+Release preparation is an explicit manual dispatch of the CI workflow on `main`.
+Routine pushes and pull requests run the applicable source checks; they do not
+allocate the six-platform binary matrix or publish a release. The manually
+selected reusable Binaries job builds all six standard native runner targets:
+Linux x86_64/aarch64, macOS x86_64/arm64,
 and Windows x86_64/arm64. Every executable runs the public document checks and
 runtime identity tests. The same Linux executable feeds the independent PDF
 checks and the minimal-container archive test. Rust unit tests, Clippy, shell
