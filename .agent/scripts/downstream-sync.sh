@@ -26,7 +26,8 @@ cache_root="${CI_CACHE_ROOT:-${CARGO_HOME:-}}"
 export CARGO_TARGET_DIR="$cache_root/targets/ccvl-downstream"
 [[ "$CARGO_TARGET_DIR" = /* ]] || { echo 'Cargo target must be absolute.' >&2; exit 2; }
 mkdir -p "$CARGO_TARGET_DIR/.ccid"
-export CARGO_TARGET_DIR="$(cd "$CARGO_TARGET_DIR" && pwd -P)"
+CARGO_TARGET_DIR="$(cd "$CARGO_TARGET_DIR" && pwd -P)"
+export CARGO_TARGET_DIR
 command -v flock >/dev/null
 exec 9>"$CARGO_TARGET_DIR/.ccid/lock"
 flock --wait 60 9
