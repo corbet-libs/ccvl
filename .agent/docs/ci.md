@@ -8,7 +8,7 @@ On a provisioned build worker, use `bash .agent/scripts/ci-check.sh <check>...`:
 | `lint` | Actionlint, ShellCheck, and REUSE with preinstalled tools |
 | `documents` | Locked Linux release build and independent PDF/text/layout verification |
 
-The command uses existing tools and defaults to two Cargo jobs and two Rust
+The command uses existing tools and defaults to one Cargo job and two Rust
 test threads. Run only checks whose inputs changed or whose results are
 missing. Private downstream data must remain on trusted internal workers.
 Both rustup-managed and directly provisioned exact Rust versions are supported.
@@ -24,10 +24,11 @@ that same revision. The pipeline verifies the archive hash and embedded Git
 commit against `CI_COMMIT_SHA` before extracting any source. Declared variables
 have empty defaults for Crow configuration compatibility; missing source
 inputs fail closed during execution.
-An optional `CARGO_TARGET_DIR` selects an existing writable project cache.
+Crow uses `ci-targets/ccvl` under `CARGO_HOME` (or `$HOME/.cargo`) for compiled
+output; an optional `CARGO_TARGET_DIR` overrides that writable project cache.
 Crow serializes access with a one-minute lock wait, and bounds each selected
 check to 45 minutes with a 30-second forced-termination grace. An omitted
-cache variable keeps build output in the isolated workflow workspace.
+cache variable uses the worker's Cargo home, which must persist for reuse.
 
 The staged archive avoids a source clone from GitHub. The Crow forge integration
 may still need GitHub to retrieve workflow configuration; a submission failure
