@@ -20,7 +20,9 @@ concurrency:
 
 jobs:
   binaries:
-    if: github.repository == 'corbet-labs/ccvl'
+    # Compiled bundles and publication are explicit release actions; all six native gates remain required.
+    if: >-
+      ${{ (github.repository == 'corbet-labs/ccvl') && (github.event_name == 'workflow_dispatch') }}
     uses: ./.github/workflows/binaries.yml
 
   rust-native:
@@ -91,7 +93,9 @@ jobs:
 
   verify:
     name: Linux release and independent PDF verification
-    if: github.repository == 'corbet-labs/ccvl'
+    # Compiled bundles and publication are explicit release actions; all six native gates remain required.
+    if: >-
+      ${{ (github.repository == 'corbet-labs/ccvl') && (github.event_name == 'workflow_dispatch') }}
     needs: [binaries]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -138,7 +142,9 @@ jobs:
 
   archive:
     name: Run the precompiled bundle without Git or Rust
-    if: github.repository == 'corbet-labs/ccvl'
+    # Compiled bundles and publication are explicit release actions; all six native gates remain required.
+    if: >-
+      ${{ (github.repository == 'corbet-labs/ccvl') && (github.event_name == 'workflow_dispatch') }}
     needs: [binaries]
     runs-on: ubuntu-24.04
     container: ubuntu:24.04
@@ -167,7 +173,9 @@ jobs:
   release:
     name: Publish all six verified platforms
     needs: [binaries, rust-native, lint, verify, archive]
-    if: github.repository == 'corbet-labs/ccvl' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Compiled bundles and publication are explicit release actions; all six native gates remain required.
+    if: >-
+      ${{ (github.repository == 'corbet-labs/ccvl' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request') && (github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
