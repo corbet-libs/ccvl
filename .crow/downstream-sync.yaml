@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Julian Y. Richard Corbet
+# SPDX-License-Identifier: FSL-1.1-ALv2
 name: Verified private downstream sync
 
 clone:
