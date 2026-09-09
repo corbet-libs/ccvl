@@ -11,6 +11,11 @@ On a provisioned build worker, use `bash .agent/scripts/ci-check.sh <check>...`:
 The command uses existing tools and defaults to two Cargo jobs and two Rust
 test threads. Run only checks whose inputs changed or whose results are
 missing. Private downstream data must remain on trusted internal workers.
+Both rustup-managed and directly provisioned exact Rust versions are supported.
+An explicitly selected `RUST_TOOLCHAIN` override permits supplementary checks
+with another installed version; the compiler identity is printed and those
+results do not replace the pinned 1.94.0 release gate. No implicit fallback or
+toolchain installation occurs.
 
 The manual Crow `verify` workflow accepts `CHECKS=rust`, `lint`, or `documents`.
 Its required execution inputs are `SOURCE_ARCHIVE` and `SOURCE_SHA256`: stage

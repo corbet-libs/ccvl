@@ -8,17 +8,33 @@ export RUST_TEST_THREADS="${RUST_TEST_THREADS:-2}"
 export CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}"
 export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
 
+select_toolchain() {
+  if command -v rustup >/dev/null; then
+    # rustup run refuses a missing toolchain instead of installing one.
+    rustup run "$toolchain" rustc --version
+    cargo_command=(cargo "+$toolchain")
+  else
+    # Also support workers whose exact compiler is provisioned without rustup.
+    installed=$(rustc --version)
+    printf '%s\n' "$installed"
+    [[ $(awk '{print $2}' <<<"$installed") == "$toolchain" ]] || {
+      printf 'Required Rust %s is not installed; refusing an implicit toolchain change.\n' "$toolchain" >&2
+      exit 2
+    }
+    cargo_command=(cargo)
+  fi
+}
+
 if (($# == 0)); then
   set -- rust
 fi
 for check in "$@"; do
   case "$check" in
     rust)
-      # rustup run refuses a missing toolchain instead of installing one.
-      rustup run "$toolchain" rustc --version
-      cargo "+$toolchain" fmt --all -- --check
-      cargo "+$toolchain" test --locked --all-features
-      cargo "+$toolchain" clippy --locked --all-targets --all-features -- -D warnings
+      select_toolchain
+      "${cargo_command[@]}" fmt --all -- --check
+      "${cargo_command[@]}" test --locked --all-features
+      "${cargo_command[@]}" clippy --locked --all-targets --all-features -- -D warnings
       ;;
     lint)
       actionlint -shellcheck shellcheck
@@ -27,11 +43,11 @@ for check in "$@"; do
       ;;
     documents)
       [[ $(uname -s) == Linux ]] || { echo 'documents requires Linux' >&2; exit 2; }
-      rustup run "$toolchain" rustc --version
+      select_toolchain
       for command in file qpdf pdfinfo pdftotext pdffonts pdfdetach pdfimages pdftoppm jq; do
         command -v "$command" >/dev/null || { echo "Missing existing tool: $command" >&2; exit 2; }
       done
-      cargo "+$toolchain" build --locked --release
+      "${cargo_command[@]}" build --locked --release
       binary="${CARGO_TARGET_DIR:-target}/release/ccvl"
       mkdir -p .agent/cache/ccvl/bin
       cp "$binary" .agent/cache/ccvl/bin/ccvl
