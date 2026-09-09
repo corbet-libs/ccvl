@@ -24,7 +24,7 @@ for check in "$@"; do
       # shellcheck source=.agent/scripts/existing-tool-path.sh
       source .agent/scripts/existing-tool-path.sh
       ccvl_use_existing_lint_tools
-      actionlint -shellcheck shellcheck
+      actionlint -shellcheck shellcheck .github/workflows/*.yml
       shellcheck .agent/scripts/*.sh .agent/tests/*.sh ccvl
       reuse lint
       bash .agent/tests/test_bootstrap.sh
