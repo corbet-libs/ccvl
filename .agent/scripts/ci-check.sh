@@ -2,28 +2,12 @@
 # Provider-independent checks using an already provisioned build worker.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
-toolchain="${RUST_TOOLCHAIN:-1.94.0}"
+# shellcheck source=.agent/scripts/rust-toolchain.sh
+source .agent/scripts/rust-toolchain.sh
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
 export RUST_TEST_THREADS="${RUST_TEST_THREADS:-2}"
 export CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}"
 export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
-
-select_toolchain() {
-  if command -v rustup >/dev/null; then
-    # rustup run refuses a missing toolchain instead of installing one.
-    rustup run "$toolchain" rustc --version
-    cargo_command=(cargo "+$toolchain")
-  else
-    # Also support workers whose exact compiler is provisioned without rustup.
-    installed=$(rustc --version)
-    printf '%s\n' "$installed"
-    [[ $(awk '{print $2}' <<<"$installed") == "$toolchain" ]] || {
-      printf 'Required Rust %s is not installed; refusing an implicit toolchain change.\n' "$toolchain" >&2
-      exit 2
-    }
-    cargo_command=(cargo)
-  fi
-}
 
 if (($# == 0)); then
   set -- rust
@@ -31,23 +15,29 @@ fi
 for check in "$@"; do
   case "$check" in
     rust)
-      select_toolchain
-      "${cargo_command[@]}" fmt --all -- --check
-      "${cargo_command[@]}" test --locked --all-features
-      "${cargo_command[@]}" clippy --locked --all-targets --all-features -- -D warnings
+      ccvl_select_rust_toolchain
+      "${CCVL_CARGO_COMMAND[@]}" fmt --all -- --check
+      "${CCVL_CARGO_COMMAND[@]}" test --locked --all-features
+      "${CCVL_CARGO_COMMAND[@]}" clippy --locked --all-targets --all-features -- -D warnings
       ;;
     lint)
+      # shellcheck source=.agent/scripts/existing-tool-path.sh
+      source .agent/scripts/existing-tool-path.sh
+      ccvl_use_existing_lint_tools
       actionlint -shellcheck shellcheck
       shellcheck .agent/scripts/*.sh .agent/tests/*.sh ccvl
       reuse lint
+      bash .agent/tests/test_bootstrap.sh
+      bash .agent/tests/test_ci_toolchain.sh
+      bash .agent/tests/test_downstream_sync.sh
       ;;
     documents)
       [[ $(uname -s) == Linux ]] || { echo 'documents requires Linux' >&2; exit 2; }
-      select_toolchain
+      ccvl_select_rust_toolchain
       for command in file qpdf pdfinfo pdftotext pdffonts pdfdetach pdfimages pdftoppm jq; do
         command -v "$command" >/dev/null || { echo "Missing existing tool: $command" >&2; exit 2; }
       done
-      "${cargo_command[@]}" build --locked --release
+      "${CCVL_CARGO_COMMAND[@]}" build --locked --release
       binary="${CARGO_TARGET_DIR:-target}/release/ccvl"
       mkdir -p .agent/cache/ccvl/bin
       cp "$binary" .agent/cache/ccvl/bin/ccvl

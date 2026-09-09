@@ -69,7 +69,7 @@ pages or update its record. A successful refresh removes surplus numbered
 previews for that PDF when its page count shrinks. `test_previews.sh` exercises reuse, each source
 of invalidation, and recovery from a failure partway through a document.
 
-Every CI run builds optimized release binaries natively on Linux
+An explicit release dispatch builds optimized release binaries natively on Linux
 x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64/arm64. Each binary passes
 `public-check` and tests proving that both the launcher and direct executable
 reject a mismatched workspace. Windows also exercises the PowerShell download
@@ -101,16 +101,18 @@ requires the correct skill, every expected action, no forbidden action, and a
 valid response structure. It publishes all decisions, concise reasons, provider
 finish status, and token usage as a workflow artifact.
 
-The workflow runs only in `corbet-labs/ccvl`, on relevant pushes to `main` or a
-manual dispatch. It never runs with secrets on pull requests or in forks. A
-rate limit or provider outage is reported distinctly and fails the workflow;
-it is never presented as a semantic pass.
+The credential-bearing workflow is currently disabled and restricted to a
+trusted self-hosted runner. It never runs with secrets on hosted runners, pull
+requests, or forks. A rate limit or provider outage is reported distinctly and
+fails evaluation; it is never presented as a semantic pass.
 
 To run the same evaluation outside Actions, set `GROQ_API_KEY` without writing
 it to the repository, then run:
 
 ```sh
-cargo "+1.94.0" run --quiet --locked -- skill-eval
+source .agent/scripts/rust-toolchain.sh
+ccvl_select_rust_toolchain
+"${CCVL_CARGO_COMMAND[@]}" run --quiet --locked -- skill-eval
 ```
 
 The report is written to the ignored

@@ -63,7 +63,7 @@ bash ./ccvl check
 ```
 
 Developers who intentionally change compiler source can use `setup --from-source`
-to build with the pinned Rust toolchain. Normal users run the precompiled bundles.
+to build with stable Rust meeting the `Cargo.toml` minimum. Normal users run the precompiled bundles.
 
 All product commands are available through `bash ./ccvl help` or
 `.\ccvl.cmd help`.

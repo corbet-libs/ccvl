@@ -28,7 +28,15 @@ $ToolchainFile = Get-Content -Raw (Join-Path $RepoRoot "rust-toolchain.toml")
 if ($ToolchainFile -notmatch '(?m)^\s*channel\s*=\s*"([^"]+)"') {
     throw "rust-toolchain.toml does not declare a Rust channel"
 }
-$RustVersion = $Matches[1]
+$RustChannel = $Matches[1]
+$CargoManifest = Get-Content -Raw (Join-Path $RepoRoot "Cargo.toml")
+if ($CargoManifest -notmatch '(?m)^\s*rust-version\s*=\s*"([^"]+)"') {
+    throw "Cargo.toml does not declare rust-version"
+}
+$RustMinimum = [version]$Matches[1]
+if ($RustMinimum.Build -lt 0) {
+    $RustMinimum = [version]"$RustMinimum.0"
+}
 
 function Get-PlatformKey {
     $Architecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
@@ -48,19 +56,28 @@ function Get-CommandPath([string]$Name) {
 }
 
 function Test-RustVersion([string]$Output) {
-    return $Output -eq "rustc $RustVersion" -or $Output.StartsWith("rustc $RustVersion ")
+    return $Output -match '^rustc ([0-9]+\.[0-9]+\.[0-9]+)( |$)' -and
+        [version]$Matches[1] -ge $RustMinimum
 }
 
 function Invoke-OutsideRepository([string]$Executable, [string[]]$Arguments) {
+    $PreviousErrorActionPreference = $ErrorActionPreference
     Push-Location ([IO.Path]::GetTempPath())
     try {
+        # Windows PowerShell 5.1 treats redirected native stderr as ErrorRecords.
+        # A failed probe must return null so another installed tool can be tried.
+        $ErrorActionPreference = "Continue"
         $Output = (& $Executable @Arguments 2>&1 | Out-String).Trim()
         if ($LASTEXITCODE -ne 0) {
             return $null
         }
         return $Output
     }
+    catch {
+        return $null
+    }
     finally {
+        $ErrorActionPreference = $PreviousErrorActionPreference
         Pop-Location
     }
 }
@@ -83,12 +100,37 @@ function Invoke-ManagedRustup([string[]]$Arguments) {
     }
 }
 
-function Test-ManagedRust {
-    $Rustc = Invoke-ManagedRustup @("run", $RustVersion, "rustc", "--version")
-    if ($null -eq $Rustc -or -not (Test-RustVersion $Rustc)) {
-        return $false
+function Find-ExistingRustupToolchain([string]$Rustup, [switch]$Managed) {
+    $Candidates = @("stable")
+    $ListArguments = @("toolchain", "list")
+    $Installed = if ($Managed) { Invoke-ManagedRustup $ListArguments }
+        else { Invoke-OutsideRepository $Rustup $ListArguments }
+    if ($null -ne $Installed) {
+        foreach ($Toolchain in ($Installed -split '\r?\n')) {
+            if ($Toolchain -match '\([^)]*\bdefault\b[^)]*\)') {
+                $Candidates += ($Toolchain -split ' ')[0]
+            }
+        }
     }
-    return $null -ne (Invoke-ManagedRustup @("run", $RustVersion, "cargo", "--version"))
+    foreach ($Candidate in $Candidates) {
+        $RustcArguments = @("run", $Candidate, "rustc", "--version")
+        $CargoArguments = @("run", $Candidate, "cargo", "--version")
+        $Rustc = if ($Managed) { Invoke-ManagedRustup $RustcArguments }
+            else { Invoke-OutsideRepository $Rustup $RustcArguments }
+        if ($null -eq $Rustc -or -not (Test-RustVersion $Rustc)) { continue }
+        $Cargo = if ($Managed) { Invoke-ManagedRustup $CargoArguments }
+            else { Invoke-OutsideRepository $Rustup $CargoArguments }
+        if ($null -ne $Cargo) { return $Candidate }
+    }
+    return $null
+}
+
+function Test-ManagedRust {
+    $script:ManagedToolchain = Find-ExistingRustupToolchain "" -Managed
+    if ($null -eq $ManagedToolchain) { return $false }
+    $Rustc = Invoke-ManagedRustup @("run", $ManagedToolchain, "rustc", "--version")
+    $script:ManagedRustVersion = ($Rustc -split ' ')[1]
+    return $true
 }
 
 . (Join-Path $PSScriptRoot "runtime-id.ps1")
@@ -122,12 +164,12 @@ $SystemRustup = $null
 if ($env:CCVL_BOOTSTRAP_FORCE_LOCAL -ne "1") {
     $CandidateRustup = Get-CommandPath "rustup"
     if ($null -ne $CandidateRustup) {
-        $CandidateRustc = Invoke-OutsideRepository $CandidateRustup @("run", $RustVersion, "rustc", "--version")
-        $CandidateCargo = Invoke-OutsideRepository $CandidateRustup @("run", $RustVersion, "cargo", "--version")
-        if ($null -ne $CandidateRustc -and (Test-RustVersion $CandidateRustc) -and
-            $null -ne $CandidateCargo) {
+        $SystemToolchain = Find-ExistingRustupToolchain $CandidateRustup
+        if ($null -ne $SystemToolchain) {
+            $CandidateRustc = Invoke-OutsideRepository $CandidateRustup @("run", $SystemToolchain, "rustc", "--version")
             $SystemKind = "rustup"
             $SystemRustup = $CandidateRustup
+            $SystemRustVersion = ($CandidateRustc -split ' ')[1]
         }
     }
     if ($SystemKind -eq "none" -and $null -eq $CandidateRustup) {
@@ -138,6 +180,7 @@ if ($env:CCVL_BOOTSTRAP_FORCE_LOCAL -ne "1") {
             if ($null -ne $CandidateRustc -and (Test-RustVersion $CandidateRustc)) {
                 $SystemKind = "standalone"
                 $SystemCargo = $CandidateCargoPath
+                $SystemRustVersion = ($CandidateRustc -split ' ')[1]
             }
         }
     }
@@ -158,10 +201,10 @@ if (-not $FromSource) {
 }
 else {
 switch ($ToolchainState) {
-    "managed" { Write-Output "  Rust toolchain: managed $RustVersion" }
-    "system" { Write-Output "  Rust toolchain: system $RustVersion" }
+    "managed" { Write-Output "  Rust toolchain: managed $ManagedRustVersion" }
+    "system" { Write-Output "  Rust toolchain: system $SystemRustVersion" }
     default {
-        Write-Output "  Rust toolchain: install $RustVersion with pinned rustup-init $($Asset.version)"
+        Write-Output "  Rust toolchain: install $RustChannel with pinned rustup-init $($Asset.version)"
     }
 }
 }
@@ -224,7 +267,7 @@ try {
         try {
             $env:CARGO_HOME = $CargoHome
             $env:RUSTUP_HOME = $RustupHome
-            & $Download -y --no-modify-path --profile minimal --default-toolchain $RustVersion
+            & $Download -y --no-modify-path --profile minimal --default-toolchain $RustChannel
             if ($LASTEXITCODE -ne 0) {
                 throw "rustup-init failed with exit code $LASTEXITCODE"
             }
@@ -234,7 +277,7 @@ try {
             $env:RUSTUP_HOME = $OldRustupHome
         }
         if (-not (Test-ManagedRust)) {
-            throw "Managed Rust $RustVersion is unavailable after installation"
+            throw "Managed Rust $RustChannel is unavailable after installation"
         }
         $ToolchainState = "managed"
     }
@@ -256,11 +299,11 @@ try {
                     "managed" {
                         $env:RUSTUP_HOME = $RustupHome
                         $Rustup = Join-Path $CargoHome "bin\rustup.exe"
-                        & $Rustup run $RustVersion cargo @CargoArguments
+                        & $Rustup run $ManagedToolchain cargo @CargoArguments
                     }
                     "system" {
                         if ($SystemKind -eq "rustup") {
-                            & $SystemRustup run $RustVersion cargo @CargoArguments
+                            & $SystemRustup run $SystemToolchain cargo @CargoArguments
                         }
                         else {
                             & $SystemCargo @CargoArguments

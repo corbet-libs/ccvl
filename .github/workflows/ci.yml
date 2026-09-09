@@ -11,7 +11,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_TOOLCHAIN: 1.94.0
+  RUST_TOOLCHAIN: stable
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -39,12 +39,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install exact Rust toolchain
+      - name: Install current stable Rust
         run: |
           rustup toolchain install "$RUST_TOOLCHAIN" \
             --profile minimal \
             --component clippy,rustfmt
-          test "$(rustc "+$RUST_TOOLCHAIN" --version | awk '{print $2}')" = "$RUST_TOOLCHAIN"
+          rustup run "$RUST_TOOLCHAIN" rustc --version
 
       - name: Reuse compiled test dependencies
         uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c
@@ -87,6 +87,12 @@ jobs:
         run: |
           actionlint -shellcheck shellcheck
           shellcheck .agent/scripts/*.sh .agent/tests/*.sh ccvl
+
+      - name: Verify bootstrap and existing compiler selection
+        run: |
+          bash .agent/tests/test_bootstrap.sh
+          bash .agent/tests/test_ci_toolchain.sh
+          bash .agent/tests/test_downstream_sync.sh
 
       - name: Check REUSE licensing
         uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0

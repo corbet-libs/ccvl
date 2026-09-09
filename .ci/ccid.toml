@@ -1,7 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Julian Y. Richard Corbet
+# SPDX-License-Identifier: FSL-1.1-ALv2
 schema = 1
 project = "ccvl"
 
-# Exact declared Rust toolchain and locked published dependencies are required. Native six-platform publication remains separate.
+# Reuse suitable provisioned Rust and locked published dependencies. Native six-platform publication remains separate.
 
 [checks.rust]
 kind = "commands"

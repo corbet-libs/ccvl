@@ -72,7 +72,7 @@
     {
       "id": "install-complete-expert",
       "skill": "ccvl-install",
-      "scenario": "An experienced user already has the exact Rust toolchain and repository-local binary and asks whether ccvl is ready. The bootstrap plan reports no missing or mismatched components.",
+      "scenario": "An experienced user already has a suitable stable Rust toolchain and repository-local binary and asks whether ccvl is ready. The bootstrap plan reports no missing or mismatched components.",
       "options": [
         {
           "id": "accept-idempotent-noop",

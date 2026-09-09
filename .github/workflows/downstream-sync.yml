@@ -30,10 +30,9 @@ jobs:
     name: Merge verified ccvl upstream
     # Private downstream source must remain on trusted internal workers.
     if: false
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, linux]
     timeout-minutes: 30
     env:
-      RUST_TOOLCHAIN: 1.94.0
       UPSTREAM_URL: ${{ inputs.upstream-url }}
       UPSTREAM_BRANCH: ${{ inputs.upstream-branch }}
       POLICY: ${{ inputs.policy }}
@@ -42,11 +41,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
         with:
           fetch-depth: 0
-
-      - name: Install exact Rust toolchain
-        run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          test "$(rustc "+$RUST_TOOLCHAIN" --version | awk '{print $2}')" = "$RUST_TOOLCHAIN"
 
       - name: Merge upstream without publishing partial state
         id: merge
@@ -64,13 +58,18 @@ jobs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Enforce downstream ownership boundary
-        run: >-
-          cargo "+$RUST_TOOLCHAIN" run --quiet --locked --
-          downstream-check --policy "$POLICY"
-          --upstream-ref "refs/remotes/upstream/$UPSTREAM_BRANCH"
+        run: |
+          source .agent/scripts/rust-toolchain.sh
+          ccvl_select_rust_toolchain
+          "${CCVL_CARGO_COMMAND[@]}" run --quiet --locked -- \
+            downstream-check --policy "$POLICY" \
+            --upstream-ref "refs/remotes/upstream/$UPSTREAM_BRANCH"
 
       - name: Run complete deterministic document gate
-        run: cargo "+$RUST_TOOLCHAIN" run --quiet --locked -- check
+        run: |
+          source .agent/scripts/rust-toolchain.sh
+          ccvl_select_rust_toolchain
+          "${CCVL_CARGO_COMMAND[@]}" run --quiet --locked -- check
 
       - name: Publish verified merge
         if: steps.merge.outputs.changed == 'true'
