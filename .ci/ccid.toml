@@ -1,0 +1,16 @@
+schema = 1
+project = "ccvl"
+
+# Exact declared Rust toolchain and locked published dependencies are required. Native six-platform publication remains separate.
+
+[checks.rust]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "rust"]]
+
+[checks.lint]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "lint"]]
+
+[checks.documents]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "documents"]]
