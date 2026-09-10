@@ -55,6 +55,8 @@ ccvl_select_rust_toolchain() {
       return 2
     }
     CCVL_CARGO_COMMAND=("$rustup" run "$selected" cargo)
+    # shellcheck disable=SC2034 # Shared with native-release.sh.
+    CCVL_RUSTC_COMMAND=("$rustup" run "$selected" rustc)
     output="$("$rustup" run "$selected" rustc --version)"
   else
     output="$(rustc --version)" || return 2
@@ -70,6 +72,8 @@ ccvl_select_rust_toolchain() {
       }
     fi
     CCVL_CARGO_COMMAND=(cargo)
+    # shellcheck disable=SC2034 # Shared with native-release.sh.
+    CCVL_RUSTC_COMMAND=(rustc)
   fi
   printf 'Rust compiler: %s (minimum %s)\n' "$output" "$minimum"
   "${CCVL_CARGO_COMMAND[@]}" --version

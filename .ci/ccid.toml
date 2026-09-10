@@ -3,7 +3,8 @@
 schema = 1
 project = "ccvl"
 
-# Reuse suitable provisioned Rust and locked published dependencies. Native six-platform publication remains separate.
+# Reuse suitable provisioned Rust and locked published dependencies.
+# Native publication requires every platform receipt, including unavailable executors.
 
 [checks.rust]
 kind = "commands"
@@ -25,3 +26,27 @@ commands = [["bash", ".agent/scripts/ci-check.sh", "skill-eval-build"]]
 [checks.skill-eval]
 kind = "commands"
 commands = [["bash", ".agent/scripts/ci-check.sh", "skill-eval"]]
+
+[checks.release-rust]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "release-rust"]]
+
+[checks.release-lint]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "release-lint"]]
+
+[checks.release-native]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "release-native"]]
+
+[checks.release-linux-deep]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "release-linux-deep"]]
+
+[checks.release-check]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "release-check"]]
+
+[checks.release-publish]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "release-publish"]]

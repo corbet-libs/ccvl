@@ -8,28 +8,82 @@ neither Git nor Rust is required.
 
 ## Required delivery path
 
-Release preparation is an explicit manual dispatch of the CI workflow on `main`.
-Routine pushes and pull requests run the applicable source checks; they do not
-allocate the six-platform binary matrix or publish a release. The manually
-selected reusable Binaries job builds all six standard native runner targets:
-Linux x86_64/aarch64, macOS x86_64/arm64,
-and Windows x86_64/arm64. Every executable runs the public document checks and
-runtime identity tests. The same Linux executable feeds the independent PDF
-checks and the minimal-container archive test. Rust unit tests, Clippy, shell
-and workflow lint, and license checks also gate publication.
+Eligible public GitHub Actions is preferred. Crow provides manual fallback
+commands for release preparation and publication. Routine pushes and pull
+requests run applicable source checks; releases remain explicit manual actions.
+Both providers call the same native build, package and publication scripts.
+Current stable Rust is selected without an exact compiler pin; Crow uses an
+already provisioned compatible compiler and never installs one implicitly.
 
-Only the final CI job may publish. It downloads the artifacts from that exact
-run, requires all six identities and checksums, uploads a complete draft, then
-makes it public. A failed platform prevents publication. A superseded source
-revision cannot replace the latest release. Published assets are never
-overwritten or deleted by the workflow.
+All six real native targets are required: Linux x86_64/aarch64, macOS
+x86_64/arm64 and Windows x86_64/arm64. The native command verifies the running
+OS/architecture and compiler host, builds the locked native target, then runs
+public document and native runtime checks before packaging. Cross-compilation
+is not native evidence. Linux independent PDF verification reuses that exact
+executable. Rust tests, Clippy, workflow/shell/license checks and the real
+Git/Rust-free archive executor are separate required gates.
+
+Each package includes a receipt binding its CI provider/run, exact source
+commit, canonical workspace contents, source archive, Cargo.lock, compiler,
+native host, runtime identity and asset checksums. The publisher requires all
+six receipts and four gate receipts from the same source/dependency identity;
+the Linux deep/archive gates additionally identify their exact native receipt.
+GHA and Crow archives may encode tar metadata differently, so canonical source
+file/mode hashes establish equal source contents across providers. Reports are
+retained beside the artifacts. They are trusted CI evidence, not cryptographic
+attestations against a compromised executor.
+
+Only publication receives a release credential. It creates a complete draft,
+verifies every remote asset's bytes and then makes the release public. Existing
+assets are never overwritten or deleted, including draft assets. Repeated
+publication verifies matching bytes and uploads only missing draft assets.
+Incomplete published releases, different bytes, missing native results and
+superseded main revisions fail closed. Workspace release assets include full
+native/gate receipts; the runtime release has a stable runtime manifest so a
+matching immutable runtime can be reused by later workspace-only revisions.
+
+## Crow release routes
+
+Use the existing shared `crow-ci` dispatcher for committed source staging,
+verified ccid execution, memory admission and the actual persistent Cargo target
+lock. Prefer an eligible available GHA execution first; do not dispatch duplicate
+work or treat a real failed check as provider unavailability.
+
+| Workflow | Action | Existing executor requirement |
+|---|---|---|
+| `release-linux` | Rust/lint, native Linux x86_64 package, independent PDF gate | Provisioned Linux x86_64 worker and existing tools |
+| `release-archive` | Run the exact bundle with Git and Rust absent | A real minimal Linux x86_64 executor |
+| `release-publish` | Verify all six packages/four gates and publish immutable releases | Linux worker, existing `gh`/`jq`, publication-only secret |
+
+`release-linux` prints its retained directory under the locked Cargo target,
+keyed by source commit and Crow run. Supply that explicit `CCVL_RELEASE_DIR` to
+later stages. Other genuine native jobs use
+`bash .agent/scripts/native-release.sh PLATFORM OUTPUT` and contribute their
+packages/receipts to that directory. Transfer exact files without replacing a
+different existing artifact; run `release-ci.sh check` before publication.
+`release-publish` requires the manual-event repository secret
+`ccvl_release_github_token`; it never compiles with that credential. Registry or
+GitHub authorization settings are not changed by these commands.
+
+**Executor availability remains a separate delivery prerequisite.** The current
+Crow inventory has only a Linux x86_64 local executor. ARM, macOS and Windows
+native workers and a real minimal archive executor are absent; the shared
+verified ccid binary currently also targets Linux x86_64 only. These routes do
+not provision workers or turn Linux evidence into six-platform evidence. The
+archive adapter visibly refuses the ordinary worker because Git/Rust are
+present. Until the missing executors are available, all-six Crow fallback is
+not operational and publication correctly remains incomplete. A fake receipt,
+a masked PATH or a Linux cross-build cannot fill that gap.
+
+## Immutable release tags
 
 Two immutable release tags serve different purposes:
 
 - `runtime-<source-fingerprint>` contains the six executable downloads,
-  checksums, identities, and a manifest. Setup uses this exact tag.
+  checksums, identities, and a runtime manifest. Setup uses this exact tag.
 - `build-<git-commit>` contains six workspace bundles and checksums. This is
-  the user-facing latest release, including current templates and documents.
+  the user-facing latest release, including current templates, documents and
+  exact native/gate receipts.
 
 Workspace-only changes reuse a matching runtime identity while still producing
 a new set of complete user bundles. A failed release leaves the last verified

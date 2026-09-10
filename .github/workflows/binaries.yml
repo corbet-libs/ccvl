@@ -62,32 +62,9 @@ jobs:
           cache-on-failure: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build the locked release binary once
+      - name: Build, verify and package the native release
         shell: bash
-        run: cargo "+$RUST_TOOLCHAIN" build --locked --release
-
-      - name: Verify the compiled runtime and public documents
-        shell: bash
-        run: |
-          binary="$PWD/target/release/${{ matrix.exe }}"
-          "$binary" public-check
-          if [[ "${{ runner.os }}" != Windows ]]; then
-            bash .agent/tests/test_runtime.sh "$binary"
-          fi
-
-      - name: Verify native Windows bootstrap and launcher
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          & .\.agent\tests\test_bootstrap.ps1
-          & .\.agent\tests\test_runtime.ps1 -Binary "$PWD\target\release\ccvl.exe"
-
-      - name: Package that exact binary with its workspace
-        shell: bash
-        run: |
-          name="ccvl-${{ matrix.os }}-${{ matrix.arch }}"
-          case "${{ matrix.exe }}" in *.exe) name="$name.exe" ;; esac
-          bash .agent/scripts/package-release.sh "$name" "${{ matrix.exe }}" "$RUNNER_TEMP/dist"
+        run: bash .agent/scripts/native-release.sh "${{ matrix.os }}-${{ matrix.arch }}" "$RUNNER_TEMP/dist"
 
       - name: Upload the verified platform package
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4

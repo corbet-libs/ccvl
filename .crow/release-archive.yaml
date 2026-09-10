@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Julian Y. Richard Corbet
+# SPDX-License-Identifier: FSL-1.1-ALv2
+name: release-archive
+when:
+  - event: manual
+    branch: main
+skip_clone: true
+variables:
+  SOURCE_ARCHIVE: {default: ""}
+  SOURCE_SHA256: {default: ""}
+  CCVL_RELEASE_DIR: {default: ""}
+steps:
+  - name: verify-toolchain-free-bundle
+    image: bash
+    commands:
+      - |
+        set -eu
+        test "$CI_REPO" = corbet-labs/ccvl
+        test -n "$CCVL_RELEASE_DIR"
+        printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ARCHIVE" | sha256sum --check --strict
+        script="$(mktemp)"
+        trap 'rm -f -- "$script"' EXIT
+        tar -xOf "$SOURCE_ARCHIVE" .agent/scripts/check-release-archive.sh > "$script"
+        bash "$script" "$CCVL_RELEASE_DIR"

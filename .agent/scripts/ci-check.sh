@@ -33,6 +33,7 @@ for check in "$@"; do
       bash .agent/tests/test_ci_toolchain.sh
       bash .agent/tests/test_downstream_sync.sh
       bash .agent/tests/test_skill_eval_ci.sh
+      python3 .agent/tests/test_release_evidence.py
       ;;
     documents)
       [[ $(uname -s) == Linux ]] || { echo 'documents requires Linux' >&2; exit 2; }
@@ -51,6 +52,9 @@ for check in "$@"; do
       ;;
     skill-eval)
       bash .agent/scripts/skill-eval-ci.sh evaluate
+      ;;
+    release-*)
+      bash .agent/scripts/release-ci.sh "${check#release-}"
       ;;
     *) echo "Unknown check: $check (rust lint documents skill-eval-build skill-eval)" >&2; exit 2 ;;
   esac
