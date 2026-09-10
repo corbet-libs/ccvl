@@ -68,8 +68,7 @@ fn correspondence_copies_reject_local_edits_and_unrecorded_sources() {
     );
 }
 
-#[test]
-fn cover_letter_contract_rejects_weakened_density_and_closing_spill() {
+fn harvard_manifest_fixture() -> (TempDir, Workspace) {
     let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
     let temporary = TempDir::new().unwrap();
     // Style validation only needs these references to exist, with real
@@ -123,6 +122,28 @@ fn cover_letter_contract_rejects_weakened_density_and_closing_spill() {
         }
     }
     let workspace = Workspace::at(temporary.path()).unwrap();
+    (temporary, workspace)
+}
+
+#[test]
+fn manifest_accepts_ci_metadata_and_rejects_legacy_roots() {
+    let (temporary, workspace) = harvard_manifest_fixture();
+    for relative in [".ci/ccid.toml", ".crow/ccid.yaml"] {
+        let path = temporary.path().join(relative);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, "CI metadata fixture").unwrap();
+    }
+    validate_manifest(&workspace).unwrap();
+    let legacy = temporary.path().join(".claude");
+    fs::create_dir(&legacy).unwrap();
+    fs::write(legacy.join("settings.json"), "{}").unwrap();
+    let error = validate_manifest(&workspace).unwrap_err().to_string();
+    assert!(error.contains("legacy workspace path must be removed: .claude"));
+}
+
+#[test]
+fn cover_letter_contract_rejects_weakened_density_and_closing_spill() {
+    let (temporary, workspace) = harvard_manifest_fixture();
     validate_manifest(&workspace).unwrap();
     validate_styles(&workspace).unwrap();
     validate_contracts(&workspace).unwrap();

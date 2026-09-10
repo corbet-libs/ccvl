@@ -61,7 +61,7 @@ fn validate_no_python_artifacts(workspace: &Workspace) -> Result<()> {
             workspace
                 .relative(&path)
                 .ok()
-                .filter(|relative| is_python_artifact(relative))
+                .filter(|relative| is_python_artifact(relative) && !is_ci_python_helper(relative))
         })
         .collect::<BTreeSet<_>>();
     for entry in WalkDir::new(workspace.root()).follow_links(false) {
@@ -85,6 +85,19 @@ fn validate_no_python_artifacts(workspace: &Workspace) -> Result<()> {
             .join(", ")
     );
     Ok(())
+}
+
+fn is_ci_python_helper(path: &Path) -> bool {
+    // CI orchestration uses these standard-library helpers. This is not a
+    // second product runtime or permission for arbitrary Python source.
+    [
+        ".agent/scripts/release-evidence.py",
+        ".agent/scripts/downstream-check.py",
+        ".agent/tests/test_release_evidence.py",
+        ".agent/tests/test_downstream_check.py",
+    ]
+    .iter()
+    .any(|candidate| path == Path::new(candidate))
 }
 
 fn is_python_artifact(path: &Path) -> bool {
@@ -332,6 +345,32 @@ mod tests {
         ] {
             assert!(!is_python_artifact(Path::new(path)), "{path} was rejected");
         }
+    }
+
+    #[test]
+    fn ci_python_helpers_do_not_allow_unapproved_python_source() {
+        let directory = tempdir().unwrap();
+        fs::write(directory.path().join("ccvl.json"), "{}\n").unwrap();
+        for relative in [
+            ".agent/scripts/release-evidence.py",
+            ".agent/scripts/downstream-check.py",
+            ".agent/tests/test_release_evidence.py",
+            ".agent/tests/test_downstream_check.py",
+        ] {
+            let path = directory.path().join(relative);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, "# CI helper fixture\n").unwrap();
+        }
+        let workspace = Workspace::at(directory.path()).unwrap();
+        validate_no_python_artifacts(&workspace).unwrap();
+        for relative in [".agent/scripts/unapproved.py", ".agent/src/product.py"] {
+            let path = directory.path().join(relative);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, "# forbidden product runtime\n").unwrap();
+            assert!(validate_no_python_artifacts(&workspace).is_err());
+            fs::remove_file(path).unwrap();
+        }
+        validate_no_python_artifacts(&workspace).unwrap();
     }
 
     #[test]

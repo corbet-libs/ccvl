@@ -33,7 +33,8 @@ for check in "$@"; do
       bash .agent/tests/test_ci_toolchain.sh
       bash .agent/tests/test_downstream_sync.sh
       bash .agent/tests/test_skill_eval_ci.sh
-      python3 .agent/tests/test_release_evidence.py
+      python3 -B .agent/tests/test_release_evidence.py
+      python3 -B .agent/tests/test_downstream_check.py
       ;;
     documents)
       [[ $(uname -s) == Linux ]] || { echo 'documents requires Linux' >&2; exit 2; }

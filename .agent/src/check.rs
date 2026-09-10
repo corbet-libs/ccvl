@@ -150,7 +150,6 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
     for legacy in [
         ".agents",
         ".claude",
-        ".crow",
         ".vscode",
         ".zed",
         ".agent/scaffolds/opportunity/application.json",
@@ -193,6 +192,8 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         ensure!(
             [
                 ".agent",
+                ".ci",
+                ".crow",
                 ".git",
                 ".github",
                 "LICENSES",
