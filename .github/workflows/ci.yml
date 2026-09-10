@@ -55,7 +55,17 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Check formatting, locked tests and Clippy
-        run: bash .agent/scripts/ci-check.sh rust
+        env:
+          CCVL_RELEASE_DIR: ${{ runner.temp }}/release-gates
+        run: bash .agent/scripts/release-ci.sh rust
+
+      - name: Retain exact Rust gate evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: ccvl-gate-rust
+          path: ${{ runner.temp }}/release-gates/gate-rust.json
+          if-no-files-found: error
+          retention-days: 3
 
   lint:
     name: Workflow, shell, and license checks
@@ -95,9 +105,22 @@ jobs:
           bash .agent/tests/test_bootstrap.sh
           bash .agent/tests/test_ci_toolchain.sh
           bash .agent/tests/test_downstream_sync.sh
+          bash .agent/tests/test_skill_eval_ci.sh
+          python3 .agent/tests/test_release_evidence.py
 
       - name: Check REUSE licensing
         uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
+
+      - name: Record exact lint gate evidence
+        run: python3 .agent/scripts/release-evidence.py gate lint --output "$RUNNER_TEMP/release-gates"
+
+      - name: Retain exact lint gate evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: ccvl-gate-lint
+          path: ${{ runner.temp }}/release-gates/gate-lint.json
+          if-no-files-found: error
+          retention-days: 3
 
   verify:
     name: Linux release and independent PDF verification
@@ -119,23 +142,23 @@ jobs:
           name: ccvl-linux-x86_64
           path: ${{ runner.temp }}/binary
 
-      - name: Install the compiled runtime from this run
-        run: |
-          cd "$RUNNER_TEMP/binary"
-          sha256sum --check ccvl-linux-x86_64.sha256
-          mkdir -p "$GITHUB_WORKSPACE/.agent/cache/ccvl/bin"
-          cp ccvl-linux-x86_64 "$GITHUB_WORKSPACE/.agent/cache/ccvl/bin/ccvl"
-          chmod 0755 "$GITHUB_WORKSPACE/.agent/cache/ccvl/bin/ccvl"
-          cd "$GITHUB_WORKSPACE"
-          bash ./ccvl doctor
-
       - name: Install independent PDF tools
         run: |
           sudo apt-get update
           sudo apt-get install --yes file poppler-utils qpdf jq
 
       - name: Run Linux-specific independent PDF checks
-        run: bash .agent/scripts/check-linux-deep.sh
+        env:
+          CCVL_RELEASE_DIR: ${{ runner.temp }}/binary
+        run: bash .agent/scripts/release-ci.sh linux-deep
+
+      - name: Retain Linux verification evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: ccvl-gate-linux-deep
+          path: ${{ runner.temp }}/binary/gate-linux-deep.json
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Record tool versions
         if: always()
@@ -165,18 +188,20 @@ jobs:
           path: /tmp/ccvl-dist
 
       - name: Verify the complete user download
+        shell: bash
         run: |
           cd /tmp/ccvl-dist
           sha256sum --check ccvl-linux-x86_64.tar.gz.sha256
-          mkdir /tmp/ccvl-workspace
-          tar -xzf ccvl-linux-x86_64.tar.gz -C /tmp/ccvl-workspace
-          cd /tmp/ccvl-workspace
-          test ! -e .git
-          if command -v cargo || command -v rustc || command -v git; then
-            echo 'The user bundle test must have no development toolchain.' >&2
-            exit 1
-          fi
-          bash ./ccvl setup
+          tar -xOf ccvl-linux-x86_64.tar.gz .agent/scripts/check-release-archive.sh > /tmp/check-release-archive.sh
+          bash /tmp/check-release-archive.sh /tmp/ccvl-dist
+
+      - name: Retain minimal archive verification evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: ccvl-gate-archive
+          path: /tmp/ccvl-dist/gate-archive.json
+          if-no-files-found: error
+          retention-days: 3
 
   release:
     name: Publish all six verified platforms
