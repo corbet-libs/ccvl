@@ -196,18 +196,19 @@ mod tests {
     }
 
     #[test]
-    fn private_downstream_sync_is_push_driven_and_gated() {
-        let workflow = fs::read_to_string(repository().path(".crow.yaml")).unwrap();
-        assert!(workflow.contains("event: push"));
+    fn private_downstream_sync_is_manual_and_gated() {
+        let workspace = repository();
+        let workflow = fs::read_to_string(workspace.path(".crow/downstream-sync.yaml")).unwrap();
+        assert!(workflow.contains("event: manual"));
         assert!(workflow.contains("branch: main"));
         assert!(!workflow.contains("event: cron"));
-        assert!(!workflow.contains("event: manual"));
-        assert!(workflow.contains("CARGO_TARGET_DIR: /caches/cargo/targets/ccvl"));
-        assert!(workflow.contains("cargo build --locked"));
-        assert!(!workflow.contains("cargo build --locked --release"));
-        assert!(workflow.contains("downstream-check"));
-        let push = workflow.find("git push --porcelain").unwrap();
-        assert!(workflow.find("downstream-check").unwrap() < push);
-        assert!(workflow.find("\"$gate\" check").unwrap() < push);
+        assert!(!workflow.contains("event: push"));
+        assert!(workflow.contains("bash .agent/scripts/downstream-sync.sh \"$CI_COMMIT_SHA\""));
+        let command = fs::read_to_string(workspace.path(".agent/scripts/downstream-sync.sh")).unwrap();
+        assert!(command.contains("\"${CCVL_CARGO_COMMAND[@]}\" build --locked"));
+        assert!(!command.contains("build --locked --release"));
+        let push = command.find("git push --porcelain").unwrap();
+        assert!(command.find("\"$gate\" downstream-check").unwrap() < push);
+        assert!(command.find("\"$gate\" check").unwrap() < push);
     }
 }
