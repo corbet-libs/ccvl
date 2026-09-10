@@ -33,7 +33,7 @@
 }
 
 #let is-valid-date(year, month, day) = {
-  month >= 1 and month <= 12 and day >= 1 and day <= days-in-month(year, month)
+  type(year) == int and type(month) == int and type(day) == int and month >= 1 and month <= 12 and day >= 1 and day <= days-in-month(year, month)
 }
 
 #let pad-two(value) = if value < 10 { "0" + str(value) } else { str(value) }
@@ -54,7 +54,7 @@
 #let render(entry, pattern, year, month, day) = {
   pattern
     .replace("{yyyy}", pad-year(year))
-    .replace("{yy}", pad-two(calc.rem(year, 100)))
+    .replace("{yy}", pad-two(calc.rem(calc.rem(year, 100) + 100, 100)))
     .replace("{month_long}", entry.months_long.at(month - 1))
     .replace("{month_short}", entry.at("months_short", default: ()).at(month - 1, default: ""))
     .replace("{dd}", pad-two(day))
@@ -83,7 +83,7 @@
 
 /// Month and year for a correspondence dateline: `September 2026`.
 #let month-year(locale, year, month) = {
-  if month < 1 or month > 12 {
+  if type(year) != int or type(month) != int or month < 1 or month > 12 {
     none
   } else {
     let entry = dates-table.locales.at(resolve-key(locale))

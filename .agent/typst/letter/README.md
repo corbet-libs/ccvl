@@ -6,7 +6,7 @@ The correspondence libraries own greeting/title parsing, closings, dates,
 signature helpers, lowercase locale IDs and explicit orthography conventions.
 Harvard owns its subject wording, English greeting overrides and composition.
 
-[Source identities](source.json) record the upstream source version and exact
+[Source identities](source.json) record the upstream source version, revision and exact
 SHA-256 of every copied file. [The family manifest](vendor/manifest.json) records
 the subordinate versions and hashes. A version identifies the source candidate;
 registry publication is a separate release gate. Rendering is offline.

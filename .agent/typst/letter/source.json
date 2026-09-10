@@ -1,11 +1,11 @@
 {
   "repository": "https://github.com/corbet-labs/cletter",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "files": {
     "generated/tables.typ": "bd2fba4542b3c7aec3d9512591ce77350c35929ab618599676dba8547148f619",
     "letter.typ": "068aaa29b6f90df4de644f18cf5512a3d85861d475f6e8ea27b4570cc9fa3126",
     "vendor/cdate/LICENSES/FSL-1.1-ALv2.txt": "a164e251c8f07141d743b6f6b36a93f41e664d67968ccab0a7f9448183517e61",
-    "vendor/cdate/typst/date.typ": "5fdacf4af14b0cabc78fe14718b58689901956d4d94d51a7e1d2fa63c54d6c78",
+    "vendor/cdate/typst/date.typ": "63860f9240cad02f0f485b3245526e81bb9367d31e5c0b83f1474ca031fd92af",
     "vendor/cdate/typst/generated/dates.typ": "f8e6d790df57d37f787485c51a9bfdb41c229981c0916eac8eeffe86d6503fa1",
     "vendor/cfarewell/LICENSES/FSL-1.1-ALv2.txt": "a164e251c8f07141d743b6f6b36a93f41e664d67968ccab0a7f9448183517e61",
     "vendor/cfarewell/typst/farewell.typ": "1a6614195544b973eb465ee535b2ccf735e767c97aa32ba8daf772576b1716ac",
@@ -16,6 +16,7 @@
     "vendor/cgreet/typst/greet.typ": "f8692c94864fd784dfdbbc258b20e9ea160c12ec55b4ab98441c14d9743a5524",
     "vendor/cink/LICENSES/FSL-1.1-ALv2.txt": "a164e251c8f07141d743b6f6b36a93f41e664d67968ccab0a7f9448183517e61",
     "vendor/cink/typst/ink.typ": "9d9363546c54dbdccafc74f0a9622c06c24f8eb8f54288a15410a3b4e4c8b585",
-    "vendor/manifest.json": "ea622f49d2faa878e5ce2aaca43debb901cfe6cdd0cb02325297e8f12ab67d69"
-  }
+    "vendor/manifest.json": "390513727037a52d4581c8e56959b2ee66a351821101d5e233d3e395df7bbc5e"
+  },
+  "revision": "5bab069acbfb11942fd1ff388a5aca1e8b3d21b2"
 }
