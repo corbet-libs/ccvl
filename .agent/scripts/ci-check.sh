@@ -32,6 +32,7 @@ for check in "$@"; do
       bash .agent/tests/test_bootstrap.sh
       bash .agent/tests/test_ci_toolchain.sh
       bash .agent/tests/test_downstream_sync.sh
+      bash .agent/tests/test_skill_eval_ci.sh
       ;;
     documents)
       [[ $(uname -s) == Linux ]] || { echo 'documents requires Linux' >&2; exit 2; }
@@ -45,6 +46,12 @@ for check in "$@"; do
       cp "$binary" .agent/cache/ccvl/bin/ccvl
       bash .agent/scripts/check-linux-deep.sh
       ;;
-    *) echo "Unknown check: $check (rust lint documents)" >&2; exit 2 ;;
+    skill-eval-build)
+      bash .agent/scripts/skill-eval-ci.sh build
+      ;;
+    skill-eval)
+      bash .agent/scripts/skill-eval-ci.sh evaluate
+      ;;
+    *) echo "Unknown check: $check (rust lint documents skill-eval-build skill-eval)" >&2; exit 2 ;;
   esac
 done
