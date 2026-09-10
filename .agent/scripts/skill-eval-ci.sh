@@ -57,6 +57,9 @@ case "${1:-}" in
     cat "$report_dir/identity.txt"
     # Reports contain only the public synthetic evaluation; retain failed reports too.
     if [[ -f "$report_dir/report.json" ]]; then cat "$report_dir/report.json"; fi
+    if [[ $status == 0 && ( ! -s "$report_dir/report.json" || ! -s "$report_dir/summary.md" ) ]]; then
+      fail 'Successful evaluation requires a nonempty report.json and summary.md.'
+    fi
     exit "$status"
     ;;
   *) fail 'Usage: skill-eval-ci.sh build|evaluate' ;;

@@ -41,6 +41,7 @@ while test "$#" -gt 0; do
 done
 status="${FAKE_EVAL_STATUS:-0}"
 if test -z "${GROQ_API_KEY:-}"; then status=2; fi
+if test "${FAKE_SKIP_REPORT:-0}" = 1; then exit 0; fi
 printf '{"fixture_exit":%s}\n' "$status" > "$output"
 printf 'fixture summary\n' > "$summary"
 exit "$status"
@@ -85,6 +86,8 @@ export GROQ_API_KEY=fixture-secret
 FAKE_EVAL_STATUS=75 expect_status 75 evaluate
 grep -Fq '"fixture_exit":75' "$scratch/output"
 FAKE_EVAL_STATUS=1 expect_status 1 evaluate
+FAKE_SKIP_REPORT=1 expect_status 2 evaluate
+grep -Fq 'Successful evaluation requires a nonempty report.json and summary.md.' "$scratch/output"
 expect_status 0 evaluate
 grep -Fq -- '--cases .agent/tests/skill-cases.json --skills-root .agent/skills --model openai/gpt-oss-20b' "$FAKE_ARGUMENTS"
 grep -Fq "source_commit=$CI_COMMIT_SHA" "$scratch/output"
