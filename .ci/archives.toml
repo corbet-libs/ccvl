@@ -8,3 +8,10 @@ revision = "source"
 archive_variable = "UPSTREAM_SOURCE_BUNDLE"
 digest_variable = "UPSTREAM_SOURCE_SHA256"
 workflows = ["downstream-sync"]
+
+[archives.downstream]
+kind = "git-bundle"
+revision = "source"
+archive_variable = "DOWNSTREAM_SOURCE_BUNDLE"
+digest_variable = "DOWNSTREAM_SOURCE_SHA256"
+workflows = ["downstream-check"]

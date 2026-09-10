@@ -77,6 +77,38 @@ history rewrite for a one-time conversion, protect the former tip with a remote
 tag first, and review the exact replacement tree before using
 `--force-with-lease`.
 
+## Checking private changes on Crow
+
+The inherited `.crow/downstream-check.yaml` is a manual, check-only route for a
+private repository. Run it on the existing trusted Linux x86_64 Crow worker,
+selecting the exact private commit and an explicit 40-character
+`UPSTREAM_COMMIT` that it already contains. It never merges or pushes. The
+public repository and GitHub Actions are refused before the check runner starts.
+
+The shared Crow transport supplies the committed source archive and the complete
+`DOWNSTREAM_SOURCE_BUNDLE` declared in `.ci/archives.toml`, with both digests.
+The pinned ccid runner verifies the source and holds its normal cache lock and
+resource limits. The command reconstructs a temporary Git checkout and compares
+its complete file/content/executable-mode inventory with the staged archive.
+Unsupported links, incomplete history, changed source, or an invalid upstream
+policy fail closed. CI files remain upstream-owned under `ccvl-downstream.json`.
+
+The check uses the bootstrap runtime identity algorithm and the matching public
+`runtime-<identity>/ccvl-linux-x86_64` release and checksum. Optional
+`CCVL_CHECK_RUNTIME` points to an existing worker artifact; its bytes must still
+match the downloaded official checksum and its executable runtime identity.
+Without that input, the binary is downloaded into disposable job storage.
+No compiler, packages, worker tools, or user runtime cache are installed.
+Missing published runtime assets or unavailable GitHub access produce a failed
+prerequisite, not a source build or a successful validation result.
+
+The published runtime runs `downstream-check --policy ccvl-downstream.json
+--upstream-ref <UPSTREAM_COMMIT>` followed by the complete `check` gate. Private
+command output is captured and discarded; Crow receives only a fixed failure
+stage or a success receipt containing source, upstream, bundle and runtime
+identities. This route declares no secrets and rejects publication tokens.
+The separate upstream downstream-sync workflow retains its merge/push purpose.
+
 ## Publishing improvements
 
 Reimplement or cherry-pick only generic changes into a clean ccvl checkout.

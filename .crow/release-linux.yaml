@@ -48,4 +48,3 @@ steps:
         TMPDIR="$${TMPDIR:-/tmp}"
         export TMPDIR
         exec "$CI_TOOL_BINARY" check --archive "$SOURCE_ARCHIVE" --sha256 "$SOURCE_SHA256" --commit "$CI_COMMIT_SHA" --check release-lint --check release-rust --check release-native --check release-linux-deep
-
