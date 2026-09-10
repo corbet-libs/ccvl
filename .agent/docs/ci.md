@@ -15,6 +15,7 @@ On a provisioned build worker, use `bash .agent/scripts/ci-check.sh <check>...`:
 | `rust` (default) | Stable Rust formatting, locked unit/document tests and Clippy |
 | `lint` | Actionlint, ShellCheck, and REUSE with preinstalled tools |
 | `documents` | Locked Linux release build and independent PDF/text/layout verification |
+| `skill-eval-build`, then `skill-eval` | Explicit trusted small-model evaluation; separate credential-free build and credential-bearing evaluation |
 
 The command uses existing tools. Crow supplies a memory-bounded parallel job
 and test-thread budget through the shared `ccid` adapter. A direct invocation
@@ -56,8 +57,8 @@ does not create the six native release bundles, test the Git-free user archive,
 prove macOS/Windows behavior, or publish releases. All native publication gates
 in `releases.md` remain required. A registry dependency that is not published
 still blocks a locked build; a provisional path-patched lock is not release
-evidence. Private sync and external model evaluation require their own trusted
-workflows and are not part of this validation pipeline.
+evidence. Private sync and external model evaluation have separate manually
+selected trusted workflows; neither runs with routine Rust or lint checks.
 
 The manual Crow `downstream-sync` workflow stages a verified source archive and
 a Git bundle containing the same commit and its ancestry. It builds the public
@@ -68,3 +69,39 @@ prevents publication. Existing private SSH credentials remain on the internal
 worker. The operator helper reads `.ci/archives.toml` to stage Git history only
 for this workflow. Lint includes isolated tests for stale upstream and failed
 document gates; those fixtures do not substitute for a real downstream run.
+
+The manual Crow `skill-eval` workflow runs only for public ccvl `main`. Its first
+step compiles the evaluator with locked dependencies and existing Rust, without
+provider credentials. Its second step binds the repository secret
+`ccvl_groq_api_key` to `GROQ_API_KEY`. That secret must be configured by an
+authorized operator before dispatch; adding the workflow does not provision a
+credential or prove the provider is available. A missing key is a configuration
+failure, never a passing evaluation. The legacy GHA skill job remains disabled.
+Once the exact public candidate and credential are ready, the operator submission
+is `crow-ci run --repo /path/to/ccvl --workflow skill-eval` using the configured
+shared helper; use `plan` in place of `run` to inspect the staged identities first.
+
+Both steps verify the source archive and shared ccid binary, use the same
+dedicated target storage and acquire its lock. The evaluator's recorded SHA-256
+and runtime identity must still match when the second step starts; its CLI also
+checks the runtime against the extracted source. A concurrent different build
+fails closed. Memory admission and the declared `CI_TIMEOUT` apply through ccid;
+provider execution has an additional 30-minute limit. This workflow does not
+install compilers or run a native release matrix.
+
+Only checked-in public synthetic `.agent/tests/skill-cases.json` cases and
+`.agent/skills` instructions are sent to Groq, with the existing
+`openai/gpt-oss-20b` model. Private profiles, opportunities and document artifacts
+are not evaluator inputs. Verify that the configured account permits this
+evaluation without paid usage before dispatch. The evaluator bounds requests,
+retries and completion tokens; dispatch only when the exact source lacks valid
+provider results. Do not substitute response-file fixtures for provider evidence.
+
+The script retains JSON, Markdown and source/binary/lock identities under
+`$CARGO_TARGET_DIR/ccvl-skill-eval/<commit>/run.<unique>/`, outside disposable
+source scratch. It prints the evidence path and public JSON report to the Crow
+log, including failed or unavailable results. CLI exit codes remain `0` (pass),
+`1` (semantic failure), `2` (configuration failure) and `75` (provider unavailable);
+the ccid adapter reports any nonzero result as a failed check. A timeout or absent
+report also fails and supplies no semantic proof. Lint runs isolated workflow
+guard fixtures only; it neither requires a credential nor calls the model.

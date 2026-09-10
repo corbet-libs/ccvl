@@ -1,7 +1,7 @@
 name: Skill evaluation
 
 # Secret-bearing model evaluation belongs on a trusted internal worker.
-# Keep the provider implementation as a reference while Crow routing is prepared.
+# Keep the provider implementation as a reference; use the manual Crow skill-eval workflow.
 on:
   workflow_dispatch:
 
