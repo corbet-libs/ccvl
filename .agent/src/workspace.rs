@@ -259,7 +259,8 @@ mod tests {
         assert!(!workflow.contains("event: cron"));
         assert!(!workflow.contains("event: push"));
         assert!(workflow.contains("bash .agent/scripts/downstream-sync.sh \"$CI_COMMIT_SHA\""));
-        let command = fs::read_to_string(workspace.path(".agent/scripts/downstream-sync.sh")).unwrap();
+        let command =
+            fs::read_to_string(workspace.path(".agent/scripts/downstream-sync.sh")).unwrap();
         assert!(command.contains("\"${CCVL_CARGO_COMMAND[@]}\" build --locked"));
         assert!(!command.contains("build --locked --release"));
         let push = command.find("git push --porcelain").unwrap();
