@@ -296,6 +296,45 @@ fn ready_requires_current_independent_full_coverage() {
 }
 
 #[test]
+fn contradictory_or_unknown_unavailable_coverage_is_not_accepted() {
+    let fixture = Fixture::new();
+    for unavailable in [
+        vec!["unknown-artifact"],
+        vec!["cv:page:1", "cv:page:1"],
+        vec!["cv:content"],
+    ] {
+        let mut result = fixture.result();
+        result
+            .coverage
+            .artifacts_read
+            .retain(|id| id != "cv:page:1");
+        result.coverage.unavailable = unavailable.into_iter().map(str::to_owned).collect();
+        assert!(fixture.submit(&result).is_err());
+        assert!(load(&fixture.run).unwrap().0.result_sha256.is_none());
+    }
+}
+
+#[test]
+fn partial_review_retains_findings_without_claiming_visual_completion() {
+    let fixture = Fixture::new();
+    let mut result = fixture.result();
+    result
+        .coverage
+        .artifacts_read
+        .retain(|id| id != "cv:page:1");
+    result.coverage.unavailable.push("cv:page:1".into());
+    result.coverage.presentation_pass = false;
+    result.findings.push(fixture.finding(FindingKind::Error));
+    assert_eq!(fixture.submit(&result).unwrap().state, "incomplete");
+    let state = load(&fixture.run).unwrap().0;
+    let accepted = accepted_result(&fixture.run, &state).unwrap().unwrap();
+    assert_eq!(accepted.findings.len(), 1);
+    assert!(accepted.coverage.evidence_pass);
+    assert_eq!(accepted.coverage.unavailable, ["cv:page:1"]);
+    assert!(!accepted.coverage.presentation_pass);
+}
+
+#[test]
 fn findings_distinguish_uncertainty_error_and_explicit_preference() {
     for (kind, expected) in [
         (FindingKind::Error, "incomplete"),

@@ -119,6 +119,20 @@ pub(super) fn validate(
         read.len() == result.coverage.artifacts_read.len() && read.is_subset(&known),
         "coverage has duplicates or unknown artifact IDs"
     );
+    let unavailable = result
+        .coverage
+        .unavailable
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    ensure!(
+        unavailable.len() == result.coverage.unavailable.len() && unavailable.is_subset(&known),
+        "unavailable coverage has duplicates or unknown artifact IDs"
+    );
+    ensure!(
+        read.is_disjoint(&unavailable),
+        "an artifact cannot be both read and unavailable"
+    );
     ensure!(
         result
             .coverage

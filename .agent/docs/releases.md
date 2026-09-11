@@ -75,18 +75,20 @@ exposing Git/Rust through another path. Keep host-specific sandbox configuration
 outside ccvl. With neither input, the check runs directly and still requires an
 already minimal worker; an incomplete or mismatched pair fails before execution.
 
-**Executor availability remains a separate delivery prerequisite.** The current
-Crow inventory has only a Linux x86_64 local executor. ARM, macOS and Windows
-native workers remain unavailable. The existing Nix daemon may provide a real
-minimal filesystem using only retained runtime dependencies, but its archive
-gate is not yet verified. A sandbox supplied with Nix library paths proves only
-that environment; it does not establish that a binary linked to those paths
-works on ordinary Linux. The shared verified ccid binary also targets Linux
-x86_64 only. These routes do not provision workers or turn Linux evidence into
-six-platform evidence. The ordinary worker still fails the archive check because
-Git/Rust are present. All-six Crow fallback remains incomplete until actual
-native and minimal-executor evidence exists. A fake receipt, a masked PATH or a
-Linux cross-build cannot fill that gap.
+**Executor availability remains a separate delivery prerequisite.** Verify the
+actual native OS/architecture, existing tools and minimal filesystem for each
+run. Keep host inventory and provisioning details outside ccvl. These routes do
+not provision workers or turn Linux evidence into six-platform evidence.
+
+A binary linked to Nix store paths needs a separately verified ordinary-Linux
+runtime path before distribution. When adapting a retained native executable,
+preserve its original compile provenance, record the exact transformation and
+run public/runtime and Linux deep checks on the final bytes before packaging.
+The unchanged archive check must then run that exact bundle in a real minimal
+filesystem with its ordinary runtime libraries and Git/Rust absent. Record the
+tested OS/libc scope; a sandbox exposing Nix dependencies proves only that
+environment. Neither a masked PATH nor a Linux cross-build supplies missing
+native or ordinary-system compatibility evidence.
 
 ## Immutable release tags
 

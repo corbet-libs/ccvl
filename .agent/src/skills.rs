@@ -245,10 +245,11 @@ pub fn run_hosted_evaluation(
     skills_root: &Path,
     output: &Path,
     response_file: Option<&Path>,
-    model: &str,
+    model: Option<&str>,
     summary: Option<&Path>,
 ) -> Result<EvaluationOutcome> {
-    let attempted = evaluate_hosted(cases_path, skills_root, response_file, model);
+    let hosted_model = model.unwrap_or(DEFAULT_MODEL);
+    let attempted = evaluate_hosted(cases_path, skills_root, response_file, hosted_model);
     let (outcome, evaluation, provider_note, provider_details) = match attempted {
         Ok((evaluation, provider_details)) => {
             let outcome = if evaluation["status"] == "passed" {
@@ -273,7 +274,12 @@ pub fn run_hosted_evaluation(
     };
     let report = write_report(
         output,
-        model,
+        if response_file.is_some() {
+            model
+        } else {
+            Some(hosted_model)
+        },
+        response_file.is_some(),
         &evaluation,
         provider_note.as_deref(),
         provider_details.as_ref(),
@@ -366,13 +372,17 @@ fn evaluate_hosted(
 
 fn write_report(
     output: &Path,
-    model: &str,
+    model: Option<&str>,
+    from_response_file: bool,
     evaluation: &Value,
     provider_note: Option<&str>,
     provider_details: Option<&Value>,
 ) -> Result<Value> {
     let mut report = json!({
-        "schema_version": 1, "provider": "groq", "model": model,
+        "schema_version": 1,
+        "source": if from_response_file { "response-file" } else { "hosted" },
+        "provider": if from_response_file { None } else { Some("groq") },
+        "model": model,
         "generated_at": format!("unix:{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs()),
         "status": evaluation["status"], "errors": evaluation["errors"], "results": evaluation["results"],
     });
@@ -519,8 +529,10 @@ fn build_messages(
 
 fn append_summary(path: &Path, report: &Value) -> Result<()> {
     let mut text = format!(
-        "## ccvl skill evaluation\n\nProvider: Groq | Model: `{}` | Status: **{}**\n\n",
-        report["model"].as_str().unwrap_or_default(),
+        "## ccvl skill evaluation\n\nSource: {} | Provider: {} | Model: `{}` | Status: **{}**\n\n",
+        report["source"].as_str().unwrap_or("unknown"),
+        report["provider"].as_str().unwrap_or("unknown"),
+        report["model"].as_str().unwrap_or("unknown"),
         report["status"].as_str().unwrap_or_default()
     );
     if let Some(note) = report.get("provider_note").and_then(Value::as_str) {
@@ -895,7 +907,8 @@ mod tests {
         let evaluation = json!({"status": "passed", "errors": [], "results": []});
         let report = write_report(
             &report_path,
-            DEFAULT_MODEL,
+            Some(DEFAULT_MODEL),
+            false,
             &evaluation,
             None,
             Some(&json!({"finish_reason": "stop", "usage": {"total_tokens": 42}})),
@@ -904,12 +917,97 @@ mod tests {
         append_summary(&summary_path, &report).unwrap();
         let saved = read_json(&report_path).unwrap();
         assert_eq!(saved["status"], "passed");
+        assert_eq!(saved["source"], "hosted");
+        assert_eq!(saved["provider"], "groq");
+        assert_eq!(saved["model"], DEFAULT_MODEL);
         assert_eq!(saved["provider_details"]["finish_reason"], "stop");
         assert!(
             fs::read_to_string(summary_path)
                 .unwrap()
                 .contains("ccvl skill evaluation")
         );
+    }
+
+    #[test]
+    fn saved_responses_keep_strict_scores_without_inventing_inference_provenance() {
+        let directory = tempdir().unwrap();
+        fs::write(directory.path().join("ccvl.json"), "{}").unwrap();
+        let workspace = Workspace::at(directory.path()).unwrap();
+        let cases = cases();
+        let cases_path = directory.path().join("cases.json");
+        fs::write(&cases_path, json!({"cases": cases}).to_string()).unwrap();
+        let skills_root = directory.path().join("skills");
+        for case in &cases {
+            let path = skills_root.join(case["skill"].as_str().unwrap());
+            fs::create_dir_all(&path).unwrap();
+            fs::write(path.join("SKILL.md"), "Fixture instructions").unwrap();
+        }
+        let response_path = directory.path().join("response.json");
+        let mut incomplete = passing_response(&cases);
+        incomplete["decisions"][0]["selected"] = json!(["keep"]);
+        for (response, expected) in [
+            (passing_response(&cases), EvaluationOutcome::Passed),
+            (incomplete, EvaluationOutcome::Failed),
+        ] {
+            fs::write(&response_path, response.to_string()).unwrap();
+            for (index, model) in [None, Some("recorded-critic")].into_iter().enumerate() {
+                let output = directory.path().join("report.json");
+                let summary = directory
+                    .path()
+                    .join(format!("{}-{index}.md", expected.status()));
+                assert_eq!(
+                    run_hosted_evaluation(
+                        &workspace,
+                        &cases_path,
+                        &skills_root,
+                        &output,
+                        Some(&response_path),
+                        model,
+                        Some(&summary),
+                    )
+                    .unwrap(),
+                    expected
+                );
+                let report = read_json(&output).unwrap();
+                assert_eq!(report["source"], "response-file");
+                assert!(report["provider"].is_null());
+                assert_eq!(report["model"], json!(model));
+                assert_eq!(report["provider_details"]["source"], "response-file");
+                assert_eq!(
+                    report["results"],
+                    evaluate_response(&cases, &response)["results"]
+                );
+                let summary = fs::read_to_string(summary).unwrap();
+                assert!(summary.contains("Source: response-file | Provider: unknown"));
+                assert!(!summary.contains("Groq"));
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_saved_inputs_report_configuration_without_claiming_a_provider() {
+        let directory = tempdir().unwrap();
+        fs::write(directory.path().join("ccvl.json"), "{}").unwrap();
+        let workspace = Workspace::at(directory.path()).unwrap();
+        let output = directory.path().join("report.json");
+        let missing = directory.path().join("missing.json");
+        assert_eq!(
+            run_hosted_evaluation(
+                &workspace,
+                &missing,
+                directory.path(),
+                &output,
+                Some(&missing),
+                None,
+                None,
+            )
+            .unwrap(),
+            EvaluationOutcome::ConfigurationError
+        );
+        let report = read_json(&output).unwrap();
+        assert_eq!(report["source"], "response-file");
+        assert!(report["provider"].is_null());
+        assert!(report["model"].is_null());
     }
 
     #[test]
@@ -933,7 +1031,8 @@ mod tests {
             let path = directory.path().join(format!("{}.json", outcome.status()));
             let report = write_report(
                 &path,
-                DEFAULT_MODEL,
+                Some(DEFAULT_MODEL),
+                false,
                 &json!({"status": outcome.status(), "errors": [], "results": []}),
                 Some("classified failure"),
                 None,

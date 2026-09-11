@@ -93,7 +93,8 @@ overflow causes an editorial iteration instead of a one-error-at-a-time loop.
 ## Small-model skill evaluation
 
 The `Skill evaluation` workflow sends its generic decision cases to
-Groq's free-tier `openai/gpt-oss-20b` model. Cases are deterministically batched
+the configured Groq model, defaulting to `openai/gpt-oss-20b`. Cases are
+deterministically batched
 by canonical skill, with the complete matching skill and the descriptions of
 all declared skills supplied to each low-context call. Both the
 expected routing and answer key are withheld. A deterministic evaluator then
@@ -116,7 +117,16 @@ ccvl_select_rust_toolchain
 ```
 
 The report is written to the ignored
-`.agent/cache/ai-skill-eval/report.json` path.
+`.agent/cache/skill-eval/report.json` path.
+
+Use `ccvl skill-eval --response-file <decisions.json>` to score previously
+collected decisions without an inference request. Such reports identify their
+source as `response-file` and leave the inference provider unknown. The model
+is also unknown unless explicitly supplied with `--model`; the Groq environment
+and default model do not establish a saved response's provenance. Retain the
+original request, response and provider telemetry separately when collecting
+decisions through an external coordinator. Scoring and pass/fail rules are
+identical for saved and directly requested responses.
 
 
 ## Actor–critic behavioral evaluation

@@ -12,6 +12,17 @@ Review the prepared run in fresh context. If you authored its current draft,
 hand the review to an independent context or report that independence is
 unavailable; do not relabel a self-check as an independent critic.
 
+Complete all three parts of the review:
+
+| Part | Required result |
+|---|---|
+| Findings | Cite each supported defect and its evidence; an empty list is valid. |
+| Coverage | Account for the actual sources, text, pages and applicable criteria, including what could not be checked. |
+| Outcome | Submit the result and read the CLI's computed state and reasons, including the remaining correction allowance. |
+
+One part does not replace the others: finding an error, finding no errors or
+encountering an unavailable input still requires the remaining review work.
+
 The coordinator supplies the run directory, purpose, explicit preferences and
 result destination. Read the frozen manifest and original evidence, selected
 contracts/settings, final PDF text and every page image yourself. Actor notes
@@ -54,8 +65,10 @@ the intended reader's benefit. Preserve qualifications needed for factual
 meaning; allow unnecessary hedges to be removed. Help strengthen weak writing
 while preserving legitimate persuasion. Supported short skill labels and a
 conventional close can be valid.
-Treat a proposed tonal improvement as preference unless it conflicts with an
-explicit requirement. There is no reliable AI-authorship test in this rubric.
+Preserve supported arguments and explicit wording choices when they satisfy the
+requirements. Treat a proposed tonal improvement as an optional preference
+unless an explicit requirement establishes a defect. There is no reliable
+AI-authorship test in this rubric.
 
 Review AIDA as one paragraph and line contract: six paragraphs with
 `3 | 5 | 5 | 5 | 5 | 3` body lines, attention → interest → interest → desire →
@@ -109,8 +122,10 @@ invalidate the review. Changed evidence, rules or scope require a new run.
 ## Completion and limits
 
 Submit the actual result with `ccvl review submit <run-dir> <result.json>` and
-read `ccvl review status <run-dir>`. Do not author an approval state yourself. Report actual token usage, or null
-when provider telemetry is unavailable; never invent counts. Cite JSON fields
+read `ccvl review status <run-dir>`. Command success means the command completed;
+the returned state determines readiness. Do not author an approval state
+yourself. Report actual token usage, or null when provider telemetry is
+unavailable; never invent counts. Cite JSON fields
 with `json:/pointer`, source lines with `line:N`, and actual pages/text with
 `page:N` or `page:N#region`. Extracted page text also requires the page prefix:
 use `page:1#line:15`, not `line:15`. A finding's `location` must cite content,

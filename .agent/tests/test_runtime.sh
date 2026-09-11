@@ -29,6 +29,25 @@ mkdir -p "$scratch/.agent/cache/ccvl/bin"
 cp "$binary" "$scratch/.agent/cache/ccvl/bin/ccvl"
 chmod 0755 "$scratch/.agent/cache/ccvl/bin/ccvl"
 bash "$scratch/ccvl" doctor >/dev/null
+# Saved-response scoring must not attribute a configured hosted model to the
+# supplied file. Invalid fixture paths also prove this check makes no API call.
+for model in '' recorded-critic; do
+  eval_args=(--root "$scratch" skill-eval --cases "$scratch/absent-cases.json"
+      --response-file "$scratch/absent-response.json" --output "$scratch/saved-response-report.json")
+  [[ -z "$model" ]] || eval_args+=(--model "$model")
+  if GROQ_MODEL=unrelated-hosted-model "$binary" "${eval_args[@]}" \
+      >"$scratch/saved-response.log" 2>&1; then
+    printf 'Invalid saved-response inputs unexpectedly passed.\n' >&2
+    exit 1
+  fi
+  grep -Fq '"source": "response-file"' "$scratch/saved-response-report.json"
+  grep -Fq '"provider": null' "$scratch/saved-response-report.json"
+  if [[ -z "$model" ]]; then
+    grep -Fq '"model": null' "$scratch/saved-response-report.json"
+  else
+    grep -Fq '"model": "recorded-critic"' "$scratch/saved-response-report.json"
+  fi
+done
 printf '\n// Runtime edited after installation.\n' >> "$scratch/.agent/src/main.rs"
 if bash "$scratch/ccvl" doctor >"$scratch/.agent/cache/stale.log" 2>&1; then
   printf 'Launcher accepted a stale runtime.\n' >&2
