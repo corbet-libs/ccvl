@@ -396,6 +396,43 @@ fn cover_letter_spec_with_application(application: &str) -> DocumentSpec {
 }
 
 #[test]
+fn recipient_counsel_uses_correspondence_locale_rules_without_duplicate_warnings() {
+    let directory = tempfile::tempdir().unwrap();
+    std::fs::write(directory.path().join("ccvl.json"), "{}").unwrap();
+    let workspace = Workspace::at(directory.path()).unwrap();
+    let spec = cover_letter_spec_with_application("record.toml");
+    for (locale, name, expected) in [
+        ("DE-ch", "Alex Example", Some("Herr/Frau honorific")),
+        ("en-us", "Alex Example", None),
+        // An unrelated three-letter language beginning with "de" is not German.
+        ("den-ca", "Alex Example", None),
+        ("de-ch", "Frau Dr. Müller", None),
+        ("de-ch", "", Some("is empty")),
+        ("en-us", "", Some("is empty")),
+    ] {
+        let record = json!({
+            "options": {"language": locale},
+            "job": {"cl_recipient": {"name": name}},
+        });
+        std::fs::write(
+            directory.path().join("record.toml"),
+            toml::to_string(&record).unwrap(),
+        )
+        .unwrap();
+        let warnings = recipient_warnings(&workspace, &spec).unwrap();
+        assert_eq!(
+            warnings.len(),
+            usize::from(expected.is_some()),
+            "{locale} {name}"
+        );
+        if let Some(fragment) = expected {
+            assert!(warnings[0].starts_with("fixture:"));
+            assert!(warnings[0].contains(fragment), "{}", warnings[0]);
+        }
+    }
+}
+
+#[test]
 fn empty_recipient_name_warns_but_stays_valid() {
     let workspace = workspace();
     // Showcase records ship with an empty recipient: generic salutation

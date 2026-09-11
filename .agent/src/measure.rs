@@ -4,7 +4,6 @@ use std::sync::OnceLock;
 use crate::render::{Compiler, DocumentKind, DocumentSpec, opportunity_specs};
 use crate::workspace::Workspace;
 use anyhow::{Context, Result, ensure};
-use cletter::recipient_salutation_warning;
 use ctypst::Document;
 use serde_json::Value;
 
@@ -425,8 +424,6 @@ pub fn preference_warnings(
 /// Herr/Frau honorific. Missing application inputs (unit fixtures) yield no
 /// warning so metric-set tests stay focused.
 pub fn recipient_warnings(workspace: &Workspace, spec: &DocumentSpec) -> Result<Vec<String>> {
-    use cletter::de_honorific_warning;
-
     if spec.kind != DocumentKind::CoverLetter {
         return Ok(Vec::new());
     }
@@ -447,21 +444,11 @@ pub fn recipient_warnings(workspace: &Workspace, spec: &DocumentSpec) -> Result<
         .pointer("/job/cl_recipient/name")
         .and_then(Value::as_str)
         .unwrap_or("");
-    let mut warnings = Vec::new();
-    if let Some(warning) = recipient_salutation_warning(&spec.name, name) {
-        warnings.push(warning);
-        return Ok(warnings);
-    }
     let language = record
         .pointer("/options/language")
         .and_then(Value::as_str)
         .unwrap_or("");
-    if language.to_ascii_lowercase().starts_with("de")
-        && let Some(warning) = de_honorific_warning(&spec.name, name)
-    {
-        warnings.push(warning);
-    }
-    Ok(warnings)
+    Ok(cletter::warnings(&spec.name, language, name))
 }
 
 fn string_field<'a>(value: &'a Value, field: &str) -> Result<&'a str> {
