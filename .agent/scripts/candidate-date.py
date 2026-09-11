@@ -80,7 +80,8 @@ def check():
         'run': os.environ.get('CI_PIPELINE_NUMBER', os.environ.get('CI_BUILD_NUMBER')),
         'python': sys.version.split()[0], 'uv': subprocess.check_output(
             ['uv', '--version'], text=True).strip(),
-        'typst_requirement': 'typst==0.15.0', 'dependency_access': 'offline-cache',
+        'typst_requirement': 'typst==0.15.0',
+        'dependency_access': {'typst': 'offline-cache', 'rust': 'registry-resolve-once-then-locked'},
         'started': int(time.time()), 'status': 'running',
         'scope': 'focused date module and Typst letters; no full ccvl runtime or release validation',
     }

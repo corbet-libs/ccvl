@@ -44,8 +44,9 @@ The manual `candidate-date` Crow workflow checks an exact unpublished date-fix
 candidate without building or publishing the full application. Its separate
 `.ci/archives.toml` revision is staged with a verified digest; the ordinary
 published workflow source retains its own identity. The candidate's focused
-Rust module and Typst helper/letter regressions run with existing offline
-caches, including `typst==0.15.0`. A missing cached dependency fails visibly.
+Rust module resolves its small registry dependency graph once and retains the
+lockfile before locked checks. Typst helper/letter regressions reuse the offline
+`typst==0.15.0` cache; a missing cached Typst dependency fails visibly.
 Receipts and rendered artifacts remain under the persistent Cargo target's
 `ccvl-candidate-date/<candidate>/<harness>/run-*` directory. This proof does
 not replace the locked full application or native release gates. Dispatch only
