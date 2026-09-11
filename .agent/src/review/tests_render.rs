@@ -5,7 +5,13 @@ use super::*;
 #[test]
 fn actual_prepare_exports_readable_pdf_text_and_every_page_image() {
     let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let cache = workspace.path(".agent/cache/review");
+    // Own the whole temporary opportunity so all created parents disappear,
+    // including after a panic. Never leave cache directories in tested source.
+    let opportunity = tempfile::Builder::new()
+        .prefix("review-smoke-")
+        .tempdir_in(workspace.path("opportunities"))
+        .unwrap();
+    let cache = opportunity.path().join("fixture/review");
     fs::create_dir_all(&cache).unwrap();
     let run_dir = tempfile::Builder::new()
         .prefix("smoke-")

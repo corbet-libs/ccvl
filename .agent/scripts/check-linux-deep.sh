@@ -5,12 +5,19 @@ export LC_ALL=C
 
 repo_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 binary="$repo_root/.agent/cache/ccvl/bin/ccvl"
+if (($# > 1)); then
+  printf 'Usage: %s [existing-ccvl-binary]\n' "$0" >&2
+  exit 2
+fi
+if (($# == 1)); then
+  binary="$(realpath -- "$1")"
+fi
 validation_dir="$(mktemp -d "${TMPDIR:-/tmp}/ccvl-check.XXXXXXXX")"
 trap 'rm -rf -- "$validation_dir"' EXIT
 
 cd "$repo_root"
 [[ -x "$binary" ]] || {
-  printf 'The repository-local ccvl binary is missing. Run bash ./ccvl setup first.\n' >&2
+  printf 'The ccvl binary is missing: %s\n' "$binary" >&2
   exit 2
 }
 

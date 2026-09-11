@@ -44,9 +44,7 @@ for check in "$@"; do
       done
       "${CCVL_CARGO_COMMAND[@]}" build --locked --release
       binary="${CARGO_TARGET_DIR:-target}/release/ccvl"
-      mkdir -p .agent/cache/ccvl/bin
-      cp "$binary" .agent/cache/ccvl/bin/ccvl
-      bash .agent/scripts/check-linux-deep.sh
+      bash .agent/scripts/check-linux-deep.sh "$binary"
       ;;
     skill-eval-build)
       bash .agent/scripts/skill-eval-ci.sh build
