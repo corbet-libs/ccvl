@@ -69,16 +69,29 @@ On Windows:
 ```
 
 No locale or page argument is needed: the record owns both. The build writes
-`pdfs/cv.pdf` and, when enabled, `pdfs/cl.pdf` below the keyed
-opportunity. Alongside them it emits a resolved customization copy of
-the template it rendered into `typst/`: `typst/cv.typ` and, when enabled,
-`typst/cl.typ`. Each copy is the locale template with its `sys.inputs`
+`pdfs/<Name>_<Org>_<Pos>_CV.pdf` and, when enabled,
+`pdfs/<Name>_<Org>_<Pos>_CL.pdf` below the keyed opportunity. `<Name>` is the
+final whitespace-delimited token of `cvl/profile.toml` `name`, used only as a
+filename convention. Letters and numbers are retained; other characters become
+hyphens, consecutive hyphens collapse and edge hyphens are trimmed. `<Org>` and
+`<Pos>` use the validated opportunity keys with each segment capitalized and
+underscores changed to hyphens, for example `Ng_Acme_Platform-Lead_CV.pdf`.
+
+Alongside them it emits resolved customization copies of the rendered templates
+into `typst/` under the same stems: `typst/<Name>_<Org>_<Pos>_CV.typ` and, when
+enabled, `typst/<Name>_<Org>_<Pos>_CL.typ`. Each copy is the locale template with its `sys.inputs`
 defaults resolved for the opportunity (application and profile paths, the
 record's page count for the CV, and the resolved style), so it compiles standalone and reproduces
 the neighbouring PDF. The copies are build artifacts: do not edit them by
-hand; re-run `build-opportunity` to refresh. Disabling the letter yields a
-CV-only package and removes any stale generated `cl.pdf` and `cl.typ` from
-an earlier build.
+hand; re-run `build-opportunity` to refresh.
+
+Once every replacement PDF and Typst copy succeeds, the build removes the four
+legacy generated files `pdfs/cv.pdf`, `pdfs/cl.pdf`, `typst/cv.typ` and
+`typst/cl.typ`. A CV-only build also removes the exact current named letter
+files. Other filenames remain for explicit review. If rendering or copy writing
+fails, legacy files remain available; some new outputs may already exist.
+The opportunity path, output directories and reserved generated files must not
+be symbolic links, so they cannot redirect output or cleanup into another package.
 
 Keep a live package fresh while tailoring:
 

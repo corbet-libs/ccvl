@@ -77,9 +77,11 @@ The job directory owns the posting, attributable organisation and role
 research, fit analysis, tailored Summary, optional cover letter, interview
 preparation, submission record, and outcome. The application record selects
 its locale, page presets and optional document papers from the selected styles.
-Rendered `cv.pdf` and optional `cl.pdf` go in
-its local `pdfs/` directory; the resolved standalone Typst copies they were
-built from go in its local `typst/` directory.
+Rendered `<Name>_<Org>_<Pos>_CV.pdf` and optional
+`<Name>_<Org>_<Pos>_CL.pdf` go in its local `pdfs/` directory; resolved standalone
+Typst copies use the same file stems in its local `typst/` directory.
+The [opportunity filename convention](applications.md) uses the final display-name
+token and normalized opportunity keys, without changing the source name.
 
 There is no standalone market map. General preferences or durable facts
 learned about the user belong in `interview/`; research about a company or

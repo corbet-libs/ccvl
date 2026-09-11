@@ -375,6 +375,67 @@ pub fn list_documents(workspace: &Workspace) -> Result<Value> {
     Ok(Value::Array(entries))
 }
 
+/// Use the final whitespace-delimited display-name token as a filename
+/// convention. This does not identify a person's family name.
+fn applicant_filename_token(name: &str) -> Result<String> {
+    let token = name
+        .split_whitespace()
+        .last()
+        .context("cvl/profile.toml: name is empty")?;
+    let mut sanitized = String::with_capacity(token.len());
+    let mut last_was_hyphen = true;
+    for ch in token.chars() {
+        if ch.is_alphanumeric() {
+            sanitized.push(ch);
+            last_was_hyphen = false;
+        } else if !last_was_hyphen {
+            sanitized.push('-');
+            last_was_hyphen = true;
+        }
+    }
+    while sanitized.ends_with('-') {
+        sanitized.pop();
+    }
+    ensure!(
+        !sanitized.is_empty(),
+        "cvl/profile.toml: final name token has no filename-safe characters"
+    );
+    Ok(sanitized)
+}
+
+/// Opportunity keys have already passed record_path's lowercase ASCII check.
+/// Reserve underscores for filename sections and capitalize each key segment.
+fn filename_key(key: &str) -> String {
+    key.split(['-', '_'])
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_ascii_uppercase().to_string() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+fn opportunity_file_stem(
+    workspace: &Workspace,
+    organisation: &str,
+    position: &str,
+) -> Result<String> {
+    let profile = workspace.read_toml_value("cvl/profile.toml")?;
+    let name = profile
+        .get("name")
+        .and_then(Value::as_str)
+        .context("cvl/profile.toml: name is missing")?;
+    Ok(format!(
+        "{}_{}_{}",
+        applicant_filename_token(name)?,
+        filename_key(organisation),
+        filename_key(position)
+    ))
+}
+
 pub fn opportunity_specs(
     workspace: &Workspace,
     organisation: &str,
@@ -399,13 +460,14 @@ pub fn opportunity_specs(
         .context("application record has no parent")?;
     let pdfs = parent.join("pdfs");
     let profile = workspace.path("cvl/profile.toml");
+    let stem = opportunity_file_stem(workspace, organisation, position)?;
     let mut specs = vec![cv_spec(
         workspace,
         &locale,
         pages,
         &application,
         &profile,
-        &pdfs.join("cv.pdf"),
+        &pdfs.join(format!("{stem}_CV.pdf")),
         &cv_selection,
     )?];
     specs[0].name = format!("CV {organisation}/{position}");
@@ -423,7 +485,7 @@ pub fn opportunity_specs(
             letter_pages,
             &application,
             &profile,
-            &pdfs.join("cl.pdf"),
+            &pdfs.join(format!("{stem}_CL.pdf")),
             &letter_selection,
         )?;
         spec.name = format!("cover letter {organisation}/{position}");
@@ -466,13 +528,8 @@ pub fn render_opportunity(
         .parent()
         .context("record has no parent")?
         .to_path_buf();
-    remove_stale_cover_letter(
-        &parent.join("pdfs"),
-        &parent.join("typst"),
-        specs
-            .iter()
-            .any(|spec| spec.kind == DocumentKind::CoverLetter),
-    )?;
+    let stem = opportunity_file_stem(workspace, organisation, position)?;
+    guard_opportunity_output_paths(workspace, &parent, &stem)?;
     let compiler = Compiler::new(workspace)?;
     let mut outputs = Vec::new();
     for spec in &specs {
@@ -481,9 +538,20 @@ pub fn render_opportunity(
     // Emit the resolved customization copies in typst/ beside the PDFs only
     // after the PDFs render, so the .typ files always describe the PDFs
     // next to them.
+    guard_opportunity_output_paths(workspace, &parent, &stem)?;
     for spec in &specs {
         outputs.push(emit_resolved_typ(workspace, spec, organisation, position)?);
     }
+    // Keep the old outputs until every replacement PDF and Typst copy exists.
+    guard_opportunity_output_paths(workspace, &parent, &stem)?;
+    remove_stale_opportunity_outputs(
+        &parent.join("pdfs"),
+        &parent.join("typst"),
+        &stem,
+        specs
+            .iter()
+            .any(|spec| spec.kind == DocumentKind::CoverLetter),
+    )?;
     Ok(outputs)
 }
 
@@ -501,10 +569,11 @@ fn emit_resolved_typ(
         .with_context(|| format!("cannot read {}", spec.source.display()))?;
     let template_display = workspace.relative(&spec.source)?.display().to_string();
     let text = resolved_typ_text(&template, spec, &template_display, organisation, position);
-    let name = match spec.kind {
-        DocumentKind::Cv => "cv.typ",
-        DocumentKind::CoverLetter => "cl.typ",
-    };
+    let filename = spec
+        .output
+        .file_name()
+        .context("opportunity output has no filename")?;
+    let name = Path::new(filename).with_extension("typ");
     let pdfs_dir = spec
         .output
         .parent()
@@ -562,12 +631,63 @@ fn rewrite_input_default(source: &str, key: &str, default: &str) -> String {
     resolved
 }
 
-fn remove_stale_cover_letter(pdfs_dir: &Path, typst_dir: &Path, cover_enabled: bool) -> Result<()> {
-    if !cover_enabled {
-        for stale in [pdfs_dir.join("cl.pdf"), typst_dir.join("cl.typ")] {
-            if stale.is_file() {
-                fs::remove_file(stale)?;
+/// Generated opportunity outputs must stay in their physical job directory.
+/// Reject directory aliases even when they point elsewhere within the workspace.
+fn guard_opportunity_output_paths(workspace: &Workspace, parent: &Path, stem: &str) -> Result<()> {
+    let mut paths = Vec::new();
+    let mut ancestor = workspace.root().to_path_buf();
+    for component in workspace.relative(parent)?.components() {
+        ancestor.push(component);
+        paths.push(ancestor.clone());
+    }
+    for (directory, extension) in [("pdfs", "pdf"), ("typst", "typ")] {
+        let directory = parent.join(directory);
+        paths.push(directory.clone());
+        for document in ["cv", "cl"] {
+            paths.push(directory.join(format!("{document}.{extension}")));
+            paths.push(directory.join(format!(
+                "{stem}_{}.{extension}",
+                document.to_ascii_uppercase()
+            )));
+        }
+    }
+    for path in paths {
+        match fs::symlink_metadata(&path) {
+            Ok(metadata) => ensure!(
+                !metadata.file_type().is_symlink(),
+                "opportunity output path must not be a symlink: {}",
+                path.display()
+            ),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(error).with_context(|| format!("cannot inspect {}", path.display()));
             }
+        }
+    }
+    Ok(())
+}
+
+fn remove_stale_opportunity_outputs(
+    pdfs_dir: &Path,
+    typst_dir: &Path,
+    stem: &str,
+    cover_enabled: bool,
+) -> Result<()> {
+    let mut stale = vec![
+        pdfs_dir.join("cv.pdf"),
+        pdfs_dir.join("cl.pdf"),
+        typst_dir.join("cv.typ"),
+        typst_dir.join("cl.typ"),
+    ];
+    if !cover_enabled {
+        stale.extend([
+            pdfs_dir.join(format!("{stem}_CL.pdf")),
+            typst_dir.join(format!("{stem}_CL.typ")),
+        ]);
+    }
+    for path in stale {
+        if path.is_file() {
+            fs::remove_file(path)?;
         }
     }
     Ok(())

@@ -57,25 +57,253 @@ fn opportunity_record_selects_its_locale_pages_and_documents() {
 }
 
 #[test]
-fn disabled_cover_letter_removes_stale_output() {
+fn filename_tokens_are_explicit_sanitized_display_name_tokens() {
+    for (name, expected) in [
+        ("Sample Taylor", "Taylor"),
+        ("Sample de Silva", "Silva"),
+        ("\tSample  O'Neil_--  ", "O-Neil"),
+        ("Sample /../Ng\\", "Ng"),
+        ("Sample 王", "王"),
+    ] {
+        assert_eq!(applicant_filename_token(name).unwrap(), expected);
+    }
+    assert!(applicant_filename_token(" \t").is_err());
+    assert!(applicant_filename_token("Sample _/../_").is_err());
+    assert_eq!(filename_key("acme_labs"), "Acme-Labs");
+    assert_eq!(filename_key("platform-lead"), "Platform-Lead");
+}
+
+#[test]
+fn cleanup_removes_only_exact_generated_opportunity_outputs() {
     let directory = tempdir().unwrap();
     let pdfs = directory.path().join("pdfs");
     let typst = directory.path().join("typst");
     fs::create_dir_all(&pdfs).unwrap();
     fs::create_dir_all(&typst).unwrap();
-    let stale_pdf = pdfs.join("cl.pdf");
-    let stale_typ = typst.join("cl.typ");
-    fs::write(&stale_pdf, b"stale").unwrap();
-    fs::write(&stale_typ, b"stale").unwrap();
-    remove_stale_cover_letter(&pdfs, &typst, false).unwrap();
-    assert!(!stale_pdf.exists());
-    assert!(!stale_typ.exists());
+    let stem = "Taylor_Acme_Lead";
+    let legacy = [
+        pdfs.join("cv.pdf"),
+        pdfs.join("cl.pdf"),
+        typst.join("cv.typ"),
+        typst.join("cl.typ"),
+    ];
+    let letter = [
+        pdfs.join(format!("{stem}_CL.pdf")),
+        typst.join(format!("{stem}_CL.typ")),
+    ];
+    let keep = [
+        pdfs.join(format!("{stem}_CV.pdf")),
+        typst.join(format!("{stem}_CV.typ")),
+        pdfs.join("Other_Acme_Lead_CL.pdf"),
+        typst.join("notes_CL.typ"),
+    ];
+    for path in legacy.iter().chain(&letter).chain(&keep) {
+        fs::write(path, b"preserved bytes").unwrap();
+    }
+    remove_stale_opportunity_outputs(&pdfs, &typst, stem, true).unwrap();
+    assert!(legacy.iter().all(|path| !path.exists()));
+    for path in letter.iter().chain(&keep) {
+        assert_eq!(fs::read(path).unwrap(), b"preserved bytes");
+    }
+    remove_stale_opportunity_outputs(&pdfs, &typst, stem, false).unwrap();
+    assert!(letter.iter().all(|path| !path.exists()));
+    for path in keep {
+        assert_eq!(fs::read(path).unwrap(), b"preserved bytes");
+    }
+}
 
-    fs::write(&stale_pdf, b"current").unwrap();
-    fs::write(&stale_typ, b"current").unwrap();
-    remove_stale_cover_letter(&pdfs, &typst, true).unwrap();
-    assert!(stale_pdf.exists());
-    assert!(stale_typ.exists());
+fn named_opportunity_workspace() -> (tempfile::TempDir, Workspace) {
+    let directory = tempdir().unwrap();
+    let root = directory.path();
+    let write = |relative: &str, content: &str| {
+        let path = root.join(relative);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, content).unwrap();
+    };
+    write(
+        "ccvl.json",
+        &serde_json::json!({
+            "format": "ccvl-workspace", "schema_version": 8,
+            "documents": {
+                "cv": {"root": "cvl/cv", "default_style": "plain"},
+                "cover_letter": {"root": "cvl/cl", "default_style": "plain"}
+            }
+        })
+        .to_string(),
+    );
+    write("cvl/profile.toml", "name = \"Sample Taylor\"\n");
+    let original = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut record: toml::Value = toml::from_str(
+        &fs::read_to_string(original.join(".agent/scaffolds/opportunity/application.toml"))
+            .unwrap(),
+    )
+    .unwrap();
+    let options = record["options"].as_table_mut().unwrap();
+    options.insert("language".into(), "en-us".into());
+    options.insert("pages".into(), 1.into());
+    options.insert("cl_pages".into(), 1.into());
+    record["job"]["id"] = "fixture".into();
+    for document in ["cv", "cl"] {
+        record
+            .as_table_mut()
+            .unwrap()
+            .insert(document.into(), toml::Value::Table(toml::map::Map::new()));
+        let base = format!("cvl/{document}/plain");
+        write(
+            &format!("{base}/style.toml"),
+            &format!(
+                "id = \"plain\"\napi = 1\ndocuments = [{document:?}]\nsupports_locales = [\"en-us\"]\npages = [1]\ndefault_pages = 1\nsubstyles = [\"standard\"]\ndefault_substyle = \"standard\"\n"
+            ),
+        );
+        write(&format!("{base}/standard/substyle.toml"), "");
+        write(
+            &format!("{base}/standard/en/us/strings.toml"),
+            "locale = \"en-us\"\n",
+        );
+        write(
+            &format!("{base}/standard/en/us/typst/{document}.typ"),
+            "#set text(font: \"Archivo\")\nSynthetic naming fixture.\n",
+        );
+    }
+    for document in ["cv", "cl"] {
+        write(
+            &format!("cvl/{document}/plain/standard/en/us/content.toml"),
+            &toml::to_string(&record).unwrap(),
+        );
+    }
+    write(
+        "opportunities/acme/platform-lead/application.toml",
+        &toml::to_string(&record).unwrap(),
+    );
+    let workspace = Workspace::at(root).unwrap();
+    (directory, workspace)
+}
+
+#[test]
+fn failed_opportunity_replacement_preserves_legacy_bytes_until_every_copy_succeeds() {
+    let (_directory, workspace) = named_opportunity_workspace();
+    let parent = workspace.path("opportunities/acme/platform-lead");
+    let specs = opportunity_specs(&workspace, "acme", "platform-lead").unwrap();
+    assert_eq!(
+        specs[0].output,
+        parent.join("pdfs/Taylor_Acme_Platform-Lead_CV.pdf")
+    );
+    assert_eq!(
+        specs[1].output,
+        parent.join("pdfs/Taylor_Acme_Platform-Lead_CL.pdf")
+    );
+    let legacy = ["pdfs/cv.pdf", "pdfs/cl.pdf", "typst/cv.typ", "typst/cl.typ"];
+    for path in legacy {
+        let target = parent.join(path);
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(target, path.as_bytes()).unwrap();
+    }
+    let unrelated = parent.join("typst/Personal_Notes_CL.typ");
+    fs::write(&unrelated, "user-owned note").unwrap();
+    let original = fs::read_to_string(&specs[1].source).unwrap();
+    fs::write(&specs[1].source, "#panic(\"synthetic render failure\")").unwrap();
+    assert!(render_opportunity(&workspace, "acme", "platform-lead").is_err());
+    for path in legacy {
+        assert_eq!(fs::read(parent.join(path)).unwrap(), path.as_bytes());
+    }
+    fs::write(&specs[1].source, original).unwrap();
+    let last_copy = parent.join("typst/Taylor_Acme_Platform-Lead_CL.typ");
+    fs::create_dir(&last_copy).unwrap();
+    let error = render_opportunity(&workspace, "acme", "platform-lead").unwrap_err();
+    assert!(error.to_string().contains("cannot write"), "{error:#}");
+    assert!(
+        error
+            .to_string()
+            .contains("Taylor_Acme_Platform-Lead_CL.typ")
+    );
+    assert!(specs.iter().all(|spec| spec.output.is_file()));
+    assert!(
+        parent
+            .join("typst/Taylor_Acme_Platform-Lead_CV.typ")
+            .is_file()
+    );
+    for path in legacy {
+        assert_eq!(fs::read(parent.join(path)).unwrap(), path.as_bytes());
+    }
+    assert_eq!(fs::read_to_string(&unrelated).unwrap(), "user-owned note");
+    fs::remove_dir(&last_copy).unwrap();
+    let outputs = render_opportunity(&workspace, "acme", "platform-lead").unwrap();
+    assert_eq!(outputs.len(), 4);
+    assert!(outputs.iter().all(|path| path.is_file()));
+    assert!(legacy.iter().all(|path| !parent.join(path).exists()));
+    assert_eq!(fs::read_to_string(unrelated).unwrap(), "user-owned note");
+}
+
+#[cfg(unix)]
+#[test]
+fn opportunity_output_symlinks_cannot_redirect_writes_or_cleanup() {
+    use std::os::unix::fs::symlink;
+    for sibling in [false, true] {
+        for directory_name in ["pdfs", "typst"] {
+            let (_directory, workspace) = named_opportunity_workspace();
+            let external = tempdir().unwrap();
+            let destination = if sibling {
+                let path = workspace.path("opportunities/other/role/outputs");
+                fs::create_dir_all(&path).unwrap();
+                path
+            } else {
+                external.path().to_path_buf()
+            };
+            let sentinel = destination.join(if directory_name == "pdfs" {
+                "cl.pdf"
+            } else {
+                "cl.typ"
+            });
+            fs::write(&sentinel, b"outside bytes").unwrap();
+            let parent = workspace.path("opportunities/acme/platform-lead");
+            symlink(&destination, parent.join(directory_name)).unwrap();
+            let error = render_opportunity(&workspace, "acme", "platform-lead").unwrap_err();
+            assert!(
+                error.to_string().contains("must not be a symlink"),
+                "{error:#}"
+            );
+            assert_eq!(fs::read(&sentinel).unwrap(), b"outside bytes");
+            assert_eq!(fs::read_dir(&destination).unwrap().count(), 1);
+        }
+    }
+    for output in [
+        "pdfs/Taylor_Acme_Platform-Lead_CV.pdf",
+        "typst/Taylor_Acme_Platform-Lead_CL.typ",
+        "pdfs/cl.pdf",
+    ] {
+        let (_directory, workspace) = named_opportunity_workspace();
+        let external = tempdir().unwrap();
+        let sentinel = external.path().join("original");
+        fs::write(&sentinel, b"outside bytes").unwrap();
+        let path = workspace
+            .path("opportunities/acme/platform-lead")
+            .join(output);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        symlink(&sentinel, &path).unwrap();
+        let error = render_opportunity(&workspace, "acme", "platform-lead").unwrap_err();
+        assert!(
+            error.to_string().contains("must not be a symlink"),
+            "{error:#}"
+        );
+        assert_eq!(fs::read(sentinel).unwrap(), b"outside bytes");
+        assert!(fs::symlink_metadata(path).unwrap().file_type().is_symlink());
+    }
+    let (_directory, workspace) = named_opportunity_workspace();
+    let parent = workspace.path("opportunities/acme/platform-lead");
+    let sibling = workspace.path("opportunities/acme/other");
+    fs::rename(&parent, &sibling).unwrap();
+    fs::create_dir(sibling.join("pdfs")).unwrap();
+    fs::write(sibling.join("pdfs/cl.pdf"), b"sibling bytes").unwrap();
+    symlink(&sibling, &parent).unwrap();
+    let error = render_opportunity(&workspace, "acme", "platform-lead").unwrap_err();
+    assert!(
+        error.to_string().contains("must not be a symlink"),
+        "{error:#}"
+    );
+    assert_eq!(
+        fs::read(sibling.join("pdfs/cl.pdf")).unwrap(),
+        b"sibling bytes"
+    );
 }
 
 #[test]
