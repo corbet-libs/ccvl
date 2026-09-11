@@ -431,7 +431,7 @@ pub fn leaf(
         let mut matches = definition.supports_locales.iter().filter(|locale| {
             locale.split_once('-').map(|(language, _)| language) == Some(requested.as_str())
         });
-        let matched = matches.next().with_context(|| {
+        let resolved = matches.next().with_context(|| {
             format!(
                 "style {} has no locale for language {requested}",
                 definition.id
@@ -443,7 +443,7 @@ pub fn leaf(
             definition.id,
             definition.supports_locales.join(", ")
         );
-        matched.clone()
+        resolved.clone()
     };
     ResolvedStyle::new(workspace, document, definition)?.leaf(
         workspace,
