@@ -40,7 +40,7 @@ fn registry_requires_explicit_complete_defaults_and_safe_preset_names() {
 #[test]
 fn paper_precedence_names_and_selected_document_scope_are_explicit() {
     let workspace = repository();
-    let leaf = leaf(&workspace, "cv", "en");
+    let leaf = leaf(&workspace, "cv", "en-ch");
     assert_eq!(leaf.locale, "en-ch");
     let original = render::cvl_spec(&workspace, &leaf, 1).unwrap();
     assert_eq!(original.inputs["paper"], "a4");
