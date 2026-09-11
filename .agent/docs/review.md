@@ -114,9 +114,12 @@ close, ordinary “interest” or a supported skill label is not inherently a de
 
 ## Result interface
 
-Write JSON with these fields, then submit it. Populate IDs, hashes, citations,
-coverage and usage from the actual run; there is no ready flag for the critic
-to assert.
+Every review delivers supported findings, an account of its coverage and the
+CLI's computed outcome. An empty finding list still needs complete coverage;
+an unavailable input still permits the accessible checks. Write JSON with the
+fields below, then submit it and read the returned state and reasons. Populate
+IDs, hashes, citations, coverage and usage from the actual run; there is no
+ready flag for the critic to assert.
 
 | Field | Contents |
 |---|---|
@@ -131,7 +134,11 @@ to assert.
 
 `coverage.artifacts_read` lists every artifact actually read. Complete coverage
 requires all manifest artifacts except compiler dependencies with role `input`.
-Record unavailable IDs and incomplete passes honestly. In general mode, add
+`coverage.unavailable` lists known manifest artifact IDs that the critic could
+not inspect. Both lists require unique IDs and cannot overlap. Preparation
+records sources that could not be frozen in the manifest's failed checks;
+do not invent artifact IDs for them. Record incomplete passes honestly.
+In general mode, add
 `coverage.not_applicable["posting-specific"]` with a reason explaining why
 vacancy criteria do not apply. A green compile or actor explanation cannot
 substitute for a source, text or visual pass.

@@ -93,9 +93,10 @@ overflow causes an editorial iteration instead of a one-error-at-a-time loop.
 ## Small-model skill evaluation
 
 The `Skill evaluation` workflow sends its generic decision cases to
-Groq's `openai/gpt-oss-20b` model when account usage is authorized. Cases are
-deterministically batched by canonical skill, with the complete matching skill
-and the descriptions of all declared skills supplied to each low-context call. Both the
+the configured Groq model, defaulting to `openai/gpt-oss-20b`, when account usage
+is authorized. Cases are deterministically batched by canonical skill, with the
+complete matching skill and the descriptions of all declared skills supplied
+to each low-context call. Both the
 expected routing and answer key are withheld. A deterministic evaluator then
 requires the correct skill, every expected action, no forbidden action, and a
 valid response structure. Every option needs an explicit assessment, including
@@ -145,11 +146,13 @@ rejected; keep historical evidence with its original scorer and do not invent
 assessments to convert it.
 
 `skill-eval --response-file <path>` scores this same contract without inference.
-Its JSON and Markdown reports identify `provider: response-file` and
-`model: unspecified`, even if the file or `--model` names a provider/model.
-External provenance belongs in the producing adapter's independently verified
-receipt; importing decisions does not authenticate that provenance or make an
-offline fixture a provider result.
+Its reports identify `source: response-file` and leave the inference provider
+unknown (`null`). The model is also unknown unless explicitly supplied with
+`--model`; that is a caller-provided label, not authenticated provenance.
+Embedded response labels, the Groq environment and the default hosted model
+never establish saved-response provenance. Retain original requests, responses
+and provider telemetry in the producing adapter's independently verified receipt;
+importing decisions does not make an offline fixture a provider result.
 
 Each skill group is split into at most two cases per request, preserving skill
 and case order. This reduces output pressure on the existing 1,800 completion-token

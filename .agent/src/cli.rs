@@ -198,7 +198,7 @@ enum Command {
         response_file: Option<PathBuf>,
         #[arg(long)]
         summary: Option<PathBuf>,
-        /// Groq model for provider requests; ignored when scoring a response file.
+        /// Groq request model, or a caller-provided label for a saved response.
         #[arg(long)]
         model: Option<String>,
     },
@@ -477,16 +477,19 @@ pub fn run() -> Result<ExitCode> {
                 .as_deref()
                 .map(|path| resolve(&workspace, path));
             let summary = summary.as_deref().map(|path| resolve(&workspace, path));
-            let model = model
-                .or_else(|| std::env::var("GROQ_MODEL").ok())
-                .unwrap_or_else(|| skills::DEFAULT_MODEL.to_owned());
+            let model = model.or_else(|| {
+                response_file
+                    .is_none()
+                    .then(|| std::env::var("GROQ_MODEL").ok())
+                    .flatten()
+            });
             let outcome = skills::run_hosted_evaluation(
                 &workspace,
                 &cases,
                 &skills_root,
                 &output,
                 response_file.as_deref(),
-                &model,
+                model.as_deref(),
                 summary.as_deref(),
             )?;
             println!(
