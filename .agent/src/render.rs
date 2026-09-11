@@ -403,7 +403,7 @@ fn applicant_filename_token(name: &str) -> Result<String> {
     Ok(sanitized)
 }
 
-/// Opportunity keys have already passed record_path's lowercase ASCII check.
+/// Opportunity keys have already passed `record_path`'s lowercase ASCII check.
 /// Reserve underscores for filename sections and capitalize each key segment.
 fn filename_key(key: &str) -> String {
     key.split(['-', '_'])
