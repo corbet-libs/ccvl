@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2026 Julian Y. Richard Corbet
+# SPDX-License-Identifier: FSL-1.1-ALv2
+when:
+  - event: manual
+    branch: main
+skip_clone: true
+variables:
+  SOURCE_ARCHIVE: {default: ""}
+  SOURCE_SHA256: {default: ""}
+  CI_TOOL_ARCHIVE: {default: ""}
+  CI_TOOL_SHA256: {default: ""}
+  DATE_SOURCE_ARCHIVE: {default: ""}
+  DATE_SOURCE_SHA256: {default: ""}
+  RUST_TOOLCHAIN: {default: ""}
+  CI_JOBS: {default: "2"}
+  CI_TEST_THREADS: {default: "2"}
+  CI_MEMORY_MB: {default: ""}
+  CI_MEMORY_PER_JOB_MB: {default: ""}
+  CI_TIMEOUT: {default: "900"}
+  CI_CACHE_ROOT: {default: ""}
+  CI_NIX_JOBS: {default: ""}
+  CI_LINKER: {default: system}
+  TMPDIR: {default: ""}
+  CI_TOOL_BINARY: {default: ""}
+  CI_TOOL_BINARY_SHA256: {default: ""}
+  CI_MIN_AVAILABLE_MB: {default: "8192"}
+  CI_REPOSITORY_URL: {default: ""}
+  CARGO_TARGET_DIR: {default: ""}
+steps:
+  - name: candidate-date
+    image: bash
+    environment:
+      CCID_REVISION: '85e316579ea938c42a4e45d42cb3ac94aa2d9328'
+    commands:
+      - |
+        set -eu
+        printf '%s  %s\n' "$CI_TOOL_SHA256" "$CI_TOOL_ARCHIVE" | sha256sum --check --strict
+        test "$(git get-tar-commit-id < "$CI_TOOL_ARCHIVE")" = "$CCID_REVISION"
+        test -n "$CI_TOOL_BINARY"
+        test -n "$CI_TOOL_BINARY_SHA256"
+        printf '%s  %s\n' "$CI_TOOL_BINARY_SHA256" "$CI_TOOL_BINARY" | sha256sum --check --strict
+        test "$("$CI_TOOL_BINARY" source-revision)" = "$CCID_REVISION"
+        TMPDIR="$${TMPDIR:-/tmp}"
+        export TMPDIR
+        exec "$CI_TOOL_BINARY" check --archive "$SOURCE_ARCHIVE" --sha256 "$SOURCE_SHA256" --commit "$CI_COMMIT_SHA" --check candidate-date

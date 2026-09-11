@@ -40,6 +40,17 @@ LFS and submodule inputs, and supplies the pinned shared tool archive and
 binary with their SHA-256 digests. Missing inputs fail closed. The adapter
 checks the source commit against `CI_COMMIT_SHA` before execution.
 
+The manual `candidate-date` Crow workflow checks an exact unpublished date-fix
+candidate without building or publishing the full application. Its separate
+`.ci/archives.toml` revision is staged with a verified digest; the ordinary
+published workflow source retains its own identity. The candidate's focused
+Rust module and Typst helper/letter regressions run with existing offline
+caches, including `typst==0.15.0`. A missing cached dependency fails visibly.
+Receipts and rendered artifacts remain under the persistent Cargo target's
+`ccvl-candidate-date/<candidate>/<harness>/run-*` directory. This proof does
+not replace the locked full application or native release gates. Dispatch only
+this workflow for the pinned candidate; routine selectors do not stage it.
+
 Compiled targets live in persistent dedicated Cargo storage, namespaced by
 canonical repository identity. An explicit `CARGO_TARGET_DIR` is honored.
 The shared tool locks the actual target directory, retains unchanged source

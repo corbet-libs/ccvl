@@ -18,6 +18,10 @@ commands = [["bash", ".agent/scripts/ci-check.sh", "lint"]]
 kind = "commands"
 commands = [["bash", ".agent/scripts/ci-check.sh", "documents"]]
 
+[checks.candidate-date]
+kind = "commands"
+commands = [["python3", ".agent/scripts/candidate-date.py"]]
+
 [checks.downstream-check]
 kind = "commands"
 commands = [["python3", ".agent/scripts/downstream-check.py"]]

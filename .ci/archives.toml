@@ -15,3 +15,9 @@ revision = "source"
 archive_variable = "DOWNSTREAM_SOURCE_BUNDLE"
 digest_variable = "DOWNSTREAM_SOURCE_SHA256"
 workflows = ["downstream-check"]
+
+[archives.date-candidate]
+revision = "7411dcc6d4d20c7509ca8ba275dab0d4b87bfeac"
+archive_variable = "DATE_SOURCE_ARCHIVE"
+digest_variable = "DATE_SOURCE_SHA256"
+workflows = ["candidate-date"]
