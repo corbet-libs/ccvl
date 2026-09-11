@@ -83,6 +83,9 @@ key or purportedly fixed findings as established truth. The critic reads the
 original evidence and selected rules, extracted final text and every rendered
 page itself. Claim markers prove bookkeeping, not that the wording follows
 from the source. A model without image access cannot claim page coverage.
+If a required input is unavailable, continue the accessible evidence,
+extracted-text and mechanical checks, recording the missing coverage and an
+incomplete review.
 
 Review evidence/relevance first and writing/presentation second. Check what a
 reasonable reader would infer against the original evidence or explicit user

@@ -75,6 +75,9 @@ rules. Preserve names, exact quotations, source text, URLs and user
 choices; do not globally normalise protected text. Authored locale IDs are
 lowercase. Missing images or lack of image access mean incomplete visual
 coverage, even if extraction and compilation succeeded.
+When a required input is unavailable, continue the accessible evidence,
+extracted-text and mechanical checks; record the missing coverage and keep the
+overall review incomplete.
 
 ## Accountable findings
 
