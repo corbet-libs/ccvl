@@ -1,6 +1,8 @@
 param([Parameter(Mandatory = $true)][string]$Binary)
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'runtime-test-source.ps1')
+& (Join-Path $PSScriptRoot 'test_runtime_archive.ps1')
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $Binary = (Resolve-Path $Binary).Path
 $TestBinary = $Binary
@@ -13,8 +15,7 @@ $Scratch = Join-Path ([IO.Path]::GetTempPath()) "ccvl-runtime-$([Guid]::NewGuid(
 New-Item -ItemType Directory -Path $Scratch | Out-Null
 try {
     $Archive = Join-Path $Scratch "source.tar"
-    git -C $RepoRoot archive HEAD -o $Archive
-    if ($LASTEXITCODE -ne 0) { throw "Archive creation failed" }
+    Copy-RuntimeTestArchive -RepoRoot $RepoRoot -Archive $Archive
     tar -xf $Archive -C $Scratch
     if ($LASTEXITCODE -ne 0) { throw "Archive extraction failed" }
     Remove-Item -LiteralPath $Archive
