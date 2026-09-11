@@ -237,6 +237,103 @@
       "expected": [
         "Independent measurement must detect actual A4 output against explicit US Letter; record presentation/mechanical mismatch and preserve the requested paper."
       ]
+    },
+    {
+      "case_id": "case-21-a",
+      "pair": 21,
+      "focus": "persuasive reframing versus invented authority and scale",
+      "expected": [
+        "Report no material factual or MECE defect in the supplied text. The integrated checked workbook used by four colleagues supports reporting solution and the opening value statement even though the source uses informal spreadsheet language.",
+        "Recognize distinct reporting and handover evidence; the brief opening and closing summaries serve framing and invitation rather than duplicate achievement paragraphs.",
+        "Do not require source-verbatim wording, replace built with helped, add merely a spreadsheet, or add unsupported skepticism just because the presentation is confident."
+      ],
+      "protected": [
+        "Confident employer-facing value framing",
+        "Candidate ownership of workbook and handover",
+        "Four colleagues as users, not direct reports",
+        "No invented numeric benefit",
+        "Explicit independent-style geometry and selections"
+      ]
+    },
+    {
+      "case_id": "case-21-b",
+      "pair": 21,
+      "focus": "persuasive reframing versus invented authority and scale",
+      "expected": [
+        "Cite the second paragraph and confirmation: led, department-wide and directing four colleagues imply authority and deployment scope that the manager/team-workbook facts contradict. Classify the concrete attribution/scope defect as error, not a ban on forceful wording.",
+        "Correct the leadership/scale implications while preserving the candidate ownership of building the integrated reporting solution and writing/demonstrating the guide. Do not weaken the supported contribution to mere assistance."
+      ],
+      "protected": [
+        "Confident employer-facing value framing",
+        "Candidate ownership of workbook and handover",
+        "Four colleagues as users, not direct reports",
+        "No invented numeric benefit",
+        "Explicit independent-style geometry and selections"
+      ]
+    },
+    {
+      "case_id": "case-22-a",
+      "pair": 22,
+      "focus": "MECE substantive distinction and complete relevant coverage",
+      "expected": [
+        "Report no material MECE defect: triage, shift planning and onboarding each have distinct supporting detail, even though they come from the same job. The opening overview legitimately signposts the later evidence.",
+        "Do not require every source fact, an extra achievement for each AIDA stage, six Harvard paragraphs, or removal of the opening summary. Landscape photography is outside the selected purpose."
+      ],
+      "protected": [
+        "Purposeful opening summary",
+        "One employment source supporting several distinct contributions",
+        "AIDA independent of style geometry",
+        "Completeness relative to explicit priorities",
+        "Exclusion of irrelevant profile detail"
+      ]
+    },
+    {
+      "case_id": "case-22-b",
+      "pair": 22,
+      "focus": "MECE substantive distinction and complete relevant coverage",
+      "expected": [
+        "Identify the duplicated substantive triage argument in paragraphs 1 and 2 with passage locators; explain that different words do not establish a second contribution.",
+        "Identify absent substantive shift-planning and onboarding evidence despite their explicit importance and available confirmation. Their names in the opening do not provide the missing support.",
+        "Constrain the correction to replacing the redundant passage with the confirmed roster and onboarding contributions. Preserve the useful opening summary, triage example, AIDA progression and three-paragraph shape. Do not invent savings or new roles."
+      ],
+      "protected": [
+        "Purposeful opening summary",
+        "One employment source supporting several distinct contributions",
+        "AIDA independent of style geometry",
+        "Completeness relative to explicit priorities",
+        "Exclusion of irrelevant profile detail"
+      ]
+    },
+    {
+      "case_id": "case-23-a",
+      "pair": 23,
+      "focus": "relevant completeness without manufacturing a missing qualification",
+      "expected": [
+        "Report no material defect in the supplied letter: it covers the two required work dimensions with practical evidence and keeps volunteer scope while making a strong transfer argument.",
+        "Record the known absent desirable certification in preparation/coverage notes, without calling it unknown, a false claim in the letter, or a requirement to add a disclaimer to the prose. Do not make the candidate appear less capable than the confirmed work supports.",
+        "MECE completeness does not require a certification claim, unrelated recipe history, or a separate paragraph on future learning. A desirable qualification need not be invented to finish the case."
+      ],
+      "protected": [
+        "Strong practical transfer from volunteer experience",
+        "Two distinct required duties covered by one event",
+        "Known optional qualification gap tracked outside letter prose",
+        "No compulsory listing of every shortfall or irrelevant fact"
+      ]
+    },
+    {
+      "case_id": "case-23-b",
+      "pair": 23,
+      "focus": "relevant completeness without manufacturing a missing qualification",
+      "expected": [
+        "Cite the first paragraph and explicit lack of certification: certified project-management professional is a contradicted credential claim. Interest in future training and the vacancy desirability cannot support it.",
+        "Remove the invented credential while keeping the strongest practical coordination/reporting case and volunteer scope. Record the real desirable qualification gap in preparation instead of filling it with another unsupported course, current capability or promise."
+      ],
+      "protected": [
+        "Strong practical transfer from volunteer experience",
+        "Two distinct required duties covered by one event",
+        "Known optional qualification gap tracked outside letter prose",
+        "No compulsory listing of every shortfall or irrelevant fact"
+      ]
     }
   ]
 }

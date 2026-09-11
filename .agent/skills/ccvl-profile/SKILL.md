@@ -12,6 +12,9 @@ Resolve the configured CV style before allocating presentation slots. The page
 counts, source paths and station-marker protocol below describe Harvard.
 Another style defines its own presentation contract; evidence, truthful scope,
 inspectable notes and unique fact ownership apply to every style.
+Use [editorial guidance](../../docs/editorial.md) when turning those facts into
+application wording: persuasive embellishment and MECE coverage apply to every
+candidate, independently of the creator's showcase.
 
 ## Protect the user before writing
 
@@ -132,10 +135,13 @@ real responsibility and output, but its `kind` remains truthful. Never turn it
 into employment, a customer engagement, a registered business, adoption, or
 revenue without evidence.
 
-Portray the candidate as advantageously as the evidence allows. Look for
+Portray every candidate as advantageously as the evidence allows. Look for
 ownership, ingenuity, scale, learning speed, and outcomes that a modest user
-may omit; choose the strongest accurate frame and plain language. This is not a
-neutral data dump, but favourable framing never changes factual scope.
+may omit; choose the strongest accurate frame and plain language. Actively
+embellish emphasis and narrative without changing factual meaning or reasonable
+reader inference. The user's source phrasing need not be copied literally;
+retain meaningful qualifications while removing unnecessary caveats in polished
+copy. Preserve the original evidence and journal.
 
 For page 2, ask across education, professional development, credentials,
 research, publications, awards, communities, volunteering, and meaningful
@@ -169,6 +175,13 @@ distinctiveness, recency, and demonstrated impact. Merge only facts that form
 one coherent station. Move rather than copy. Keep unused material in the
 working profile and leave its station unassigned so future opportunities can
 reuse it without creating CV duplication.
+
+Unique fact ownership does not prohibit one fact supporting several role
+requirements or a concise Summary/highlight signposting fuller evidence. MECE
+also requires collective coverage of the material audience/purpose dimensions:
+record supported, adjacent and missing evidence during preparation, so repeated
+selling points do not hide an unaddressed priority. Missing support never
+authorises invented capability or an unsolicited gap apology in the document.
 
 Use `.agent/scaffolds/interview/stations.toml` exactly. Claims are `verified`,
 `conflicted`, or `unverified`; explicit user confirmation is valid provenance.

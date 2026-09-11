@@ -97,6 +97,15 @@
     }
 }
 
+/// Normalize explicit locale spelling without inference, fallback or validation.
+/// Trim ASCII space, tab, LF, CR, VT and FF; replace underscores with hyphens
+/// and lowercase ASCII letters. Preserve other characters for caller validation.
+/// Preserve all subtags, even outside the correspondence tables; empty stays empty.
+#let normalize-locale-id(input) = {
+    let trimmed = input.trim(regex("[ \t\n\r\u{b}\u{c}]"))
+    trimmed.replace("_", "-").replace(regex("[A-Z]"), match => lower(match.text))
+}
+
 /// Normalize mixed case and underscores to a supported lowercase locale ID.
 #let normalize-language(input) = {
     let lowered = lower(input.trim().replace("_", "-"))

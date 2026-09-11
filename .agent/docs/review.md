@@ -42,7 +42,9 @@ Missing files/tool output cannot become a passed review.
 Pin the selected recipe, user preferences and applicable rules in `rubric`.
 [Editorial guidance](editorial.md) is universal; selected style contracts own
 geometry and an optional recipe mapping. Shared locale conventions come from
-cletter/family. Keep original names, quotations, qualifiers and user choices.
+cletter/family public interfaces; ccvl does not define duplicate locale rules.
+Keep original names, quotations, user choices and qualifiers needed for factual
+meaning. Apply persuasive framing and MECE requirements to every candidate.
 Select budgets from the authorised environment and actual evaluation evidence;
 example numbers are not product defaults. The coordinator must enforce provider
 limits and cancellation while a call is running; the CLI validates recorded
@@ -81,12 +83,28 @@ original evidence and selected rules, extracted final text and every rendered
 page itself. Claim markers prove bookkeeping, not that the wording follows
 from the source. A model without image access cannot claim page coverage.
 
-Review evidence/relevance first and writing/presentation second. Check the
-strongest relevant supported facts before residual CV material, while retaining
-useful transferable evidence. Check AIDA only when selected; Harvard geometry
-does not apply to independent styles. A short conventional close, ordinary
-“interest” or a supported skill label is not inherently a defect. Preserve
-factual estimates and attribution even when revising for confidence.
+Review evidence/relevance first and writing/presentation second. Check what a
+reasonable reader would infer against the original evidence or explicit user
+confirmation. Persuasive embellishment is expected: retain strong framing,
+value and narrative when their factual implications are supported. A factual
+objection must name the unsupported implication; forceful wording or departure
+from a source's phrasing alone is not a defect. Preserve necessary scope and
+estimates while allowing unnecessary hedges to be removed.
+
+Check MECE in both directions: each block contributes a distinct argument, and
+the package addresses the material priorities of its audience and purpose.
+Identify repeated arguments and relevant supported dimensions they crowd out.
+Evidence may support multiple requirements; concise highlights and summaries
+can signpost fuller evidence. Missing support belongs in preparation/review as
+a gap, never an invented capability or compulsory apology in the letter.
+Classify content coverage/overlap under `relevance` (or `language` for redundant
+phrasing); cite the actual passages and priority. Explain materiality rather
+than treating all repetition or every unmentioned job keyword as blocking.
+
+Check the strongest relevant supported facts before residual CV material,
+while retaining useful transferable evidence. Check AIDA only when selected;
+Harvard geometry does not apply to independent styles. A short conventional
+close, ordinary “interest” or a supported skill label is not inherently a defect.
 
 ## Result interface
 
@@ -120,7 +138,8 @@ Each finding contains:
   optional `explicit_requirement` defaults to false and must be true for a
   material preference that cites the exact pinned user requirement;
 - `rule`, `location`, and an `evidence` array of citations;
-- `correction_constraint`, describing supported truth to preserve or restore;
+- `correction_constraint`, describing supported meaning and persuasive value
+  to preserve or restore, plus any distinct argument/coverage to improve;
 - `resolution`: `open`, `fixed-and-verified`, `disputed-with-evidence` or
   `optional-suggestion-declined`; `verification` records actual verification
   when applicable, otherwise null.
@@ -136,7 +155,9 @@ measurement metadata can support it through `evidence`. Locate the affected
 passage/page precisely, cite the applicable rule and original support or
 contradiction. Missing evidence is uncertainty, not automatically falsehood.
 Confidence does not determine materiality. Optional preferences cannot erase
-facts or override explicit choices. No finding quota is required.
+facts or override explicit choices. Do not require literal source phrasing or
+extra caveats when the reader's factual understanding is already defensible.
+No finding quota is required.
 
 ```sh
 ccvl review submit <run-dir> <result.json>

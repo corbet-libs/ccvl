@@ -29,6 +29,14 @@ while company and role research belongs to its concrete opportunity.
   not a template; follow `LicenseRef-CCVL-Personal-Content`.
 - Every application claim must trace to evidence in the private downstream or
   to an explicit confirmation from the user.
+- For every user, actively write the strongest persuasive case those facts
+  support. Embellish framing, emphasis and narrative while keeping factual
+  meaning and reasonable reader inferences defensible; see
+  [editorial guidance](docs/editorial.md). Reviewers preserve legitimate
+  persuasion and identify unsupported implications, not strong tone alone.
+- Make arguments MECE: distinct contributions that together cover the material
+  dimensions of the audience and purpose. Reuse evidence without repetitive
+  prose; record material gaps without inventing qualifications.
 - Hobby projects, independent work, and side initiatives are valid evidence at
   their real scope. Never turn them into employment, customers, adoption, or
   revenue that did not exist.
@@ -39,10 +47,12 @@ while company and role research belongs to its concrete opportunity.
   `interview/` and `opportunities/` README scaffolds are intentional.
 - Never submit an application, send a message, sign a document, or accept a
   declaration without an explicit instruction for that exact external action.
-- Preserve original evidence, names, exact quotes, factual qualifiers and user
-  choices. Shared locale conventions belong to cletter/family; AIDA is an
-  optional writing recipe independent of visual style. Author locale IDs in
-  lowercase.
+- Preserve original evidence, names, exact quotes, user choices and qualifiers
+  needed for factual meaning. Reusable locale resolution, tables, orthography,
+  greetings, closings and dates belong to cletter/family; ccvl consumes their
+  public interfaces and passes explicit selections/overrides. Implement missing
+  shared behavior upstream. AIDA is an optional writing recipe independent of
+  visual style. Author locale IDs in lowercase.
 - Preserve the requested locale and page variant. A successful compile is not
   enough: verify exact page count, a usable PDF text layer, and rendered layout.
 - Follow the selected style’s declared layout contract. For Harvard, profile

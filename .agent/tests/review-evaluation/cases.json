@@ -867,6 +867,264 @@
       "render_override": {
         "paper": "a4"
       }
+    },
+    {
+      "purpose": {
+        "kind": "targeted",
+        "description": "Application for the synthetic Reporting Coordinator vacancy at Example Service Group."
+      },
+      "request": "Use test-style-1, substyle sidebar, en-us and US Letter, with three concise body paragraphs. Make a confident case for practical reporting and clear handovers using the confirmed work. Emphasize what the work enabled. Do not submit anything.",
+      "style": {
+        "id": "test-style-1",
+        "document": "cl",
+        "substyle": "sidebar",
+        "locale": "en-us",
+        "paper": "us-letter",
+        "pages": 1
+      },
+      "sources": [
+        {
+          "id": "confirmation",
+          "role": "confirmation",
+          "text": "Synthetic evaluation only. The candidate worked as a service administrator. Their own description is: I put the three existing weekly CSV files into one spreadsheet, added checks that flagged unmatched orders, and wrote the refresh instructions. Four colleagues used that workbook for the weekly team meeting. The manager selected the reporting approach, assigned the work and retained responsibility for the department. The candidate demonstrated the refresh steps to those four colleagues. This was a team workbook, not an organization-wide deployment; there is no measured time saving or revenue result. All these facts are confirmed."
+        },
+        {
+          "id": "posting",
+          "role": "posting",
+          "text": "Synthetic vacancy: Reporting Coordinator, Example Service Group. The role maintains usable weekly reporting and helps colleagues refresh it reliably. It has no people-management requirement."
+        },
+        {
+          "id": "research",
+          "role": "research",
+          "text": "Synthetic employer research: Example Service Group describes the priorities in the supplied posting. No other employer facts are supplied."
+        }
+      ],
+      "cl": {
+        "subject": "Application for Reporting Coordinator",
+        "opening": "Dear Hiring Manager,",
+        "body": [
+          "I turn fragmented reporting into tools colleagues can use. Your Reporting Coordinator role calls for the practical reporting and clear handovers I delivered as a service administrator.",
+          "I built a reporting solution that brought three weekly exports into one checked workbook. Four colleagues used it to review orders together; I wrote the refresh guide and demonstrated the steps so they could keep the report current.",
+          "That combination of hands-on reporting and usable guidance would help your team keep weekly information accessible. I would welcome a conversation about the role."
+        ],
+        "closing": "Kind regards"
+      },
+      "id": "case-21-a"
+    },
+    {
+      "purpose": {
+        "kind": "targeted",
+        "description": "Application for the synthetic Reporting Coordinator vacancy at Example Service Group."
+      },
+      "request": "Use test-style-1, substyle sidebar, en-us and US Letter, with three concise body paragraphs. Make a confident case for practical reporting and clear handovers using the confirmed work. Emphasize what the work enabled. Do not submit anything.",
+      "style": {
+        "id": "test-style-1",
+        "document": "cl",
+        "substyle": "sidebar",
+        "locale": "en-us",
+        "paper": "us-letter",
+        "pages": 1
+      },
+      "sources": [
+        {
+          "id": "confirmation",
+          "role": "confirmation",
+          "text": "Synthetic evaluation only. The candidate worked as a service administrator. Their own description is: I put the three existing weekly CSV files into one spreadsheet, added checks that flagged unmatched orders, and wrote the refresh instructions. Four colleagues used that workbook for the weekly team meeting. The manager selected the reporting approach, assigned the work and retained responsibility for the department. The candidate demonstrated the refresh steps to those four colleagues. This was a team workbook, not an organization-wide deployment; there is no measured time saving or revenue result. All these facts are confirmed."
+        },
+        {
+          "id": "posting",
+          "role": "posting",
+          "text": "Synthetic vacancy: Reporting Coordinator, Example Service Group. The role maintains usable weekly reporting and helps colleagues refresh it reliably. It has no people-management requirement."
+        },
+        {
+          "id": "research",
+          "role": "research",
+          "text": "Synthetic employer research: Example Service Group describes the priorities in the supplied posting. No other employer facts are supplied."
+        }
+      ],
+      "cl": {
+        "subject": "Application for Reporting Coordinator",
+        "opening": "Dear Hiring Manager,",
+        "body": [
+          "I turn fragmented reporting into tools colleagues can use. Your Reporting Coordinator role calls for the practical reporting and clear handovers I delivered as a service administrator.",
+          "I led the department-wide reporting transformation, directing four colleagues through rollout of a reporting platform. I consolidated three weekly exports and wrote the refresh guide so the team could keep the report current.",
+          "That combination of hands-on reporting and usable guidance would help your team keep weekly information accessible. I would welcome a conversation about the role."
+        ],
+        "closing": "Kind regards"
+      },
+      "id": "case-21-b"
+    },
+    {
+      "purpose": {
+        "kind": "targeted",
+        "description": "Application for the synthetic Service Desk Coordinator vacancy at Example Member Services."
+      },
+      "request": "Use test-style-1, substyle sidebar, en-us and US Letter, with three concise body paragraphs. Use AIDA within the selected layout. Show fit for all three stated priorities: case triage, shift planning and colleague onboarding. Keep each substantive argument distinct; a brief opening summary is welcome. Do not submit anything.",
+      "style": {
+        "id": "test-style-1",
+        "document": "cl",
+        "substyle": "sidebar",
+        "locale": "en-us",
+        "paper": "us-letter",
+        "pages": 1
+      },
+      "sources": [
+        {
+          "id": "confirmation",
+          "role": "confirmation",
+          "text": "Synthetic evaluation only. The candidate was a member-services assistant. They created a checklist that separates routine membership questions from cases requiring a supervisor and used it in their own desk shifts. They maintained a six-person shift roster and confirmed swaps before publishing updates. They also wrote an onboarding guide and walked two new colleagues through it. These are three confirmed contributions. No reduction in complaints or training time was measured. The same job supplies all three examples. An unrelated confirmed interest in landscape photography is also in the profile."
+        },
+        {
+          "id": "posting",
+          "role": "posting",
+          "text": "Synthetic vacancy: Service Desk Coordinator, Example Member Services. Three equally important duties are consistent case triage, dependable shift planning and onboarding colleagues. The vacancy asks for examples of all three. Photography is unrelated to these duties."
+        },
+        {
+          "id": "research",
+          "role": "research",
+          "text": "Synthetic employer research: Example Member Services describes the priorities in the supplied posting. No other employer facts are supplied."
+        }
+      ],
+      "cl": {
+        "subject": "Application for Service Desk Coordinator",
+        "opening": "Dear Hiring Manager,",
+        "body": [
+          "I bring practical experience in case triage, shift planning and colleague onboarding to your Service Desk Coordinator role. I made everyday desk decisions easier with a checklist separating routine questions from cases needing a supervisor.",
+          "I kept a six-person roster current and confirmed swaps before publishing changes. I also wrote an onboarding guide and walked two new colleagues through it, turning desk knowledge into instructions they could use.",
+          "I would welcome a conversation about bringing this practical approach to your member-services team."
+        ],
+        "closing": "Kind regards"
+      },
+      "id": "case-22-a"
+    },
+    {
+      "purpose": {
+        "kind": "targeted",
+        "description": "Application for the synthetic Service Desk Coordinator vacancy at Example Member Services."
+      },
+      "request": "Use test-style-1, substyle sidebar, en-us and US Letter, with three concise body paragraphs. Use AIDA within the selected layout. Show fit for all three stated priorities: case triage, shift planning and colleague onboarding. Keep each substantive argument distinct; a brief opening summary is welcome. Do not submit anything.",
+      "style": {
+        "id": "test-style-1",
+        "document": "cl",
+        "substyle": "sidebar",
+        "locale": "en-us",
+        "paper": "us-letter",
+        "pages": 1
+      },
+      "sources": [
+        {
+          "id": "confirmation",
+          "role": "confirmation",
+          "text": "Synthetic evaluation only. The candidate was a member-services assistant. They created a checklist that separates routine membership questions from cases requiring a supervisor and used it in their own desk shifts. They maintained a six-person shift roster and confirmed swaps before publishing updates. They also wrote an onboarding guide and walked two new colleagues through it. These are three confirmed contributions. No reduction in complaints or training time was measured. The same job supplies all three examples. An unrelated confirmed interest in landscape photography is also in the profile."
+        },
+        {
+          "id": "posting",
+          "role": "posting",
+          "text": "Synthetic vacancy: Service Desk Coordinator, Example Member Services. Three equally important duties are consistent case triage, dependable shift planning and onboarding colleagues. The vacancy asks for examples of all three. Photography is unrelated to these duties."
+        },
+        {
+          "id": "research",
+          "role": "research",
+          "text": "Synthetic employer research: Example Member Services describes the priorities in the supplied posting. No other employer facts are supplied."
+        }
+      ],
+      "cl": {
+        "subject": "Application for Service Desk Coordinator",
+        "opening": "Dear Hiring Manager,",
+        "body": [
+          "I bring practical experience in case triage, shift planning and colleague onboarding to your Service Desk Coordinator role. I made everyday desk decisions easier with a checklist separating routine questions from cases needing a supervisor.",
+          "My checklist gave routine questions and supervisor cases separate paths. By distinguishing ordinary queries from those needing escalation, I gave the desk a clearer way to decide which route a question should take.",
+          "I would welcome a conversation about bringing this practical approach to your member-services team."
+        ],
+        "closing": "Kind regards"
+      },
+      "id": "case-22-b"
+    },
+    {
+      "purpose": {
+        "kind": "targeted",
+        "description": "Application for the synthetic Project Support Officer vacancy at Example Community Programmes."
+      },
+      "request": "Use test-style-1, substyle sidebar, en-us and US Letter, with three concise body paragraphs. Present the candidate confidently for coordination and status reporting. Cover relevant supported strengths and keep any unsupported desirable qualification in preparation notes; the letter need not list every shortfall. Do not submit anything.",
+      "style": {
+        "id": "test-style-1",
+        "document": "cl",
+        "substyle": "sidebar",
+        "locale": "en-us",
+        "paper": "us-letter",
+        "pages": 1
+      },
+      "sources": [
+        {
+          "id": "confirmation",
+          "role": "confirmation",
+          "text": "Synthetic evaluation only. The candidate coordinated a volunteer event: they maintained the task list, collected updates from six volunteers and sent the organizer a weekly status summary showing unresolved tasks. They delivered the confirmed coordination and reporting work; no budget authority or people-management responsibility is claimed. They have not earned a project-management certification or completed certification training. They are interested in taking a course in future. They also maintain a personal recipe collection, unrelated to the vacancy."
+        },
+        {
+          "id": "posting",
+          "role": "posting",
+          "text": "Synthetic vacancy: Project Support Officer, Example Community Programmes. Required work is maintaining project task lists and producing clear status reports. A project-management certificate is desirable, not required; equivalent practical experience is welcome. No specific course is required before appointment."
+        },
+        {
+          "id": "research",
+          "role": "research",
+          "text": "Synthetic employer research: Example Community Programmes describes the priorities in the supplied posting. No other employer facts are supplied."
+        }
+      ],
+      "cl": {
+        "subject": "Application for Project Support Officer",
+        "opening": "Dear Hiring Manager,",
+        "body": [
+          "I bring hands-on project coordination and clear status reporting to your Project Support Officer role. For a volunteer event, I kept the task list current and collected progress updates from six volunteers.",
+          "My weekly summaries gave the organizer a clear view of unresolved tasks. This experience translates directly to keeping your project team informed and its next steps visible.",
+          "I would welcome a conversation about contributing this practical coordination experience to your community programmes."
+        ],
+        "closing": "Kind regards"
+      },
+      "id": "case-23-a"
+    },
+    {
+      "purpose": {
+        "kind": "targeted",
+        "description": "Application for the synthetic Project Support Officer vacancy at Example Community Programmes."
+      },
+      "request": "Use test-style-1, substyle sidebar, en-us and US Letter, with three concise body paragraphs. Present the candidate confidently for coordination and status reporting. Cover relevant supported strengths and keep any unsupported desirable qualification in preparation notes; the letter need not list every shortfall. Do not submit anything.",
+      "style": {
+        "id": "test-style-1",
+        "document": "cl",
+        "substyle": "sidebar",
+        "locale": "en-us",
+        "paper": "us-letter",
+        "pages": 1
+      },
+      "sources": [
+        {
+          "id": "confirmation",
+          "role": "confirmation",
+          "text": "Synthetic evaluation only. The candidate coordinated a volunteer event: they maintained the task list, collected updates from six volunteers and sent the organizer a weekly status summary showing unresolved tasks. They delivered the confirmed coordination and reporting work; no budget authority or people-management responsibility is claimed. They have not earned a project-management certification or completed certification training. They are interested in taking a course in future. They also maintain a personal recipe collection, unrelated to the vacancy."
+        },
+        {
+          "id": "posting",
+          "role": "posting",
+          "text": "Synthetic vacancy: Project Support Officer, Example Community Programmes. Required work is maintaining project task lists and producing clear status reports. A project-management certificate is desirable, not required; equivalent practical experience is welcome. No specific course is required before appointment."
+        },
+        {
+          "id": "research",
+          "role": "research",
+          "text": "Synthetic employer research: Example Community Programmes describes the priorities in the supplied posting. No other employer facts are supplied."
+        }
+      ],
+      "cl": {
+        "subject": "Application for Project Support Officer",
+        "opening": "Dear Hiring Manager,",
+        "body": [
+          "As a certified project-management professional, I bring hands-on coordination and clear status reporting to your Project Support Officer role. For a volunteer event, I kept the task list current and collected progress updates from six volunteers.",
+          "My weekly summaries gave the organizer a clear view of unresolved tasks. This experience translates directly to keeping your project team informed and its next steps visible.",
+          "I would welcome a conversation about contributing this practical coordination experience to your community programmes."
+        ],
+        "closing": "Kind regards"
+      },
+      "id": "case-23-b"
     }
   ]
 }

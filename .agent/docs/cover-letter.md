@@ -4,6 +4,8 @@ The selected style owns a letter's content shape and geometry. This document
 describes Harvard; independent styles keep their own contracts. Universal
 [evidence and writing guidance](editorial.md) and the optional AIDA recipe are
 separate from presentation.
+Persuasive embellishment within truthful meaning and MECE argument coverage
+apply to every user and style, independently of this layout.
 
 A Harvard cover letter contains exactly six body paragraphs and five one-line
 highlights. The highlights sit between paragraphs 3 and 4. Paragraph 1 opens in
@@ -34,8 +36,14 @@ the compiler enforces geometry, not rhetorical quality or recipe selection.
 Do not print the stage names as drafting labels or explain what a paragraph
 would contain in a later application. Ordinary uses of those words remain
 valid. General/open letters do not need a fictional vacancy. Select evidence
-and reader benefit before remaining CV material; preserve real qualifications.
+and reader benefit before remaining CV material; strengthen their framing while
+preserving qualifications needed for factual meaning.
 
+Give each block a distinct contribution: paragraph 3 complements paragraph 2,
+paragraph 4 draws out their value, and paragraph 5 makes the audience-specific
+connection. Rephrasing the same achievement in all four does not satisfy MECE.
+Across the letter and supporting CV, cover the material supported priorities
+and account for evidence gaps in preparation without inventing qualifications.
 
 The valediction and signature follow paragraph 6 and do not count as a seventh
 paragraph.
@@ -87,8 +95,11 @@ both fail the draft and prompt another evidence-backed rewrite.
 
 The highlights form the visual and argumentative hinge between evidence and
 application. Each is exactly one measured line with a recognisable heading and
-concrete evidence. Together they cover the target's main selection dimensions
-without duplicating the prose verbatim.
+concrete evidence. Give the five highlights distinct selection dimensions
+supported by the candidate's record. They may concisely signpost fuller prose;
+five paraphrases of one selling point do not supply distinct coverage. Account
+for material unsupported dimensions in preparation, without invented claims or
+compulsory gap apologies in the panel.
 
 The entire highlight panel, including the outer edge of its blue border,
 aligns with the body paragraphs' left and right edges. Keep its accent border
@@ -143,14 +154,17 @@ the supported generic fallback and produces a non-blocking diagnostic; it is
 valid for a general/open showcase. Obtain a real address form when available
 for a targeted letter, without inventing one.
 
-Shared spelling, salutation and closing conventions belong to cletter and its
-family. ccvl's Harvard renderer retains its explicit English override:
+Reusable locale resolution/canonicalization, spelling, salutations, closings
+and dates belong to cletter and its family. ccvl consumes their public helpers
+and passes explicit user/style choices. Missing shared behavior belongs upstream,
+without duplicate locale tables or algorithms in ccvl. The Harvard style retains
+its explicit English override:
 `en-ch` uses a title-less named form (`Dear Doe,`) and the generic
 `Dear Hiring Manager,`. Such explicit style/user choices are not replaced by
 locale inference. See [the correspondence integration](../typst/letter/README.md)
 for the consumed helpers; do not copy a competing national-norm table here.
 
-Use lowercase locale identifiers. Apply shared orthographic transformations to
+Use lowercase locale identifiers. Apply library orthographic transformations to
 appropriate generated prose only, preserving exact names, quotations, URLs
 and source evidence. If a safe boundary is unavailable, diagnose the specific
 passage. Register, evidence and relevance remain [ccvl editorial choices](editorial.md),

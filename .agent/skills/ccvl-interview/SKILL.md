@@ -7,6 +7,10 @@ description: Prepare for a specific interview using the submitted application, v
 
 Build a stage-specific preparation pack for one tracked application. Start from
 what the interviewer actually received, not from a newer generic CV.
+Use [editorial guidance](../../docs/editorial.md) to frame every candidate's
+actual contribution persuasively and truthfully. Organize examples around
+distinct role priorities with MECE coverage; source wording is not a ceiling
+on the strength of the answer, while factual implications must stay defensible.
 
 ## Workflow
 

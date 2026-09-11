@@ -1007,6 +1007,161 @@
         "aida-means-harvard",
         "locale-is-paper"
       ]
+    },
+    {
+      "id": "apply-confident-owned-contribution",
+      "skill": "ccvl-apply",
+      "scenario": "A new user, unrelated to the showcase author, asks for a stronger Reporting Coordinator letter. Their confirmed notes say they combined three CSV exports into a checked workbook used by four colleagues and wrote the refresh instructions. Their manager chose the approach and retained department responsibility. No numeric benefit was measured.",
+      "options": [
+        {
+          "id": "present-useful-solution",
+          "text": "Describe the candidate as having built a practical reporting solution, explaining the integrated workbook and usable handover in employer-facing language."
+        },
+        {
+          "id": "keep-real-boundaries",
+          "text": "Keep the candidate ownership of building the workbook while separating four colleague users from managerial authority and any unmeasured savings."
+        },
+        {
+          "id": "literal-source-only",
+          "text": "Require the informal CSV-and-spreadsheet wording verbatim and downgrade built to helped because reporting solution is more polished than the source."
+        },
+        {
+          "id": "department-transformation",
+          "text": "Say the candidate led a department-wide transformation and managed four people because strong applications embellish responsibility."
+        }
+      ],
+      "required": [
+        "present-useful-solution",
+        "keep-real-boundaries"
+      ],
+      "forbidden": [
+        "literal-source-only",
+        "department-transformation"
+      ]
+    },
+    {
+      "id": "review-meaning-of-strong-language",
+      "skill": "ccvl-review",
+      "scenario": "Original evidence confirms the applicant built and documented a checked workbook used by four teammates. Their manager owned the departmental programme. Draft A says I built a reporting solution that brought three exports into one checked workbook. Draft B says I led the department-wide reporting transformation, directing four colleagues. Both drafts otherwise have complete source and page coverage.",
+      "options": [
+        {
+          "id": "preserve-a",
+          "text": "Accept A as supported polished framing: the next clause explains what the solution actually was."
+        },
+        {
+          "id": "cite-b-implications",
+          "text": "Flag B with the original and draft passages showing the unsupported management and department-wide deployment implications; preserve the real builder contribution when correcting it."
+        },
+        {
+          "id": "reject-both-as-embellishment",
+          "text": "Require both drafts to say merely helped with a spreadsheet because a source did not use the terms reporting solution or transformation."
+        },
+        {
+          "id": "approve-b-as-salesmanship",
+          "text": "Accept B because directing four colleagues is an effective way to describe four colleagues using the workbook."
+        }
+      ],
+      "required": [
+        "preserve-a",
+        "cite-b-implications"
+      ],
+      "forbidden": [
+        "reject-both-as-embellishment",
+        "approve-b-as-salesmanship"
+      ]
+    },
+    {
+      "id": "cv-distinct-relevant-contributions",
+      "skill": "ccvl-cv",
+      "scenario": "For a service coordinator role requiring triage, shift planning and onboarding, a candidate has confirmed examples of a triage checklist, a six-person roster and a guide used to introduce two colleagues. Their selected CV allows three bullets. The draft fills all three with paraphrases of the triage checklist; a summary names all three target duties. An unrelated photography hobby is also confirmed.",
+      "options": [
+        {
+          "id": "allocate-distinct-evidence",
+          "text": "Keep one strong triage bullet and use the other two for the roster and onboarding contributions, making the required dimensions concrete."
+        },
+        {
+          "id": "retain-useful-summary",
+          "text": "Keep a concise summary if it helps scanning; assess completeness against the relevant role and three-bullet format rather than all profile facts."
+        },
+        {
+          "id": "synonyms-complete-coverage",
+          "text": "Retain three differently worded triage bullets because the summary already names shift planning and onboarding."
+        },
+        {
+          "id": "include-every-fact",
+          "text": "Add the photography hobby and repeat all source details, exceeding the three-bullet limit to achieve collective completeness."
+        }
+      ],
+      "required": [
+        "allocate-distinct-evidence",
+        "retain-useful-summary"
+      ],
+      "forbidden": [
+        "synonyms-complete-coverage",
+        "include-every-fact"
+      ]
+    },
+    {
+      "id": "apply-evidence-gap-with-strong-transfer",
+      "skill": "ccvl-apply",
+      "scenario": "A Project Support Officer vacancy requires task coordination and status reporting; certification is desirable and equivalent practical experience is welcome. The candidate confirmed maintaining a volunteer event task list and sending weekly status summaries. They have no certification and only an interest in future training. All required duties have usable evidence.",
+      "options": [
+        {
+          "id": "use-confirmed-transfer",
+          "text": "Write a confident practical coordination and reporting case, keeping the volunteer context and explaining its relevance."
+        },
+        {
+          "id": "record-optional-gap",
+          "text": "Record the absent desirable certification in preparation; the concise letter can focus on strengths without an unnecessary disclaimer."
+        },
+        {
+          "id": "certify-to-fill-coverage",
+          "text": "Add a certification or completed course to ensure the letter covers every item in the posting."
+        },
+        {
+          "id": "downgrade-whole-case",
+          "text": "Call the candidate inexperienced and apologize for every missing desirable qualification despite their confirmed work on both required duties."
+        }
+      ],
+      "required": [
+        "use-confirmed-transfer",
+        "record-optional-gap"
+      ],
+      "forbidden": [
+        "certify-to-fill-coverage",
+        "downgrade-whole-case"
+      ]
+    },
+    {
+      "id": "review-summary-versus-substantive-repetition",
+      "skill": "ccvl-review",
+      "scenario": "A three-paragraph AIDA letter opens with a concise overview of triage, roster planning and onboarding, then gives a triage example. Its second paragraph describes the confirmed roster and onboarding guide; the third invites discussion. A proposed revision replaces paragraph two with two fresh phrasings of the triage example. The posting explicitly asks for evidence of all three duties.",
+      "options": [
+        {
+          "id": "keep-original-structure",
+          "text": "Accept the original content allocation: the opening overview signposts distinct detailed contributions and AIDA fits the chosen geometry."
+        },
+        {
+          "id": "locate-lost-coverage",
+          "text": "Flag the revision for repeated substantive triage content and the loss of supported roster/onboarding evidence; replace that passage with the available distinct contributions."
+        },
+        {
+          "id": "ban-overview",
+          "text": "Flag the original opening as a MECE violation solely because it briefly names duties that later receive detailed evidence."
+        },
+        {
+          "id": "count-labels-as-evidence",
+          "text": "Accept the revision as complete because the opening still names all three duties and each sentence uses different words."
+        }
+      ],
+      "required": [
+        "keep-original-structure",
+        "locate-lost-coverage"
+      ],
+      "forbidden": [
+        "ban-overview",
+        "count-labels-as-evidence"
+      ]
     }
   ]
 }

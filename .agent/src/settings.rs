@@ -105,14 +105,11 @@ pub fn resolve_with_paper(
             leaf.style, leaf.substyle, leaf.locale
         )
     })?;
-    let locale = format!(
+    let locale = cletter::normalize_locale_id(&format!(
         "{}-{}",
         settings["text"]["lang"].as_str().unwrap(),
-        settings["text"]["region"]
-            .as_str()
-            .unwrap()
-            .to_ascii_lowercase()
-    );
+        settings["text"]["region"].as_str().unwrap()
+    ));
     ensure!(
         locale == leaf.locale,
         "settings text.lang/text.region resolve to {locale}, expected {}",

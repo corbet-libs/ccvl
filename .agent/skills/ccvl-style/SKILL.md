@@ -13,8 +13,11 @@ A style owns composition, not candidate facts or universal writing policy.
 Read [editorial guidance](../../docs/editorial.md) when the design exposes
 content roles. AIDA is optional and independent of visual style: map it into
 this style's valid fields only when selected, without importing Harvard's
-six-paragraph counts. Keep national spelling/greeting/closing rules upstream in
-cletter/family, while retaining explicit user and style overrides.
+six-paragraph counts. Persuasive truthful framing and MECE argument coverage
+apply to every style and candidate; give content fields distinct useful roles.
+Keep reusable locale resolution/canonicalization, spelling, greetings, closings
+and dates in cletter/family. Consume their public interfaces, pass explicit
+user/style overrides and implement missing shared behavior upstream.
 
 ## Establish the design
 
@@ -23,7 +26,10 @@ page presets and substyles. Resolve unspecified choices from the task and
 state the assumptions. Ask only when a missing preference materially changes
 the result and cannot be inferred. English is a language, not a paper size:
 confirm or explicitly choose A4, US Letter or custom dimensions per locale.
-Do not assume US Letter from a language-only `en` alias (which maps to en-ch).
+Do not infer paper size from a language-only `en` selection. Resolve a bare
+language against the selected style's declared locales only when the match is
+unique; a style with multiple matching regions requires an explicit region.
+Use the library's canonicalization without dropping supplied subtags.
 Declare the paper sizes the style supports and an explicit default for each
 locale. A document can select another supported size without another folder
 level or a new substyle. Reject unsupported selections; never shrink text or
@@ -100,6 +106,6 @@ If independent evidence/editorial review is requested, use
 [the review protocol](../../docs/review.md) and `ccvl-review` with fresh context
 and actual artifacts; never describe an author self-check as independence.
 General demonstration documents use their declared purpose without a fictional
-vacancy. Preserve existing content truth, factual qualifiers and user choices
+vacancy. Preserve existing factual meaning, necessary qualifiers and user choices
 while changing presentation. A missing image or exhausted correction allowance
 is incomplete coverage, not a visual pass.

@@ -139,12 +139,9 @@ pub(crate) fn atom(value: &str, label: &str) -> Result<()> {
 }
 
 pub fn normalize_locale(value: &str) -> Result<String> {
-    let value = value.to_ascii_lowercase();
-    let value = match value.as_str() {
-        "de" => "de-ch",
-        "en" => "en-ch",
-        _ => &value,
-    };
+    let value = cletter::normalize_locale_id(value);
+    // The library owns locale spelling; this check owns the two-level
+    // language/country storage shape used by style leaves.
     let (language, country) = value
         .split_once('-')
         .context("locale must be language-country")?;
@@ -155,7 +152,7 @@ pub fn normalize_locale(value: &str) -> Result<String> {
             && country.bytes().all(|c| c.is_ascii_lowercase()),
         "unsupported locale: {value}; expected language-country"
     );
-    Ok(value.to_owned())
+    Ok(value)
 }
 
 fn manifest_key(document: &str) -> Result<&'static str> {
@@ -424,8 +421,30 @@ pub fn leaf(
     locale: &str,
     selection: &Selection,
 ) -> Result<StyleLeaf> {
-    let locale = normalize_locale(locale)?;
     let definition = definition(workspace, document, &selection.style)?;
+    let requested = cletter::normalize_locale_id(locale);
+    // Language shorthand is a selection among this style's declared leaves,
+    // never a global country default or a correspondence-table fallback.
+    let locale = if requested.contains('-') {
+        normalize_locale(&requested)?
+    } else {
+        let mut matches = definition.supports_locales.iter().filter(|locale| {
+            locale.split_once('-').map(|(language, _)| language) == Some(requested.as_str())
+        });
+        let matched = matches.next().with_context(|| {
+            format!(
+                "style {} has no locale for language {requested}",
+                definition.id
+            )
+        })?;
+        ensure!(
+            matches.next().is_none(),
+            "ambiguous language {requested} for style {}; select an explicit locale from {}",
+            definition.id,
+            definition.supports_locales.join(", ")
+        );
+        matched.clone()
+    };
     ResolvedStyle::new(workspace, document, definition)?.leaf(
         workspace,
         &selection.substyle,

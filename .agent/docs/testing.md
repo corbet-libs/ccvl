@@ -124,20 +124,41 @@ The report is written to the ignored
 `.agent/tests/skill-cases.json` includes decision cases for `ccvl-review`,
 optional AIDA in independent styles, protected locale text, general letters,
 source entailment, scope, clean controls, unavailable images and exhausted
-corrections. These run through the existing `skill-eval` interface. They test
+corrections. Additional decision cases distinguish persuasive reframing from
+invented authority, allocate distinct relevant CV contributions, preserve
+purposeful summaries and handle known optional qualification gaps without
+weakening supported work. These apply to any candidate, independently of the
+showcase author. They run through the existing `skill-eval` interface. They test
 routing and choices; they do not prove an agent wrote or inspected real output.
 
 The separate artifact corpus is
 [review-evaluation/cases.json](../tests/review-evaluation/cases.json), with
 [evaluator-only expectations](../tests/review-evaluation/answer-key.json).
-It supplies eight paired synthetic clean/seeded-defect cases plus general,
+It supplies eleven paired synthetic clean/seeded-defect cases plus general,
 missing-image, provider-failure and actual-paper-mismatch cases. All career,
 employer and source details are deliberately fictional evaluation data; never
 use them as a real profile or copy private inputs into these fixtures.
 
+The three editorial pairs exercise factual meaning and content allocation:
+
+- An integrated workbook and usable handover support a confident reporting
+  solution claim; colleague users do not establish management authority or
+  department-wide deployment.
+- Triage, roster planning and onboarding need distinct evidence. A short
+  overview can signpost those arguments, while paraphrasing the triage example
+  cannot replace the other two contributions.
+- Confirmed volunteer coordination and reporting can make a strong practical
+  case. A known missing desirable certification belongs in preparation; it
+  neither licenses an invented credential nor requires an apology in the letter.
+
+These pair descriptions and their evaluator-only expectations must stay out
+of actor and critic contexts. A vocabulary match is not a pass: the evaluator
+must check the supported implication, the preserved strength of a correction,
+and which relevant contribution each passage supplies.
+
 For independent forward testing, give a fresh agent one case's request and raw
 sources, the named skill and its real references, and the minimum selected
-style files. Keep the answer key, pair identity, expected verdict and actor
+style files. Keep this evaluation guide, the answer key, pair identity, expected verdict and actor
 rationale out of its context. Use an isolated temporary workspace and the
 existing authorised compute route. Create valid profile/application records
 from the synthetic facts, render actual documents with the selected style,
@@ -145,6 +166,18 @@ then prepare a real review package. The fixture's three body entries are
 independent-style content, not Harvard line arrays. Confirm the style/substyle
 exists in current discovery before rendering; don't silently change a user
 choice to mask a fixture/interface mismatch.
+
+Use separate drafting and seeded-review runs. For drafting, provide the request
+and sources without the fixture's `cl` draft; assess what the actor actually
+writes. For seeded review, render the supplied `cl` unchanged so preparation
+cannot silently repair the defect before the critic sees it. Freeze the actual
+text, sources, selections, contracts and rendered pages in the review package.
+Give each critic only that one package, the canonical review skill and its
+editorial/protocol references, and its result destination. Replace fixture IDs
+with opaque run IDs and retain their mapping only for the evaluator. Do not
+give one critic both sides of a pair or the corpus file containing its twin.
+A text-only run can establish source/editorial findings, but remains incomplete
+for visual coverage and must be reported separately from full artifact review.
 
 Evaluate each paired control and seeded draft with identical source/context
 coverage. Judge the generated/retained content and actual findings with cited
@@ -163,3 +196,11 @@ rubric identities. Compare against an actor-only baseline and repeat paired
 runs to expose variability. Until these actual artifact runs are executed,
 report them as pending; checked-in fixtures or a passing decision suite are
 not a behavioral pass.
+
+For the editorial pairs, also record whether a clean confident claim was
+unnecessarily weakened, whether an invented implication was precisely located,
+whether supported distinct contributions cover the required duties, and whether
+a useful overview or real evidence reuse was wrongly rejected as duplication.
+Known absent desirable qualifications are coverage notes, not unresolved support
+for a claim the letter never makes. Judge optional advice separately from
+material defects; do not reward a critic for manufacturing objections.

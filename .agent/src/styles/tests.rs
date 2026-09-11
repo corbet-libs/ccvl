@@ -2,6 +2,72 @@ use super::*;
 use crate::{application, measure, pdf, render};
 use serde_json::json;
 
+#[test]
+fn explicit_locale_spelling_preserves_regions_outside_correspondence_tables() {
+    for (input, expected) in [
+        (" DE_CH ", "de-ch"),
+        ("EN-cH", "en-ch"),
+        ("FIL_PH", "fil-ph"),
+    ] {
+        assert_eq!(normalize_locale(input).unwrap(), expected);
+    }
+    // A stored leaf must select a country; normalization cannot invent one
+    // or turn an invalid identifier into a filesystem path.
+    for malformed in [
+        "en",
+        "de",
+        "",
+        "en/../us",
+        "en__us",
+        "zh-hant-tw",
+        "en-u1",
+        "\u{feff}en-us",
+        "\u{85}en-us",
+        "\u{212a}o-at",
+    ] {
+        assert!(normalize_locale(malformed).is_err(), "{malformed}");
+    }
+}
+
+#[test]
+fn language_shorthand_selects_the_selected_styles_only_declared_region() {
+    let (_temporary, workspace) = independent_workspace();
+    let selected = selection(&workspace, "cv", Some("orbit"), None).unwrap();
+    let resolved = leaf(&workspace, "cv", " EN ", &selected).unwrap();
+    assert_eq!(resolved.locale, "en-us");
+    assert!(resolved.dir.ends_with("orbit/standard/en/us"));
+    assert!(leaf(&workspace, "cv", "en-ch", &selected).is_err());
+    assert!(leaf(&workspace, "cv", "de", &selected).is_err());
+
+    let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let harvard = selection(&repository, "cv", Some("harvard"), None).unwrap();
+    assert_eq!(
+        leaf(&repository, "cv", "en", &harvard).unwrap().locale,
+        "en-ch"
+    );
+}
+
+#[test]
+fn language_shorthand_rejects_ambiguous_regions_while_explicit_selection_survives() {
+    let (_temporary, workspace) = independent_workspace();
+    let path = workspace.path("cvl/cv/orbit/style.toml");
+    let definition = fs::read_to_string(&path).unwrap().replace(
+        "supports_locales = [\"en-us\"]",
+        "supports_locales = [\"en-us\", \"en-ch\"]",
+    );
+    fs::write(&path, definition).unwrap();
+    let selected = selection(&workspace, "cv", Some("orbit"), None).unwrap();
+    let error = leaf(&workspace, "cv", "en", &selected)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("ambiguous language en"), "{error}");
+    assert!(error.contains("en-us, en-ch"), "{error}");
+    assert_eq!(
+        leaf(&workspace, "cv", " EN_US ", &selected).unwrap().locale,
+        "en-us"
+    );
+}
+
 fn write(root: &Path, path: &str, text: &str) {
     let path = root.join(path);
     fs::create_dir_all(path.parent().unwrap()).unwrap();

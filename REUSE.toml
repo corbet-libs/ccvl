@@ -106,6 +106,16 @@ SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"
 SPDX-License-Identifier = "FSL-1.1-ALv2"
 
 [[annotations]]
+path = [
+  ".agent/typst/letter/letter.typ",
+  ".agent/typst/letter/generated/**",
+  ".agent/typst/letter/vendor/**",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
 path = [".agent/typst/letter/vendor/cgreet/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"

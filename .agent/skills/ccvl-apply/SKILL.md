@@ -1,6 +1,6 @@
 ---
 name: ccvl-apply
-description: Write a supported cover letter or build a targeted application package, preserving its purpose, selected styles and evidence, then coordinate independent review.
+description: Write a persuasive, truthful, MECE cover letter or targeted application package in the selected styles, then coordinate independent review.
 ---
 
 # Write an application or cover letter
@@ -35,8 +35,12 @@ the letter. If the user requests a disclosure or a truthful qualification is
 needed to avoid a misleading claim, retain it. The user's choice of vacancy
 stands: continue the requested draft without reopening that choice.
 
-## Write the strongest supported case
+## Write the strongest defensible case
 
+- Actively embellish framing, emphasis and narrative for every candidate. Make
+  the value clear and confident without changing factual meaning or reasonable
+  reader inferences. Source wording is not a ceiling; user-confirmed facts are
+  valid support. Do not add timid hedges or unnecessary caveats.
 - Prefer relevant experience, concrete results and demonstrated skills, then
   supported motivation, then remaining CV material. Explain useful transferable
   experience even when the posting does not name its exact terminology.
@@ -46,10 +50,11 @@ stands: continue the requested draft without reopening that choice.
   independent work count at their real depth; never invent employment,
   customers, leadership or delivery. A modeled saving remains modeled; an
   estimate remains approximate; participation does not become ownership.
-- Write active, concrete, professional and friendly prose. Remove empty praise,
-  repeated claims, inflated enthusiasm and adjectives that add no information.
-  Preserve exact names, quotations, source text and factual qualifiers. Plain
-  writing is an editorial choice, not proof of human or AI authorship.
+- Write active, concrete, professional and friendly prose. Strengthen useful
+  persuasion; remove empty praise and adjectives that add no information.
+  Preserve exact names, quotations, source text and qualifications needed for
+  factual meaning. Plain writing is an editorial choice, not proof of human
+  or AI authorship.
 - Translate supported work into the reader's vocabulary without copying whole
   requirement sentences or changing the underlying claim. Choose an optional
   page set for that reader; unrelated appendices need not travel with it.
@@ -57,21 +62,32 @@ stands: continue the requested draft without reopening that choice.
   when useful. A short conventional close is not inherently a factual defect;
   preserve an explicitly requested close.
 
+Make the case MECE before polishing: map material audience/role priorities to
+evidence and give each paragraph, bullet and highlight a distinct contribution.
+Combine equivalent arguments and cover relevant supported dimensions instead
+of retelling one achievement. A fact may support multiple requirements; a
+highlight can signpost fuller evidence. Record missing support in preparation
+notes without inventing capability or adding unsolicited gap apologies. Check
+both what each block adds and where each material dimension is accounted for.
+
 AIDA is an optional writing recipe: establish relevance, present evidence,
 explain its value to this audience, invite a next step. Select it from the task
 or as an explicit drafting choice, independently of the visual style. Do not
 print drafting labels or paragraphs describing their own role. Ordinary words
 such as “interest” and “action” are valid. Prioritise evidence and reader benefit
 over leftover CV material; do not manufacture employer motivations or results.
+MECE checks argument separation and coverage whichever recipe is selected.
 
 ## Respect the selected document contract
 
 Resolve each document's style, substyle, locale, pages and effective paper.
 Keep explicitly requested choices. Use only declared paper selections; never
 shrink text, change page counts or weaken bounds to accommodate a draft.
-Author locale identifiers in lowercase. Shared spelling and correspondence
-conventions come from cletter/family; apply them to generated prose while
-preserving protected names, quotes, URLs and explicit user choices.
+Author locale identifiers in lowercase. Consume cletter/family public behavior
+for locale resolution, spelling and correspondence; pass explicit choices and
+request missing reusable behavior upstream without duplicating rules here.
+Apply library transformations to generated prose while preserving protected
+names, quotes, URLs and explicit user choices.
 
 Harvard alone requires `ccvl profile-status --verify-sources`, its five-line CV
 Summary, and six letter paragraphs with `3 | 5 | 5 | 5 | 5 | 3` body lines.
@@ -96,6 +112,9 @@ For independent review, prepare the evidence/render package and route it to
 and every page itself; an actor summary is navigation, not proof. Classify
 findings as error, uncertainty or preference and cite the affected passage and
 support. Do not mark a claim false merely because its source is missing.
+Require factual objections to identify an unsupported reader inference; retain
+defensible persuasive framing. Review MECE coverage and distinct contributions
+alongside factual support, and strengthen weak prose in supported corrections.
 
 The review run permits two corrections after the initial candidate. Check and
 consume the allowance with `ccvl review begin-revision <run-dir>` before editing;

@@ -1,6 +1,6 @@
 ---
 name: ccvl-cv
-description: Write, tailor, render, and verify ccvl CV variants when Summary, experience, projects, competencies, keywords, or page presets change.
+description: Write, tailor, render and verify persuasive, truthful, MECE ccvl CV variants when wording, content selection or page presets change.
 ---
 
 # Create and revise a ccvl CV
@@ -16,19 +16,29 @@ answers its archived posting. Do not invent a vacancy for a general document.
 
 ## Writing contract
 
+- Make the strongest defensible case for every user. Embellish framing,
+  emphasis and narrative while keeping factual meaning and reasonable reader
+  inferences supported. Improve modest source wording without adding false
+  authority, scope or results; remove hedges that add no factual qualification.
 - Use the simplest language that a recruiter can understand while retaining
   terms a domain specialist will recognise.
 - Lead with outcome or scale, then ownership and method. Remove filler and
   duplicated meaning.
-- Use only verified profile claims. Keywords improve retrieval but do not
-  create factual permission. Read original supporting sources rather than
-  treating a derived CV as its own evidence. Preserve modeled versus realised
-  outcomes, estimates, dates, ownership and independent-work scope.
+- Use verified profile claims, including explicit user confirmations. Keywords
+  improve retrieval but do not create factual permission. Read original
+  supporting sources rather than treating a derived CV as its own evidence.
+  Preserve modeled versus realised outcomes, estimates, dates, ownership and
+  independent-work scope.
 - Preserve names, exact quotations and explicit user choices. Author locale IDs
-  in lowercase; use cletter/family conventions only for appropriate generated
-  prose, never a global replacement over evidence or protected text.
-- Keep capability groups mutually exclusive and collectively useful. Prefer a
-  few recognisable terms over keyword stuffing.
+  in lowercase; consume cletter/family locale and correspondence behavior for
+  appropriate generated prose, never a global replacement over evidence or
+  protected text. Add missing shared behavior upstream instead of local rules.
+- Make sections, bullets and capability groups MECE: distinct contributions
+  collectively cover material dimensions of the selected audience and format.
+  Map priorities to evidence, remove repeated arguments and record unsupported
+  dimensions as gaps without inventing qualifications. A summary can signpost
+  fuller evidence; one fact can support multiple priorities without repeated
+  prose or duplicate station ownership. Prefer recognisable terms to stuffing.
 - Treat the checked-in showcase as visual design evidence, never as facts or
   reusable wording for a new user. Its personal content is not a template.
 
@@ -102,6 +112,9 @@ route the frozen sources, selected rules, extracted text and every page to
 `ccvl-review` in fresh context. The critic checks evidence and actual output;
 an actor summary and a successful compile cannot replace that review. Keep
 errors, missing support and optional preferences distinct and cite findings.
+Keep strong supported framing through review; a factual objection must identify
+an unsupported reader inference. Check distinct arguments and material coverage
+as well as source support.
 
 An actor–critic run allows two corrections after the initial candidate. Call
 `ccvl review begin-revision <run-dir>` before editing and
@@ -111,4 +124,4 @@ Re-review current artifacts for both fixes and new errors. Stale hashes,
 unavailable tools or unread pages cannot become a pass; exhausted corrections
 remain incomplete, material evidence gaps need evidence, and a material user
 choice conflict needs a decision. An optional tone preference cannot erase a
-truthful qualification or override the user's chosen wording.
+qualification needed for factual meaning or override the user's chosen wording.
