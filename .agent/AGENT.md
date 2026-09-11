@@ -51,8 +51,10 @@ while company and role research belongs to its concrete opportunity.
   needed for factual meaning. Reusable locale resolution, tables, orthography,
   greetings, closings and dates belong to cletter/family; ccvl consumes their
   public interfaces and passes explicit selections/overrides. Implement missing
-  shared behavior upstream. AIDA is an optional writing recipe independent of
-  visual style. Author locale IDs in lowercase.
+  shared behavior upstream. In ccvl, AIDA is the six-paragraph, 26-body-line
+  letter contract with five one-line highlights between paragraphs 3 and 4;
+  its argument roles and paragraph structure belong together. Follow
+  [the AIDA contract](docs/cover-letter.md). Author locale IDs in lowercase.
 - Preserve the requested locale and page variant. A successful compile is not
   enough: verify exact page count, a usable PDF text layer, and rendered layout.
 - Follow the selected style’s declared layout contract. For Harvard, profile

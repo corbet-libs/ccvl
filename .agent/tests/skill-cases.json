@@ -732,11 +732,11 @@
     {
       "id": "review-independent-style",
       "skill": "ccvl-review",
-      "scenario": "A general/open letter uses an independent style with three body fields, en-us, explicit US Letter and optional AIDA. The actor provided no posting because no vacancy was requested. The actual pages meet the selected contract.",
+      "scenario": "A general/open letter explicitly uses a non-AIDA independent style with three body fields, en-us and US Letter. The actor provided no posting because no vacancy was requested. The actual pages meet the selected contract.",
       "options": [
         {
           "id": "apply-selected-contract",
-          "text": "Check AIDA within the selected style and verify actual US Letter dimensions without imposing Harvard counts."
+          "text": "Review the selected non-AIDA three-paragraph contract and actual US Letter dimensions without imposing the AIDA structure."
         },
         {
           "id": "respect-general-purpose",
@@ -744,7 +744,7 @@
         },
         {
           "id": "require-six-paragraphs",
-          "text": "Reject the letter until it has six Harvard paragraphs and five highlights."
+          "text": "Reject this explicitly non-AIDA letter until it has the six-paragraph AIDA structure and five highlights."
         },
         {
           "id": "invent-vacancy",
@@ -854,33 +854,33 @@
       ]
     },
     {
-      "id": "apply-recipe-and-priority",
+      "id": "apply-aida-structure-and-priority",
       "skill": "ccvl-apply",
-      "scenario": "The user requests AIDA in a three-paragraph independent cover-letter style. Evidence includes relevant operations improvements from independent work, a qualified modeled estimate, and unrelated CV details. No new factual confirmation is needed.",
+      "scenario": "The user requests an AIDA cover letter in the existing Harvard left-rule style. Evidence includes relevant operations improvements from independent work, an approximate modeled estimate, and unrelated CV details. No new factual confirmation is needed.",
       "options": [
         {
-          "id": "map-recipe-to-style",
-          "text": "Map relevance, evidence, useful contribution and invitation into the selected three-paragraph shape."
+          "id": "use-aida-structure",
+          "text": "Draft the defined six-paragraph structure with 3 | 5 | 5 | 5 | 5 | 3 body lines, 26 body lines total, plus five one-line highlights between paragraphs 3 and 4; measure the actual output."
         },
         {
           "id": "prioritise-supported-benefit",
-          "text": "Prefer the relevant operations evidence and supported reader benefit, retaining independent-work scope and the modeled estimate."
+          "text": "Make the strongest supported case using relevant operations evidence and reader benefit, retaining independent-work scope and the approximate modeled estimate."
         },
         {
-          "id": "import-harvard-shape",
-          "text": "Force the six-paragraph Harvard line and highlight counts because AIDA always requires them."
+          "id": "compress-to-three-paragraphs",
+          "text": "Compress the letter into three paragraphs because AIDA is only an optional rhetorical recipe independent of paragraph and line counts."
         },
         {
           "id": "inflate-transfer",
-          "text": "Convert independent work into employment and the modeled estimate into an achieved saving."
+          "text": "Convert independent work into employment and the modeled estimate into an achieved saving to fill the required lines."
         }
       ],
       "required": [
-        "map-recipe-to-style",
+        "use-aida-structure",
         "prioritise-supported-benefit"
       ],
       "forbidden": [
-        "import-harvard-shape",
+        "compress-to-three-paragraphs",
         "inflate-transfer"
       ]
     },
@@ -978,21 +978,21 @@
       ]
     },
     {
-      "id": "style-recipe-independence",
+      "id": "style-aida-structure",
       "skill": "ccvl-style",
-      "scenario": "A user requests a new independent letter style with three paragraphs and optional AIDA, plus explicit de-ch and en-us variants with their own paper selections.",
+      "scenario": "A user requests a new visual style for AIDA letters, plus explicit de-ch and en-us variants with their own paper selections. They want a different visual treatment of the defined AIDA structure.",
       "options": [
         {
-          "id": "own-geometry",
-          "text": "Implement the three-paragraph visual contract and map optional AIDA within it without importing Harvard constraints."
+          "id": "preserve-aida-structure",
+          "text": "Preserve six body paragraphs of 3 | 5 | 5 | 5 | 5 | 3 lines, totaling 26 body lines, with five one-line highlights between paragraphs 3 and 4; implement the requested visual treatment around that structure."
         },
         {
           "id": "share-locale-owner",
-          "text": "Keep authored locale IDs lowercase, consume cletter/family conventions with protected-text boundaries, and verify actual selected paper outputs."
+          "text": "Keep authored locale IDs lowercase, consume cletter/family conventions with protected-text boundaries, and verify the actual selected paper outputs."
         },
         {
-          "id": "aida-means-harvard",
-          "text": "Require six paragraphs and five highlights because AIDA determines layout."
+          "id": "separate-aida-from-structure",
+          "text": "Replace the body with three free-form paragraphs while retaining the AIDA label because its progression is independent of the defined paragraph and line structure."
         },
         {
           "id": "locale-is-paper",
@@ -1000,11 +1000,11 @@
         }
       ],
       "required": [
-        "own-geometry",
+        "preserve-aida-structure",
         "share-locale-owner"
       ],
       "forbidden": [
-        "aida-means-harvard",
+        "separate-aida-from-structure",
         "locale-is-paper"
       ]
     },
@@ -1135,11 +1135,11 @@
     {
       "id": "review-summary-versus-substantive-repetition",
       "skill": "ccvl-review",
-      "scenario": "A three-paragraph AIDA letter opens with a concise overview of triage, roster planning and onboarding, then gives a triage example. Its second paragraph describes the confirmed roster and onboarding guide; the third invites discussion. A proposed revision replaces paragraph two with two fresh phrasings of the triage example. The posting explicitly asks for evidence of all three duties.",
+      "scenario": "An explicitly non-AIDA three-paragraph letter opens with a concise overview of triage, roster planning and onboarding, then gives a triage example. Its second paragraph describes the confirmed roster and onboarding guide; the third invites discussion. A proposed revision replaces paragraph two with two fresh phrasings of the triage example. The posting explicitly asks for evidence of all three duties.",
       "options": [
         {
           "id": "keep-original-structure",
-          "text": "Accept the original content allocation: the opening overview signposts distinct detailed contributions and AIDA fits the chosen geometry."
+          "text": "Accept the original content allocation: the opening overview signposts distinct detailed contributions within the chosen non-AIDA three-paragraph style."
         },
         {
           "id": "locate-lost-coverage",

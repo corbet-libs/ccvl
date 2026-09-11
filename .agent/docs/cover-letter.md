@@ -1,9 +1,9 @@
-# Harvard cover-letter contract
+# AIDA / Harvard cover-letter contract
 
-The selected style owns a letter's content shape and geometry. This document
-describes Harvard; independent styles keep their own contracts. Universal
-[evidence and writing guidance](editorial.md) and the optional AIDA recipe are
-separate from presentation.
+In ccvl, AIDA and the 26-body-line structure with its defined paragraphs mean
+the same contract. Harvard implements this contract; its AIDA argument roles
+and measured paragraph structure belong together. Independent document
+structures keep their own contracts.
 Persuasive embellishment within truthful meaning and MECE argument coverage
 apply to every user and style, independently of this layout.
 
@@ -19,11 +19,11 @@ contract self-describing for both people and agents.
 
 ## Paragraph map
 
-When AIDA is selected, Harvard maps it as follows. The contract's
-`editorial` and `aida_stage` fields document this optional mapping for agents;
-the compiler enforces geometry, not rhetorical quality or recipe selection.
+The contract's `editorial` and `aida_stage` fields associate AIDA with each
+paragraph's role and line budget. The compiler enforces measurable structure;
+the author and independent reviewer also enforce the argument roles.
 
-| Block | Role | Optional AIDA stage | Purpose | Lines |
+| Block | Role | AIDA stage | Purpose | Lines |
 |---|---|---|---|---:|
 | Paragraph 1 | Positioning | Attention | Establish the target or general purpose and immediate relevance. | 3 |
 | Paragraph 2 | Primary evidence | Interest | Present the strongest relevant experience and results. | 5 |

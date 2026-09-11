@@ -11,9 +11,12 @@ Inspect the actual selected style and current `list-documents` output.
 
 A style owns composition, not candidate facts or universal writing policy.
 Read [editorial guidance](../../docs/editorial.md) when the design exposes
-content roles. AIDA is optional and independent of visual style: map it into
-this style's valid fields only when selected, without importing Harvard's
-six-paragraph counts. Persuasive truthful framing and MECE argument coverage
+content roles. In ccvl, AIDA means the six-paragraph, 26-body-line contract
+implemented by Harvard, including five one-line highlights between paragraphs
+3 and 4. Preserve that structure and its argument roles when implementing
+AIDA; do not label a different paragraph structure AIDA. Other document
+structures keep their own declared contracts. Persuasive truthful framing and
+MECE argument coverage
 apply to every style and candidate; give content fields distinct useful roles.
 Keep reusable locale resolution/canonicalization, spelling, greetings, closings
 and dates in cletter/family. Consume their public interfaces, pass explicit

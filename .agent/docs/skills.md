@@ -38,8 +38,10 @@ actively embellish framing and narrative within defensible factual meaning,
 and organize distinct arguments that cover the material audience/purpose
 dimensions. The critic preserves supported persuasion and identifies specific
 unsupported implications, overlapping arguments or omitted supported priorities.
-AIDA is optional and independent of style geometry; MECE applies with any
-recipe. Shared locale and correspondence behavior belongs to cletter/family
+AIDA is the defined six-paragraph, 26-body-line letter contract, including five
+additional highlights between paragraphs 3 and 4; its argument roles and
+structure belong together. MECE applies to every document contract.
+Shared locale and correspondence behavior belongs to cletter/family
 public interfaces; skills pass selections and overrides without local rule
 tables or duplicate algorithms.
 

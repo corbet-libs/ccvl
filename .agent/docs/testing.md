@@ -122,7 +122,8 @@ The report is written to the ignored
 ## Actor–critic behavioral evaluation
 
 `.agent/tests/skill-cases.json` includes decision cases for `ccvl-review`,
-optional AIDA in independent styles, protected locale text, general letters,
+the AIDA paragraph/line contract, independent non-AIDA styles, protected locale
+text, general letters,
 source entailment, scope, clean controls, unavailable images and exhausted
 corrections. Additional decision cases distinguish persuasive reframing from
 invented authority, allocate distinct relevant CV contributions, preserve

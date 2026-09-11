@@ -57,11 +57,13 @@ conventional close can be valid.
 Treat a proposed tonal improvement as preference unless it conflicts with an
 explicit requirement. There is no reliable AI-authorship test in this rubric.
 
-AIDA is an optional argument recipe independent of presentation. When selected,
-check its relevance → evidence → useful contribution → invitation progression
-within that style's valid structure. Harvard alone maps it to six paragraphs,
-`3 | 5 | 5 | 5 | 5 | 3` body lines and five highlights between paragraphs 3 and 4.
-Independent styles retain their own content fields, geometry and paper choices.
+Review AIDA as one paragraph and line contract: six paragraphs with
+`3 | 5 | 5 | 5 | 5 | 3` body lines, attention → interest → interest → desire →
+desire → action, and five one-line highlights between paragraphs 3 and 4.
+The highlights sit outside the 26 body lines. Check each paragraph's defined
+argument role as well as its measured structure. A three-paragraph draft does
+not satisfy AIDA. Other document structures retain their own contracts and
+paper choices; do not silently substitute between them and AIDA.
 Flag leaked drafting labels and paragraph self-description, not ordinary words
 such as “interest” or “action.”
 

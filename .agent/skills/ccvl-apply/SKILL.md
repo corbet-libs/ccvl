@@ -70,13 +70,15 @@ highlight can signpost fuller evidence. Record missing support in preparation
 notes without inventing capability or adding unsolicited gap apologies. Check
 both what each block adds and where each material dimension is accounted for.
 
-AIDA is an optional writing recipe: establish relevance, present evidence,
-explain its value to this audience, invite a next step. Select it from the task
-or as an explicit drafting choice, independently of the visual style. Do not
+AIDA means the defined six-paragraph, 26-body-line letter structure: establish
+relevance, present primary and complementary evidence, explain the contribution
+and audience fit, then invite a next step. Its five one-line highlights sit
+between paragraphs 3 and 4, outside the 26 body lines. Do not compress AIDA into
+another paragraph structure or treat its argument roles as optional. Do not
 print drafting labels or paragraphs describing their own role. Ordinary words
 such as “interest” and “action” are valid. Prioritise evidence and reader benefit
 over leftover CV material; do not manufacture employer motivations or results.
-MECE checks argument separation and coverage whichever recipe is selected.
+MECE checks argument separation and coverage throughout the selected contract.
 
 ## Respect the selected document contract
 
@@ -89,11 +91,12 @@ request missing reusable behavior upstream without duplicating rules here.
 Apply library transformations to generated prose while preserving protected
 names, quotes, URLs and explicit user choices.
 
-Harvard alone requires `ccvl profile-status --verify-sources`, its five-line CV
-Summary, and six letter paragraphs with `3 | 5 | 5 | 5 | 5 | 3` body lines.
-Its five one-line highlights render between paragraphs 3 and 4: 26 body lines
-plus 5 highlight lines. Its optional AIDA map is attention, interest, interest,
-desire, desire, action. Other styles keep their own fields and geometry.
+Harvard requires `ccvl profile-status --verify-sources` and its five-line CV
+Summary. Its AIDA letter has `3 | 5 | 5 | 5 | 5 | 3` body lines and maps the six
+paragraphs to attention, interest, interest, desire, desire, action. Five
+one-line highlights connect the evidence and contribution between paragraphs
+3 and 4. Other document structures keep their own fields and geometry; a request
+for AIDA requires this complete paragraph and line structure.
 If Harvard's station gate is underfilled or overcrowded, return to profile
 collection/allocation rather than accepting sparse or malformed sections.
 Set `options.generate_cl` explicitly and preserve a requested page variant.

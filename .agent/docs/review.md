@@ -39,9 +39,10 @@ actor summary or previously generated CV is not independent support. Targeted
 runs need posting and research evidence; their absence is an evidence gap.
 Missing files/tool output cannot become a passed review.
 
-Pin the selected recipe, user preferences and applicable rules in `rubric`.
-[Editorial guidance](editorial.md) is universal; selected style contracts own
-geometry and an optional recipe mapping. Shared locale conventions come from
+Pin the selected document contract, user preferences and applicable rules in
+`rubric`. [Editorial guidance](editorial.md) is universal; the AIDA contract
+binds paragraph roles to its defined structure and line budgets. Shared locale
+conventions come from
 cletter/family public interfaces; ccvl does not define duplicate locale rules.
 Keep original names, quotations, user choices and qualifiers needed for factual
 meaning. Apply persuasive framing and MECE requirements to every candidate.
@@ -102,8 +103,10 @@ phrasing); cite the actual passages and priority. Explain materiality rather
 than treating all repetition or every unmentioned job keyword as blocking.
 
 Check the strongest relevant supported facts before residual CV material,
-while retaining useful transferable evidence. Check AIDA only when selected;
-Harvard geometry does not apply to independent styles. A short conventional
+while retaining useful transferable evidence. For an AIDA letter, check the
+defined six paragraph roles, exact 26 body lines and five additional highlights
+between paragraphs 3 and 4 together. Other document structures keep their
+declared contracts. A short conventional
 close, ordinary “interest” or a supported skill label is not inherently a defect.
 
 ## Result interface

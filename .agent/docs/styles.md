@@ -235,14 +235,16 @@ bash ./ccvl build-cl en-ch --style test-style-2 --substyle timeline
 ```
 
 
-## Writing recipes and shared conventions
+## AIDA structure and shared conventions
 
 Visual styles own content fields, paragraph/line geometry, fonts, page counts
-and supported papers. AIDA is an optional writing recipe independent of those
-choices. A style may document how its fields map to that progression without
-forcing other styles to adopt its shape. Harvard's advisory `editorial` and
-paragraph `aida_stage` metadata document its six-paragraph mapping; they do not
-add semantic checks to the compiler. [Editorial guidance](editorial.md) owns
+and supported papers. In ccvl, AIDA means the complete six-paragraph,
+26-body-line letter contract with five additional one-line highlights between
+paragraphs 3 and 4. Harvard implements this structure and its AIDA argument
+roles together; a three-paragraph structure is a different contract. The
+`editorial` and paragraph `aida_stage` metadata declare the association;
+mechanical checks enforce the measurable rules and independent review checks
+the argument roles. [Editorial guidance](editorial.md) owns
 universal evidence and writing decisions.
 
 Author locale identifiers in lowercase. Shared spelling, greeting and closing

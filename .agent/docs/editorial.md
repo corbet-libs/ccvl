@@ -88,26 +88,32 @@ signposting role. Assess repetition by meaning and purpose, not matching words.
 
 After drafting, check both directions: what does each block add, and where is
 each material dimension addressed or accounted for as a gap? A letter can
-develop selected arguments while the CV supplies supporting detail. AIDA
-orders the progression; MECE checks distinct contributions and coverage within
-it. Neither imposes visual geometry.
+develop selected arguments while the CV supplies supporting detail. Within the
+AIDA letter contract, MECE checks the distinct contributions and coverage of
+its prescribed paragraphs and highlights.
 
-## Optional AIDA recipe
+## AIDA paragraph and line contract
 
-AIDA names an argument progression, independent of visual style:
+In ccvl, AIDA names the complete 26-body-line letter structure implemented by
+the Harvard cover-letter contract. Its argument progression, six paragraphs
+and line budgets are one contract:
 
-| Stage | Useful question |
-|---|---|
-| Attention | Why should this reader consider this supported profile? |
-| Interest | Which experience and results demonstrate the relevant ability? |
-| Desire | What useful contribution follows for this role or stated audience? |
-| Action | What appropriate next step would help both sides assess the fit? |
+| Stage | Paragraph | Role | Body lines |
+|---|---:|---|---:|
+| Attention | 1 | Positioning and immediate relevance | 3 |
+| Interest | 2 | Primary evidence of relevant ability | 5 |
+| Interest | 3 | Complementary evidence | 5 |
+| Desire | 4 | Useful contribution supported by the combined evidence | 5 |
+| Desire | 5 | Fit with this employer or the declared audience | 5 |
+| Action | 6 | Warm close and invitation to talk | 3 |
 
-Choose the recipe from the task or record it as a drafting choice. Another
-recipe can satisfy the same evidence and relevance rules. Map the progression
-onto the selected style's valid content shape; AIDA does not impose six
-paragraphs, a highlight panel, line counts or paper dimensions.
-[Harvard](cover-letter.md) supplies a six-paragraph mapping when AIDA is used.
+The five one-line highlights sit between paragraphs 3 and 4, connecting the
+evidence to its value for the reader. They are additional to the 26 body lines.
+The [AIDA contract](cover-letter.md) defines the measured line, highlight and
+page requirements. AIDA is not a separate rhetorical option within that
+structure, and a three-paragraph letter is not this AIDA contract. Other
+document structures retain their declared contracts; do not silently compress
+AIDA or impose it on a document that uses another structure.
 The stages are drafting metadata, not printed section labels. Do not flag
 ordinary uses of “attention,” “interest,” “desire” or “action” as label leakage.
 

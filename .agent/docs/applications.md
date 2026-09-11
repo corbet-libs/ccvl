@@ -103,8 +103,10 @@ document.
 This keyed package represents a targeted application. Its archived posting
 establishes requirements; candidate evidence or explicit confirmations establish
 capabilities. Read [editorial guidance](editorial.md) before drafting. AIDA is
-an optional writing recipe that can fit any selected style; Harvard supplies
-its own six-paragraph mapping. A general/open letter remains in the appropriate
+the complete six-paragraph, 26-body-line letter contract implemented by Harvard,
+with five additional one-line highlights between paragraphs 3 and 4. Its
+argument roles and paragraph structure belong together. A general/open letter
+remains in the appropriate
 `cvl/cl/<style>/` wording owner and does not create an invented vacancy.
 
 Run [the actor–critic protocol](review.md) to bind independent findings to actual

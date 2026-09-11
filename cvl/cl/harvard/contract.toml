@@ -1,7 +1,7 @@
 # Harvard cover-letter contract: the frozen paragraph, fill, and rhythm
 # budgets Harvard cover-letter substyles (left-rule, frame) satisfy.
-# Other styles declare their own geometry. Editorial fields are advisory
-# metadata for agents; mechanical checks do not evaluate rhetoric.
+# This is ccvl's AIDA structure. Other document structures declare their own
+# geometry. Agents enforce argument roles; mechanical checks measure structure.
 
 id = "harvard"
 api = 1
@@ -160,8 +160,7 @@ maximum = 1
 
 
 [editorial]
-optional_recipe = "aida"
-recipe_independent_of_visual_style = true
+structure = "aida"
 priority = ["role-or-audience-fit", "relevant-experience", "demonstrated-results-and-skills", "supported-motivation", "remaining-cv-material"]
 print_drafting_labels = false
 # Universal evidence and register guidance remains in .agent/docs/editorial.md.

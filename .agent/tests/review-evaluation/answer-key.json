@@ -135,7 +135,7 @@
     {
       "case_id": "case-06-a",
       "pair": 6,
-      "focus": "recipe versus style",
+      "focus": "drafting-label leakage in a non-AIDA letter",
       "expected": [
         "Preserve the supported draft and explicit choices; report no material defect."
       ],
@@ -148,9 +148,9 @@
     {
       "case_id": "case-06-b",
       "pair": 6,
-      "focus": "recipe versus style",
+      "focus": "drafting-label leakage in a non-AIDA letter",
       "expected": [
-        "Flag leaked drafting label and paragraph self-description. Preserve the independent three-paragraph geometry; do not demand Harvard counts."
+        "Flag the leaked drafting label and paragraph self-description. Preserve the explicitly non-AIDA three-paragraph style; do not impose AIDA paragraph, body-line or highlight counts."
       ],
       "protected": [
         "Approximate modeled outcome",
@@ -277,12 +277,12 @@
       "focus": "MECE substantive distinction and complete relevant coverage",
       "expected": [
         "Report no material MECE defect: triage, shift planning and onboarding each have distinct supporting detail, even though they come from the same job. The opening overview legitimately signposts the later evidence.",
-        "Do not require every source fact, an extra achievement for each AIDA stage, six Harvard paragraphs, or removal of the opening summary. Landscape photography is outside the selected purpose."
+        "Do not require every source fact, the AIDA six-paragraph/26-body-line structure, or removal of the opening summary. This is explicitly a non-AIDA letter; landscape photography is outside the selected purpose."
       ],
       "protected": [
         "Purposeful opening summary",
         "One employment source supporting several distinct contributions",
-        "AIDA independent of style geometry",
+        "Explicit non-AIDA style selection",
         "Completeness relative to explicit priorities",
         "Exclusion of irrelevant profile detail"
       ]
@@ -294,12 +294,12 @@
       "expected": [
         "Identify the duplicated substantive triage argument in paragraphs 1 and 2 with passage locators; explain that different words do not establish a second contribution.",
         "Identify absent substantive shift-planning and onboarding evidence despite their explicit importance and available confirmation. Their names in the opening do not provide the missing support.",
-        "Constrain the correction to replacing the redundant passage with the confirmed roster and onboarding contributions. Preserve the useful opening summary, triage example, AIDA progression and three-paragraph shape. Do not invent savings or new roles."
+        "Constrain the correction to replacing the redundant passage with the confirmed roster and onboarding contributions. Preserve the useful opening summary, triage example and explicitly non-AIDA three-paragraph style. Do not invent savings or new roles."
       ],
       "protected": [
         "Purposeful opening summary",
         "One employment source supporting several distinct contributions",
-        "AIDA independent of style geometry",
+        "Explicit non-AIDA style selection",
         "Completeness relative to explicit priorities",
         "Exclusion of irrelevant profile detail"
       ]
