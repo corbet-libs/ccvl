@@ -10,7 +10,21 @@ expected="$(source_fingerprint)"
 [[ "$("$binary" runtime-id)" == "$expected" ]]
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/ccvl-runtime-test.XXXXXXXX")"
 trap 'rm -rf -- "$scratch"' EXIT
-git -C "$repo_root" archive HEAD | tar -xf - -C "$scratch"
+if [[ -n ${SOURCE_ARCHIVE:-}${SOURCE_SHA256:-} ]]; then
+  [[ -n ${SOURCE_ARCHIVE:-} && ${SOURCE_SHA256:-} =~ ^[0-9a-f]{64}$ &&
+     ${CI_COMMIT_SHA:-} =~ ^[0-9a-f]{40}$ ]] || {
+    echo 'Runtime tests require the complete verified source archive identity.' >&2
+    exit 2
+  }
+  [[ $(hash_file "$SOURCE_ARCHIVE") == "$SOURCE_SHA256" &&
+     $(git get-tar-commit-id < "$SOURCE_ARCHIVE") == "$CI_COMMIT_SHA" ]] || {
+    echo 'Runtime test source archive does not match the submitted source.' >&2
+    exit 2
+  }
+  tar -xf "$SOURCE_ARCHIVE" -C "$scratch"
+else
+  git -C "$repo_root" archive HEAD | tar -xf - -C "$scratch"
+fi
 mkdir -p "$scratch/.agent/cache/ccvl/bin"
 cp "$binary" "$scratch/.agent/cache/ccvl/bin/ccvl"
 chmod 0755 "$scratch/.agent/cache/ccvl/bin/ccvl"

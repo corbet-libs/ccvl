@@ -65,15 +65,28 @@ different existing artifact; run `release-ci.sh check` before publication.
 `ccvl_release_github_token`; it never compiles with that credential. Registry or
 GitHub authorization settings are not changed by these commands.
 
+An already provisioned sandbox can be selected for `release-archive` with the
+paired `ARCHIVE_EXECUTOR` and `ARCHIVE_EXECUTOR_SHA256` inputs. The workflow
+copies and verifies this standalone executable before passing it the verified
+archive-check script and explicit package directory. The executor must run that
+unchanged check in a real minimal filesystem and preserve its exact package and
+CI identities. It must provide existing runtime tools without installing them or
+exposing Git/Rust through another path. Keep host-specific sandbox configuration
+outside ccvl. With neither input, the check runs directly and still requires an
+already minimal worker; an incomplete or mismatched pair fails before execution.
+
 **Executor availability remains a separate delivery prerequisite.** The current
 Crow inventory has only a Linux x86_64 local executor. ARM, macOS and Windows
-native workers and a real minimal archive executor are absent; the shared
-verified ccid binary currently also targets Linux x86_64 only. These routes do
-not provision workers or turn Linux evidence into six-platform evidence. The
-archive adapter visibly refuses the ordinary worker because Git/Rust are
-present. Until the missing executors are available, all-six Crow fallback is
-not operational and publication correctly remains incomplete. A fake receipt,
-a masked PATH or a Linux cross-build cannot fill that gap.
+native workers remain unavailable. The existing Nix daemon may provide a real
+minimal filesystem using only retained runtime dependencies, but its archive
+gate is not yet verified. A sandbox supplied with Nix library paths proves only
+that environment; it does not establish that a binary linked to those paths
+works on ordinary Linux. The shared verified ccid binary also targets Linux
+x86_64 only. These routes do not provision workers or turn Linux evidence into
+six-platform evidence. The ordinary worker still fails the archive check because
+Git/Rust are present. All-six Crow fallback remains incomplete until actual
+native and minimal-executor evidence exists. A fake receipt, a masked PATH or a
+Linux cross-build cannot fill that gap.
 
 ## Immutable release tags
 

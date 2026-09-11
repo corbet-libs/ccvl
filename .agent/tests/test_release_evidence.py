@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import patch
 
@@ -279,6 +280,72 @@ raise SystemExit('Unexpected gh call '+repr(args))
         result = self.publisher(directory)
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse((Path(self.temp.name) / 'github/calls').exists())
+
+
+class ArchiveExecutorGuards(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='ccvl-archive-adapter-test-')
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.dist = self.root / 'package directory'
+        self.dist.mkdir()
+        self.marker = self.root / 'gate-called'
+        gate = b'#!/usr/bin/env bash\nset -eu\ntest "$1" = "$EXPECTED_DIST"\nprintf gate > "$GATE_MARKER"\n'
+        self.archive = self.root / 'source.tar'
+        with tarfile.open(self.archive, 'w') as archive:
+            entry = tarfile.TarInfo('.agent/scripts/check-release-archive.sh')
+            entry.size = len(gate)
+            archive.addfile(entry, io.BytesIO(gate))
+        workflow = (ROOT / '.crow/release-archive.yaml').read_text()
+        self.command = textwrap.dedent(workflow.split('      - |\n', 1)[1])
+        self.executor = self.root / 'external executor'
+        self.executor.write_text(
+            '#!/usr/bin/env bash\nset -eu\n'
+            'test "$0" != "$ORIGINAL_EXECUTOR"\n'
+            'printf executor > "$EXECUTOR_MARKER"\n'
+            'exec bash "$1" "$2"\n')
+        self.env = {**os.environ, 'CI_REPO': 'corbet-labs/ccvl',
+                    'SOURCE_ARCHIVE': str(self.archive), 'SOURCE_SHA256': RELEASE.file_hash(self.archive),
+                    'CCVL_RELEASE_DIR': str(self.dist), 'EXPECTED_DIST': str(self.dist),
+                    'GATE_MARKER': str(self.marker), 'EXECUTOR_MARKER': str(self.root / 'executor-called'),
+                    'ORIGINAL_EXECUTOR': str(self.executor), 'ARCHIVE_EXECUTOR': '',
+                    'ARCHIVE_EXECUTOR_SHA256': ''}
+
+    def invoke(self, **changes):
+        return subprocess.run(['bash', '-c', self.command], env={**self.env, **changes},
+                              text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+
+    def test_default_route_runs_verified_check_directly(self):
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.marker.read_text(), 'gate')
+        self.assertFalse((self.root / 'executor-called').exists())
+
+    def test_verified_executor_snapshot_receives_unchanged_check_and_package(self):
+        result = self.invoke(ARCHIVE_EXECUTOR=str(self.executor),
+                             ARCHIVE_EXECUTOR_SHA256=RELEASE.file_hash(self.executor))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.marker.read_text(), 'gate')
+        self.assertEqual((self.root / 'executor-called').read_text(), 'executor')
+
+    def test_incomplete_changed_or_untrusted_executor_never_executes(self):
+        checksum = RELEASE.file_hash(self.executor)
+        link = self.root / 'executor-link'
+        link.symlink_to(self.executor)
+        cases = [
+            {'ARCHIVE_EXECUTOR': str(self.executor)},
+            {'ARCHIVE_EXECUTOR_SHA256': checksum},
+            {'ARCHIVE_EXECUTOR': str(self.executor), 'ARCHIVE_EXECUTOR_SHA256': '0' * 64},
+            {'ARCHIVE_EXECUTOR': str(link), 'ARCHIVE_EXECUTOR_SHA256': checksum},
+            {'ARCHIVE_EXECUTOR': str(self.executor), 'ARCHIVE_EXECUTOR_SHA256': checksum,
+             'SOURCE_SHA256': '0' * 64},
+        ]
+        for inputs in cases:
+            with self.subTest(inputs=inputs):
+                result = self.invoke(**inputs)
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertFalse(self.marker.exists())
+                self.assertFalse((self.root / 'executor-called').exists())
 
 
 if __name__ == '__main__':
