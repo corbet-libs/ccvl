@@ -193,10 +193,12 @@ enum Command {
         skills_root: PathBuf,
         #[arg(long, default_value = ".agent/cache/skill-eval/report.json")]
         output: PathBuf,
+        /// Score complete option assessments without contacting a model provider.
         #[arg(long)]
         response_file: Option<PathBuf>,
         #[arg(long)]
         summary: Option<PathBuf>,
+        /// Groq model for provider requests; ignored when scoring a response file.
         #[arg(long)]
         model: Option<String>,
     },

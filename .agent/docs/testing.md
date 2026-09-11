@@ -93,12 +93,13 @@ overflow causes an editorial iteration instead of a one-error-at-a-time loop.
 ## Small-model skill evaluation
 
 The `Skill evaluation` workflow sends its generic decision cases to
-Groq's free-tier `openai/gpt-oss-20b` model. Cases are deterministically batched
-by canonical skill, with the complete matching skill and the descriptions of
-all declared skills supplied to each low-context call. Both the
+Groq's `openai/gpt-oss-20b` model when account usage is authorized. Cases are
+deterministically batched by canonical skill, with the complete matching skill
+and the descriptions of all declared skills supplied to each low-context call. Both the
 expected routing and answer key are withheld. A deterministic evaluator then
 requires the correct skill, every expected action, no forbidden action, and a
-valid response structure. It publishes all decisions, concise reasons, provider
+valid response structure. Every option needs an explicit assessment, including
+options the model excludes. It publishes all assessments, concise reasons, provider
 finish status, and token usage as a workflow artifact.
 
 The credential-bearing workflow is currently disabled and restricted to a
@@ -115,8 +116,47 @@ ccvl_select_rust_toolchain
 "${CCVL_CARGO_COMMAND[@]}" run --quiet --locked -- skill-eval
 ```
 
-The report is written to the ignored
-`.agent/cache/ai-skill-eval/report.json` path.
+The report is written to the ignored `.agent/cache/skill-eval/report.json` path.
+
+For each case, return `case_id`, the chosen `skill`, a short case `reason`, and
+`assessments` containing every supplied option exactly once:
+
+```json
+{
+  "id": "exact-option-id",
+  "applicable": false,
+  "reason": "Brief justification grounded in the supplied skill."
+}
+```
+
+Set `applicable` to true for every appropriate action under the supplied skill,
+including required simultaneous obligations, and false otherwise.
+Each assessment must contain exactly these three fields, use a
+boolean, and give a nonempty reason of at most 12 words. The case reason also
+remains limited to 12 words. Assess concurrent obligations independently;
+completing one action does not discharge another.
+
+The scorer derives `selected` from true assessments and applies the unchanged
+hidden required/forbidden keys. Unknown, duplicate, missing or malformed
+assessments fail. An explicitly false assessment of a required action still
+fails; complete structure alone is not semantic success. Report schema 2 retains
+both the assessments and derived selections. Legacy selected-only decisions are
+rejected; keep historical evidence with its original scorer and do not invent
+assessments to convert it.
+
+`skill-eval --response-file <path>` scores this same contract without inference.
+Its JSON and Markdown reports identify `provider: response-file` and
+`model: unspecified`, even if the file or `--model` names a provider/model.
+External provenance belongs in the producing adapter's independently verified
+receipt; importing decisions does not authenticate that provenance or make an
+offline fixture a provider result.
+
+Each skill group is split into at most two cases per request, preserving skill
+and case order. This reduces output pressure on the existing 1,800 completion-token
+cap without raising that cap or changing the model and retry limits.
+Repeating the skill/catalog prompt increases total prompt work;
+batch provenance records the index and exact case IDs. Provider truncation or
+incomplete option coverage still fails and supplies no passing evaluation.
 
 
 ## Actor–critic behavioral evaluation
