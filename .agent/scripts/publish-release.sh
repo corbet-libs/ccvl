@@ -48,6 +48,8 @@ release_state() {
   if [[ $status == 4 ]]; then
     # GitHub's tag endpoint can omit drafts. Resolve their database ID through
     # GraphQL before deciding that a release does not exist.
+    # GraphQL variables must reach the API literally.
+    # shellcheck disable=SC2016
     gh api graphql -f query='query($owner:String!,$name:String!,$tag:String!){repository(owner:$owner,name:$name){release(tagName:$tag){databaseId tagName}}}' \
       -f owner="${repository%/*}" -f name="${repository#*/}" -f tag="$tag" > "$scratch/lookup.json" || return 2
     jq -e '((.errors // []) | length) == 0 and (.data.repository | type == "object" and has("release"))' "$scratch/lookup.json" >/dev/null || return 2
