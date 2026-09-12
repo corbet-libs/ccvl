@@ -39,7 +39,8 @@ fn bundles_exclude_showcase_records_and_unsupported_inputs() {
 #[test]
 fn upstream_and_portable_renderers_produce_the_same_document() {
     let workspace = source();
-    let scratch = tempfile::tempdir_in(workspace.root()).unwrap();
+    fs::create_dir_all(workspace.path(".agent/cache")).unwrap();
+    let scratch = tempfile::tempdir_in(workspace.path(".agent/cache")).unwrap();
     let record_path = scratch.path().join("application.toml");
     let profile_path = scratch.path().join("profile.toml");
     let profile = json!({"schema_version":1,"name":"Style integration fixture", "email":"fixture@example.invalid", "location":"Synthetic test input"});

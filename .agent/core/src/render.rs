@@ -14,7 +14,14 @@ impl StyleRenderer {
         bundle.validate()?;
         let mut builder = Engine::builder().fonts(ctypst::fonts::documents());
         for (path, bytes) in &bundle.files {
-            builder = builder.binary(path, bytes.clone())?;
+            builder = if path.ends_with(".typ") {
+                builder.source(
+                    path,
+                    std::str::from_utf8(bytes).context("Typst source must be UTF-8")?,
+                )?
+            } else {
+                builder.binary(path, bytes.clone())?
+            };
         }
         for path in &bundle.fonts {
             builder = builder.fonts([bundle.files[path].clone()]);

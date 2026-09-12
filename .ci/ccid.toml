@@ -58,3 +58,7 @@ commands = [["bash", ".agent/scripts/ci-check.sh", "release-check"]]
 [checks.release-publish]
 kind = "commands"
 commands = [["bash", ".agent/scripts/ci-check.sh", "release-publish"]]
+
+[checks.core-package]
+kind = "commands"
+commands = [["bash", ".agent/scripts/ci-check.sh", "core-package"]]
