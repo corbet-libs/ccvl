@@ -285,9 +285,49 @@ pub fn document_spec(
     if leaf.settings_adapter.is_some() {
         crate::settings::resolve_with_paper(workspace, leaf, requested_paper)?;
     }
+    let inputs = style_inputs(
+        workspace,
+        leaf,
+        pages,
+        &workspace.typst_path(application)?,
+        &workspace.typst_path(profile)?,
+        requested_paper,
+    )?;
+    Ok(DocumentSpec {
+        name: format!(
+            "{} {}/{}/{} {pages}p",
+            leaf.document, leaf.style, leaf.substyle, leaf.locale
+        ),
+        kind: if leaf.document == "cv" {
+            DocumentKind::Cv
+        } else {
+            DocumentKind::CoverLetter
+        },
+        source: leaf.adapter(),
+        output: output.map_or_else(
+            || leaf.output_for_paper(pages, selected_paper.map(|(id, _)| id)),
+            Path::to_path_buf,
+        ),
+        inputs,
+        expected_pages: pages,
+        selection: leaf.selection(),
+        contract: crate::paper::contract(leaf, selected_paper),
+        fonts: leaf.fonts.clone(),
+    })
+}
+
+pub(crate) fn style_inputs(
+    workspace: &Workspace,
+    leaf: &StyleLeaf,
+    pages: usize,
+    application: &str,
+    profile: &str,
+    paper: Option<&str>,
+) -> Result<BTreeMap<String, String>> {
+    let selected_paper = crate::paper::select(leaf.paper.as_ref(), &leaf.locale, paper)?;
     let mut inputs = BTreeMap::from([
-        ("application".to_owned(), workspace.typst_path(application)?),
-        ("profile".to_owned(), workspace.typst_path(profile)?),
+        ("application".to_owned(), application.to_owned()),
+        ("profile".to_owned(), profile.to_owned()),
         ("locale".to_owned(), leaf.locale.clone()),
         ("pages".to_owned(), pages.to_string()),
         ("strings".to_owned(), workspace.typst_path(&leaf.strings())?),
@@ -310,27 +350,7 @@ pub fn document_spec(
     if workspace.input_is_file(&contract_path) {
         inputs.insert("contract".to_owned(), workspace.typst_path(&contract_path)?);
     }
-    Ok(DocumentSpec {
-        name: format!(
-            "{} {}/{}/{} {pages}p",
-            leaf.document, leaf.style, leaf.substyle, leaf.locale
-        ),
-        kind: if leaf.document == "cv" {
-            DocumentKind::Cv
-        } else {
-            DocumentKind::CoverLetter
-        },
-        source: leaf.adapter(),
-        output: output.map_or_else(
-            || leaf.output_for_paper(pages, selected_paper.map(|(id, _)| id)),
-            Path::to_path_buf,
-        ),
-        inputs,
-        expected_pages: pages,
-        selection: leaf.selection(),
-        contract: crate::paper::contract(leaf, selected_paper),
-        fonts: leaf.fonts.clone(),
-    })
+    Ok(inputs)
 }
 
 pub fn cvl_specs(workspace: &Workspace) -> Result<Vec<DocumentSpec>> {

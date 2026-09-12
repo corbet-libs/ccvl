@@ -7,9 +7,11 @@ use std::path::Path;
 pub fn inputs(root: &Path) -> io::Result<Vec<String>> {
     let mut sources = Vec::new();
     collect(root, &root.join(".agent/src"), &mut sources)?;
+    collect(root, &root.join(".agent/core/src"), &mut sources)?;
     sources.sort();
     let mut paths = [
         "Cargo.toml",
+        ".agent/core/Cargo.toml",
         "Cargo.lock",
         "rust-toolchain.toml",
         ".agent/build.rs",

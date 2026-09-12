@@ -17,8 +17,8 @@ for check in "$@"; do
     rust)
       ccvl_select_rust_toolchain
       "${CCVL_CARGO_COMMAND[@]}" fmt --all -- --check
-      "${CCVL_CARGO_COMMAND[@]}" test --locked --all-features
-      "${CCVL_CARGO_COMMAND[@]}" clippy --locked --all-targets --all-features -- -D warnings
+      "${CCVL_CARGO_COMMAND[@]}" test --locked --workspace --all-features
+      "${CCVL_CARGO_COMMAND[@]}" clippy --locked --workspace --all-targets --all-features -- -D warnings
       ;;
     lint)
       # shellcheck source=.agent/scripts/existing-tool-path.sh

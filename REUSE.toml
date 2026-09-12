@@ -4,6 +4,7 @@ version = 1
 path = [
   ".agent/AGENT.md",
   ".agent/build.rs",
+  ".agent/core/**",
   ".agent/release-platforms.txt",
   ".agent/scripts/**",
   ".agent/skills/**",

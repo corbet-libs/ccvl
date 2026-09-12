@@ -138,22 +138,7 @@ pub(crate) fn atom(value: &str, label: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn normalize_locale(value: &str) -> Result<String> {
-    let value = cletter::normalize_locale_id(value);
-    // The library owns locale spelling; this check owns the two-level
-    // language/country storage shape used by style leaves.
-    let (language, country) = value
-        .split_once('-')
-        .context("locale must be language-country")?;
-    ensure!(
-        (2..=3).contains(&language.len())
-            && country.len() == 2
-            && language.bytes().all(|c| c.is_ascii_lowercase())
-            && country.bytes().all(|c| c.is_ascii_lowercase()),
-        "unsupported locale: {value}; expected language-country"
-    );
-    Ok(value)
-}
+pub use ccvl_core::normalize_locale;
 
 fn manifest_key(document: &str) -> Result<&'static str> {
     match document {

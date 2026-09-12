@@ -289,6 +289,7 @@ name = "ccvl"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ccvl-core",
  "clap",
  "cletter",
  "ctypst",
@@ -303,6 +304,21 @@ dependencies = [
  "toml 1.1.6+spec-1.1.0",
  "ureq",
  "walkdir",
+]
+
+[[package]]
+name = "ccvl-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cletter",
+ "ctypst",
+ "lopdf",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "toml 1.1.6+spec-1.1.0",
 ]
 
 [[package]]

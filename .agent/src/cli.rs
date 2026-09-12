@@ -30,6 +30,33 @@ struct Args {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Export a neutral style variant for native or web consumers.
+    ExportStyle {
+        #[arg(value_parser = ["cv", "cl"])]
+        document: String,
+        locale: String,
+        #[arg(long)]
+        style: Option<String>,
+        #[arg(long)]
+        substyle: Option<String>,
+        #[arg(long)]
+        pages: Option<usize>,
+        #[arg(long)]
+        paper: Option<String>,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Render a versioned style bundle with explicit user inputs.
+    RenderStyle {
+        #[arg(long)]
+        bundle: PathBuf,
+        #[arg(long)]
+        application: PathBuf,
+        #[arg(long)]
+        profile: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
     /// Prepare and validate an independently reviewed document package.
     Review {
         #[command(subcommand)]
@@ -210,10 +237,42 @@ pub fn run() -> Result<ExitCode> {
         println!("{}", crate::runtime::ID);
         return Ok(ExitCode::SUCCESS);
     }
+    if let Command::RenderStyle {
+        bundle,
+        application,
+        profile,
+        output,
+    } = &args.command
+    {
+        crate::bundle::render(bundle, application, profile, output)?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let workspace = Workspace::discover(args.root.as_deref())?;
     crate::runtime::verify(workspace.root())?;
     let mut exit_code = ExitCode::SUCCESS;
     match args.command {
+        Command::ExportStyle {
+            document,
+            locale,
+            style,
+            substyle,
+            pages,
+            paper,
+            output,
+        } => {
+            let bundle = crate::bundle::export(
+                &workspace,
+                &document,
+                &locale,
+                style.as_deref(),
+                substyle.as_deref(),
+                pages,
+                paper.as_deref(),
+            )?;
+            std::fs::write(&output, serde_json::to_vec_pretty(&bundle)?)?;
+            println!("{} {} {}", bundle.id, bundle.version, output.display());
+        }
+        Command::RenderStyle { .. } => unreachable!("handled without a workspace"),
         Command::Review { command } => {
             println!(
                 "{}",

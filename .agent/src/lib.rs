@@ -1,6 +1,8 @@
 //! Deterministic core for ccvl workspaces.
 
 pub mod application;
+pub mod bundle;
+pub use ccvl_core as core;
 pub mod check;
 pub mod cli;
 pub mod content;

@@ -1,0 +1,32 @@
+[package]
+name = "ccvl-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+description = "Portable CCVL style contracts and document bundles"
+license = "FSL-1.1-ALv2"
+repository = "https://github.com/corbet-labs/ccvl"
+
+[features]
+default = []
+render = ["dep:ctypst", "dep:lopdf"]
+
+[dependencies]
+anyhow = "1.0"
+cletter = "=0.2.2"
+ctypst = { version = "=0.3.2", optional = true, default-features = false, features = ["document-fonts", "pdf", "raster"] }
+lopdf = { version = "0.44", optional = true, default-features = false }
+regex = "1.12"
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = "1.0"
+sha2 = "0.10"
+toml = "1.1"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"

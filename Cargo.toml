@@ -9,6 +9,10 @@ repository = "https://github.com/corbet-labs/ccvl"
 publish = false
 build = ".agent/build.rs"
 
+[workspace]
+members = [".agent/core"]
+resolver = "3"
+
 [lib]
 name = "ccvl"
 path = ".agent/src/lib.rs"
@@ -19,6 +23,7 @@ path = ".agent/src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
+ccvl-core = { path = ".agent/core", version = "=0.1.0", features = ["render"] }
 cletter = "=0.2.2"
 clap = { version = "4.5", features = ["derive"] }
 ctypst = { version = "=0.3.2", default-features = false, features = ["document-fonts", "format", "pdf", "raster"] }
