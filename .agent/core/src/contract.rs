@@ -55,6 +55,11 @@ pub fn validate_contract(value: &Value) -> Result<()> {
             );
         }
     }
+    validate_pdf_policy(value)?;
+    Ok(())
+}
+
+fn validate_pdf_policy(value: &Value) -> Result<()> {
     if let Some(policy) = value.get("pdf") {
         ensure!(policy.is_object(), "pdf must be a table");
         if let Some(version) = policy.get("version") {
