@@ -7,12 +7,12 @@ function Get-SourceFingerprint {
         return "test-fingerprint"
     }
     $Files = @(
-        Get-Item -LiteralPath (Join-Path $RepoRoot "Cargo.toml")
-        Get-Item -LiteralPath (Join-Path $RepoRoot ".agent/core/Cargo.toml")
-        Get-Item -LiteralPath (Join-Path $RepoRoot "Cargo.lock")
-        Get-Item -LiteralPath (Join-Path $RepoRoot "rust-toolchain.toml")
-        Get-Item -LiteralPath (Join-Path $RepoRoot ".agent/build.rs")
-        Get-ChildItem -LiteralPath @((Join-Path $RepoRoot ".agent\src"), (Join-Path $RepoRoot ".agent\core\src")) -Recurse -File -Filter "*.rs" |
+        Get-Item -ErrorAction Stop -LiteralPath (Join-Path $RepoRoot "Cargo.toml")
+        Get-Item -ErrorAction Stop -LiteralPath (Join-Path $RepoRoot ".agent/core/Cargo.toml")
+        Get-Item -ErrorAction Stop -LiteralPath (Join-Path $RepoRoot "Cargo.lock")
+        Get-Item -ErrorAction Stop -LiteralPath (Join-Path $RepoRoot "rust-toolchain.toml")
+        Get-Item -ErrorAction Stop -LiteralPath (Join-Path $RepoRoot ".agent/build.rs")
+        Get-ChildItem -ErrorAction Stop -LiteralPath @((Join-Path $RepoRoot ".agent\src"), (Join-Path $RepoRoot ".agent\core\src")) -Recurse -File -Filter "*.rs" |
             Sort-Object FullName
     )
     $Lines = foreach ($File in $Files) {

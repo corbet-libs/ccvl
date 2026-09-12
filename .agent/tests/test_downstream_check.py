@@ -33,7 +33,7 @@ class DownstreamCheck(unittest.TestCase):
                                 GIT_AUTHOR_NAME='fixture', GIT_AUTHOR_EMAIL='fixture@example.invalid',
                                 GIT_COMMITTER_NAME='fixture', GIT_COMMITTER_EMAIL='fixture@example.invalid')
         self.git('init', '--quiet', '--template=', '--initial-branch=main')
-        for name in ('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.agent/build.rs', '.agent/src/main.rs'):
+        for name in ('Cargo.toml', '.agent/core/Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.agent/build.rs', '.agent/src/main.rs', '.agent/core/src/lib.rs'):
             self.write(name, 'runtime fixture\n')
         for name in ('runtime-id.sh', 'downstream-check.py'):
             source = ROOT / '.agent/scripts' / name
