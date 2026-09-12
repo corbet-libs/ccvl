@@ -28,10 +28,10 @@ source_fingerprint() {
     return 0
   fi
   {
-    for relative in Cargo.toml Cargo.lock rust-toolchain.toml .agent/build.rs; do
+    for relative in Cargo.toml .agent/core/Cargo.toml Cargo.lock rust-toolchain.toml .agent/build.rs; do
       printf '%s %s\n' "$relative" "$(hash_file "$repo_root/$relative")"
     done
-    find "$repo_root/.agent/src" -type f -name '*.rs' -print | LC_ALL=C sort | while IFS= read -r path; do
+    find "$repo_root/.agent/src" "$repo_root/.agent/core/src" -type f -name '*.rs' -print | LC_ALL=C sort | while IFS= read -r path; do
       relative="${path#"$repo_root/"}"
       printf '%s %s\n' "$relative" "$(hash_file "$path")"
     done

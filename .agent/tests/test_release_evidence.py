@@ -34,6 +34,8 @@ class ReleaseGuards(unittest.TestCase):
             'Cargo.toml': b'[package]\nrust-version="1.94"\n', 'Cargo.lock': b'fixture lock\n',
             'rust-toolchain.toml': b'[toolchain]\nchannel="stable"\n', '.agent/build.rs': b'fn main() {}\n',
             '.agent/src/main.rs': b'fn main() {}\n',
+            '.agent/core/Cargo.toml': b'[package]\nname="ccvl-core"\n',
+            '.agent/core/src/lib.rs': b'pub fn fixture() {}\n',
             '.agent/release-platforms.txt': (ROOT / '.agent/release-platforms.txt').read_bytes(),
         }
         for name in ('release-evidence.py', 'publish-release.sh'):

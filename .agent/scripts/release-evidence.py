@@ -92,11 +92,11 @@ def source():
         if file_hash(ROOT / member.name) != digest(payload):
             fail('Source input changed: ' + member.name)
         files[member.name] = (payload, member.mode)
-    required = ('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.agent/build.rs')
+    required = ('Cargo.toml', '.agent/core/Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.agent/build.rs')
     if not all(path in files for path in (*required, '.agent/release-platforms.txt')):
         fail('Incomplete source archive.')
     fingerprint_paths = list(required) + sorted(
-        path for path in files if path.startswith('.agent/src/') and path.endswith('.rs'))
+        path for path in files if path.startswith(('.agent/src/', '.agent/core/src/')) and path.endswith('.rs'))
     fingerprint = digest(''.join(f'{path} {digest(files[path][0])}\n' for path in fingerprint_paths).encode())
     # Canonical file content/mode identity permits differently encoded provider archives.
     workspace = digest(''.join(
