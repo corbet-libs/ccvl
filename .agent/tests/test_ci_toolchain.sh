@@ -29,8 +29,8 @@ run_check() {
 
 run_check
 grep -Fq 'rustc 1.97.0' "$scratch/output"
-grep -Fxq 'test --locked --all-features' "$FAKE_CARGO_LOG"
-grep -Fxq 'clippy --locked --all-targets --all-features -- -D warnings' "$FAKE_CARGO_LOG"
+grep -Fxq 'test --locked --workspace --all-features' "$FAKE_CARGO_LOG"
+grep -Fxq 'clippy --locked --workspace --all-targets --all-features -- -D warnings' "$FAKE_CARGO_LOG"
 export FAKE_RUST_VERSION=1.93.9
 if run_check; then echo 'CI accepted a compiler below the minimum.' >&2; exit 1; fi
 [[ ! -s "$FAKE_CARGO_LOG" ]]
@@ -51,11 +51,11 @@ EOF
 chmod +x "$scratch/bin/rustup"
 run_check
 grep -Fq 'rustc 1.97.0' "$scratch/output"
-grep -Fxq 'run 1.97.0-test-host cargo test --locked --all-features' "$FAKE_CARGO_LOG"
+grep -Fxq 'run 1.97.0-test-host cargo test --locked --workspace --all-features' "$FAKE_CARGO_LOG"
 export FAKE_STABLE_AVAILABLE=1
 run_check
 grep -Fq 'rustc 1.98.0' "$scratch/output"
-grep -Fxq 'run stable cargo test --locked --all-features' "$FAKE_CARGO_LOG"
+grep -Fxq 'run stable cargo test --locked --workspace --all-features' "$FAKE_CARGO_LOG"
 
 export RUST_TOOLCHAIN=missing-explicit-toolchain
 if run_check; then echo 'CI ignored an unavailable explicit toolchain.' >&2; exit 1; fi
