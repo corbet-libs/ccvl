@@ -19,6 +19,12 @@ try {
     tar -xf $Archive -C $Scratch
     if ($LASTEXITCODE -ne 0) { throw "Archive extraction failed" }
     Remove-Item -LiteralPath $Archive
+    # This isolated installer fixture supplies its own Windows download. It is
+    # not evidence that an official Windows release is currently published.
+    $FixturePlatform = if ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') {
+        'windows-arm64'
+    } else { 'windows-x86_64' }
+    Add-Content -LiteralPath (Join-Path $Scratch '.agent/release-platforms.txt') -Value $FixturePlatform
     # Exercise the actual download installer using the current native binary.
     function Invoke-WebRequest {
         param([switch]$UseBasicParsing, [string]$Uri, [string]$OutFile)

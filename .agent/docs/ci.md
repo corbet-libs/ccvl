@@ -1,9 +1,11 @@
 # Selecting CI checks
 
 GitHub Actions is preferred when available for public source checks. Pushes to
-`main` and pull requests run Rust and lint checks automatically. Six-platform
-release preparation and publication remain an explicit manual dispatch. Crow
-provides manually selected fallback checks when Actions is unavailable; do not
+`main` and pull requests run Rust and lint checks automatically when Actions is
+available. Release preparation and publication remain an explicit manual
+dispatch, using the platform set in `.agent/release-platforms.txt`, currently
+Linux x86_64. Crow independently provides selected checks and the complete
+release path when Actions is unavailable; do not
 run both providers for the same validation without a missing result or changed
 input. Private downstream data and credential-bearing jobs stay on trusted
 internal workers.
@@ -30,8 +32,8 @@ compiler requirement. `RUST_TOOLCHAIN` can explicitly select another installed
 stable compiler; a missing selection fails visibly. No worker toolchain
 installation occurs. Lint checks likewise reuse existing tools, including
 installed Nix store packages omitted from the worker's PATH. The lightweight
-bootstrap and CI-selector behavior tests run with lint; Windows bootstrap
-selection is also tested in the native release matrix.
+bootstrap and CI-selector behavior tests run with lint. A future advertised
+Windows binary must also pass bootstrap checks on its actual native platform.
 
 The manual Crow `ccid` workflow accepts `CHECKS=rust`, `lint`, or `documents`.
 Its `.ci/ccid.toml` selectors invoke the same commands. The operator submission
@@ -64,10 +66,11 @@ The staged archive avoids a source clone from GitHub. The Crow forge integration
 may still need GitHub to retrieve workflow configuration; a submission failure
 is not a test result. The operator owns registration and staging configuration.
 
-This provides selected Linux validation during a hosted-provider outage. It
-does not create the six native release bundles, test the Git-free user archive,
-prove macOS/Windows behavior, or publish releases. All native publication gates
-in `releases.md` remain required. A registry dependency that is not published
+These selectors provide source validation. The separate Crow `release-linux`,
+`release-archive` and `release-publish` workflows provide the complete released
+Linux x86_64 path; see [Releases](releases.md). They require real native evidence
+for every advertised platform and all four shared gates. Linux evidence does
+not prove macOS, Windows or ARM behavior. A registry dependency that is not published
 still blocks a locked build; a provisional path-patched lock is not release
 evidence. Private sync and external model evaluation have separate manually
 selected trusted workflows; neither runs with routine Rust or lint checks.

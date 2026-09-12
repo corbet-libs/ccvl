@@ -121,6 +121,30 @@ partial_output="$(
 [[ "$partial_output" == *'ccvl binary: install'* ]]
 [[ "$partial_output" == *'missing bootstrap commands: none'* ]]
 
+# A known developer target is not a promise that a prebuilt release exists.
+for unreleased_platform in Linux-aarch64 Darwin-aarch64 Darwin-x86_64; do
+  unsupported_cache="$scratch/unreleased-$unreleased_platform"
+  if unsupported_output="$(
+    CCVL_BOOTSTRAP_PROBE_PATH="$partial_bin" \
+    CCVL_BOOTSTRAP_CACHE_ROOT="$unsupported_cache" \
+    CCVL_BOOTSTRAP_TEST_PLATFORM="$unreleased_platform" \
+      bash "$repo_root/.agent/scripts/bootstrap.sh" plan 2>&1
+  )"; then
+    printf 'An unavailable prebuilt platform must fail before setup.\n' >&2
+    exit 1
+  fi
+  [[ "$unsupported_output" == *'No prebuilt runtime is released'* ]]
+  [[ ! -e "$unsupported_cache" ]]
+  mark_binary_ready "$unsupported_cache"
+  ready_output="$(
+    CCVL_BOOTSTRAP_PROBE_PATH="$partial_bin" \
+    CCVL_BOOTSTRAP_CACHE_ROOT="$unsupported_cache" \
+    CCVL_BOOTSTRAP_TEST_PLATFORM="$unreleased_platform" \
+      bash "$repo_root/.agent/scripts/bootstrap.sh" plan
+  )"
+  [[ "$ready_output" == *'ccvl binary: ready'* ]]
+done
+
 managed_cache="$scratch/managed-cache"
 create_stable_rustup "$managed_cache/cargo/bin"
 mark_binary_ready "$managed_cache"

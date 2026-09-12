@@ -1,13 +1,13 @@
 # Getting started
 
 You can use ccvl without knowing Git, Rust, Typst, or package managers. You need
-a folder that a coding agent can read and a terminal it can use. Native Linux
-x86_64/aarch64, macOS Intel/Apple Silicon, and Windows x86_64/ARM64 are
-supported.
+a folder that a coding agent can read and a terminal it can use. The released
+binary supports Linux x86_64 and is verified on Ubuntu 24.04 with glibc 2.39.
+Linux ARM64, macOS and Windows have no verified prebuilt release.
 
 ## With a coding agent
 
-[Download and extract your platform bundle](https://github.com/corbet-labs/ccvl/releases/latest), open
+[Download and extract the Linux x86_64 bundle](https://github.com/corbet-labs/ccvl/releases/latest), open
 the extracted folder in Codex or another filesystem-capable coding agent, and
 use this prompt:
 
@@ -20,9 +20,9 @@ use this prompt:
 > Ask me about facts, not tooling, unless the
 > harness reaches an unavoidable system-permission decision.
 
-The agent should first run `bash ./ccvl bootstrap` on Linux/macOS or
-`.\ccvl.cmd bootstrap` on Windows. That command is read-only and shows the exact
-plan. Because the prompt explicitly requests setup, it may then run the matching
+The agent should first run `bash ./ccvl bootstrap` on Linux x86_64.
+That command is read-only and shows the exact plan. Because the prompt
+explicitly requests setup, it may then run the matching
 `setup` command. Setup:
 
 - detects empty, partial, and already complete environments on the current OS;
@@ -39,18 +39,11 @@ it makes no changes and performs the same verification.
 
 ## From a terminal
 
-No Git is required. In the extracted folder on Linux or macOS:
+No Git is required. In the extracted folder on Linux x86_64:
 
 ```sh
 bash ./ccvl bootstrap
 bash ./ccvl setup
-```
-
-On Windows, use Command Prompt or PowerShell:
-
-```powershell
-.\ccvl.cmd bootstrap
-.\ccvl.cmd setup
 ```
 
 `bootstrap` only reports. `setup` is the explicit instruction to install what
@@ -62,8 +55,11 @@ bash ./ccvl doctor
 bash ./ccvl check
 ```
 
-Developers who intentionally change compiler source can use `setup --from-source`
-to build with stable Rust meeting the `Cargo.toml` minimum. Normal users run the precompiled bundles.
+Developers who intentionally build from source can use
+`bash ./ccvl setup --from-source` on Linux/macOS or
+`.\ccvl.cmd setup --from-source` on native Windows, with stable Rust meeting
+the `Cargo.toml` minimum. These retained source paths are not a verified binary
+release claim for other platforms. Normal users run the Linux x86_64 bundle.
 
 All product commands are available through `bash ./ccvl help` or
 `.\ccvl.cmd help`.

@@ -23,6 +23,16 @@ PLATFORMS = {
 GATES = ('rust', 'lint', 'linux-deep', 'archive')
 
 
+def release_platforms():
+    """Explicit source policy; available artifacts never choose release scope."""
+    platforms = (ROOT / '.agent/release-platforms.txt').read_text().splitlines()
+    if (not platforms or len(platforms) != len(set(platforms))
+            or any(platform not in PLATFORMS for platform in platforms)
+            or 'linux-x86_64' not in platforms):
+        fail('Invalid release platform policy; unique known targets including Linux x86_64 are required.')
+    return platforms
+
+
 def fail(message):
     raise ValueError(message)
 
@@ -83,7 +93,7 @@ def source():
             fail('Source input changed: ' + member.name)
         files[member.name] = (payload, member.mode)
     required = ('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.agent/build.rs')
-    if not all(path in files for path in required):
+    if not all(path in files for path in (*required, '.agent/release-platforms.txt')):
         fail('Incomplete source archive.')
     fingerprint_paths = list(required) + sorted(
         path for path in files if path.startswith('.agent/src/') and path.endswith('.rs'))
@@ -184,7 +194,12 @@ def check(args):
     root = Path(args.output)
     receipts = {}
     runtimes = {}
-    for platform, host in PLATFORMS.items():
+    platforms = release_platforms()
+    expected_native = {'ccvl-' + platform + '.receipt.json' for platform in platforms}
+    if any(path.name not in expected_native for path in root.glob('ccvl-*.receipt.json')):
+        fail('Native evidence outside the explicit release platform policy.')
+    for platform in platforms:
+        host = PLATFORMS[platform]
         path = root / ('ccvl-' + platform + '.receipt.json')
         receipt = load(path)
         identity_equal(receipt, identity)
@@ -218,7 +233,7 @@ def check(args):
         if name in ('linux-deep', 'archive') and receipt.get('native_receipt_sha256') != receipts['ccvl-linux-x86_64.receipt.json']:
             fail('Linux verification used a different native package.')
         receipts[path.name] = file_hash(path)
-    write_json(root / 'manifest.json', {**identity, 'platforms': list(PLATFORMS), 'receipts': receipts})
+    write_json(root / 'manifest.json', {**identity, 'platforms': platforms, 'receipts': receipts})
     write_json(root / 'runtime-manifest.json', {
         'schema': 1, 'runtime_id': identity['runtime_id'],
         'cargo_lock_sha256': identity['cargo_lock_sha256'], 'platforms': runtimes})
@@ -239,8 +254,11 @@ def main():
     checker.add_argument('--output', required=True)
     source_parser = commands.add_parser('source')
     source_parser.add_argument('--output')
+    commands.add_parser('platforms', help='Print the explicit supported release targets.')
     args = parser.parse_args()
-    if args.action == 'source':
+    if args.action == 'platforms':
+        print('\n'.join(release_platforms()))
+    elif args.action == 'source':
         identity, _ = source()
         if args.output:
             write_json(args.output, identity)

@@ -7,36 +7,53 @@ permissions:
   contents: read
 
 jobs:
+  platforms:
+    name: Resolve the explicit released platform set
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.platforms.outputs.matrix }}
+    steps:
+      - name: Check out the exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Map released platforms to native runners
+        id: platforms
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import subprocess
+
+          runners = {
+              'linux-x86_64': 'ubuntu-24.04',
+              'linux-aarch64': 'ubuntu-24.04-arm',
+              'macos-arm64': 'macos-15',
+              'macos-x86_64': 'macos-15-intel',
+              'windows-x86_64': 'windows-2025',
+              'windows-arm64': 'windows-11-arm',
+          }
+          platforms = subprocess.check_output(
+              ['python3', '.agent/scripts/release-evidence.py', 'platforms'],
+              text=True,
+          ).splitlines()
+          if not platforms:
+              raise SystemExit('The released platform set must not be empty.')
+          matrix = []
+          for platform in platforms:
+              os_name, arch = platform.rsplit('-', 1)
+              matrix.append({'os': os_name, 'arch': arch, 'runner': runners[platform]})
+          print('matrix=' + json.dumps({'include': matrix}, separators=(',', ':')))
+          PY
+
   build:
     name: Release binary (${{ matrix.os }} ${{ matrix.arch }})
+    needs: platforms
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: linux
-            arch: x86_64
-            runner: ubuntu-24.04
-            exe: ccvl
-          - os: linux
-            arch: aarch64
-            runner: ubuntu-24.04-arm
-            exe: ccvl
-          - os: macos
-            arch: arm64
-            runner: macos-15
-            exe: ccvl
-          - os: macos
-            arch: x86_64
-            runner: macos-15-intel
-            exe: ccvl
-          - os: windows
-            arch: x86_64
-            runner: windows-2025
-            exe: ccvl.exe
-          - os: windows
-            arch: arm64
-            runner: windows-11-arm
-            exe: ccvl.exe
+      matrix: ${{ fromJSON(needs.platforms.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     env:

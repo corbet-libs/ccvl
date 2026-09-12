@@ -83,10 +83,16 @@ Run the platform `check` command before considering document work complete and
 the platform `public-check` command before publishing from the public upstream.
 
 Runtime and delivery changes are complete only when the exact main revision has
-passed CI and published all six compiled platform bundles. A source push alone
-is not delivery. Follow `.agent/docs/releases.md`; never skip the native build
-or publication gates, install a stale rolling binary, or silently compile on a
-normal user's machine. Developer source builds require `setup --from-source`.
+passed CI and published the compiled bundles for the explicit released
+platform set, currently Linux x86_64. A source push alone is not delivery.
+Follow `.agent/docs/releases.md`; every advertised platform requires its real
+native evidence and all shared publication gates. Never install a stale rolling
+binary or silently compile on a normal user's machine. Developer source builds
+require `setup --from-source`. Other platform source paths remain available for
+development, without a verified binary release claim.
+Crow can complete validation and publication independently. Retain eligible
+GitHub Actions routes; unavailable Actions or unadvertised native platforms
+must not block the available release path.
 
 For a new or uncertain environment, route to `ccvl-install`. Use
 `bash ./ccvl bootstrap` on Linux/macOS or `.\ccvl.cmd bootstrap` on Windows;

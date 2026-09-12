@@ -69,12 +69,14 @@ pages or update its record. A successful refresh removes surplus numbered
 previews for that PDF when its page count shrinks. `test_previews.sh` exercises reuse, each source
 of invalidation, and recovery from a failure partway through a document.
 
-An explicit release dispatch builds optimized release binaries natively on Linux
-x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64/arm64. Each binary passes
-`public-check` and tests proving that both the launcher and direct executable
-reject a mismatched workspace. Windows also exercises the PowerShell download
-installer. Linux performs the locked Rust unit suite, Clippy, and independent
-Poppler, QPDF, and pixel comparisons. A minimal Linux container extracts the
+An explicit release dispatch builds optimized release binaries natively for
+every platform in `.agent/release-platforms.txt`, currently Linux x86_64.
+Each released binary passes `public-check` and tests proving that both the
+launcher and direct executable
+reject a mismatched workspace. A future Windows release must also exercise its
+PowerShell download installer on a real native worker. Linux performs the
+locked Rust unit suite, Clippy, and independent Poppler, QPDF, and pixel
+comparisons. A real minimal Linux executor extracts the
 actual download bundle and runs setup without Git, Rust, or a compiler.
 The Linux independent-check job verifies the downloaded binary's checksum
 and workspace identity with `doctor`; it avoids rerunning setup's full
@@ -82,8 +84,10 @@ document suite before its own public check. The archive job continues to
 exercise the complete user setup path.
 
 The same tested files become release assets; publication never rebuilds or
-fetches an older rolling binary. The CI workflow requires all six builds and
-all validation jobs before publication. It also runs ShellCheck, Actionlint,
+fetches an older rolling binary. Both GHA and Crow publication require every
+explicitly released native target and all four shared gates. Unavailable GHA
+does not prevent Crow delivery, and missing artifacts never silently reduce
+the released platform set. Validation also runs ShellCheck, Actionlint,
 and REUSE. See [Releases](releases.md) for cache and identity details.
 
 The same line contract is available directly with `bash ./ccvl measure` or

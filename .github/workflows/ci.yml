@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   binaries:
-    # Compiled bundles and publication are explicit release actions; all six native gates remain required.
+    # Compiled bundles and publication are explicit release actions; every released platform and shared gate remains required.
     if: >-
       ${{ (github.repository == 'corbet-labs/ccvl') && (github.event_name == 'workflow_dispatch') }}
     uses: ./.github/workflows/binaries.yml
@@ -124,7 +124,7 @@ jobs:
 
   verify:
     name: Linux release and independent PDF verification
-    # Compiled bundles and publication are explicit release actions; all six native gates remain required.
+    # Compiled bundles and publication are explicit release actions; every released platform and shared gate remains required.
     if: >-
       ${{ (github.repository == 'corbet-labs/ccvl') && (github.event_name == 'workflow_dispatch') }}
     needs: [binaries]
@@ -173,7 +173,7 @@ jobs:
 
   archive:
     name: Run the precompiled bundle without Git or Rust
-    # Compiled bundles and publication are explicit release actions; all six native gates remain required.
+    # Compiled bundles and publication are explicit release actions; every released platform and shared gate remains required.
     if: >-
       ${{ (github.repository == 'corbet-labs/ccvl') && (github.event_name == 'workflow_dispatch') }}
     needs: [binaries]
@@ -204,9 +204,9 @@ jobs:
           retention-days: 3
 
   release:
-    name: Publish all six verified platforms
+    name: Publish every verified release platform
     needs: [binaries, rust-native, lint, verify, archive]
-    # Compiled bundles and publication are explicit release actions; all six native gates remain required.
+    # Compiled bundles and publication are explicit release actions; every released platform and shared gate remains required.
     if: >-
       ${{ (github.repository == 'corbet-labs/ccvl' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request') && (github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-24.04

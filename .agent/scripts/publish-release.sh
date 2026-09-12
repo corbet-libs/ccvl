@@ -10,7 +10,8 @@ read -r sha runtime_id <<<"$identity"
 repository="${CI_REPO:-${GITHUB_REPOSITORY:-}}"
 [[ "$repository" == corbet-labs/ccvl && "$sha" =~ ^[0-9a-f]{40}$ && "$runtime_id" =~ ^[0-9a-f]{64}$ ]] || exit 2
 [[ -n ${GH_TOKEN:-${GITHUB_TOKEN:-}} ]] || { echo 'A publication credential is required.' >&2; exit 2; }
-platforms=(linux-x86_64 linux-aarch64 macos-x86_64 macos-arm64 windows-x86_64 windows-arm64)
+platform_policy="$(python3 .agent/scripts/release-evidence.py platforms)"
+mapfile -t platforms <<<"$platform_policy"
 runtime_files=()
 bundle_files=()
 evidence_files=("$dist/manifest.json" "$dist"/gate-*.json)
@@ -95,7 +96,7 @@ publish() {
   if [[ $status == 4 ]]; then
     validate_tag "$tag" "$sha" true
     gh release create "$tag" --repo "$repository" --draft --target "$sha" --title "$title" \
-      --notes "Verified runtime $runtime_id from source $sha. All six native platforms and required release gates passed. Receipts and source/dependency identities are included."
+      --notes "Verified runtime $runtime_id from source $sha. Released platforms: ${platforms[*]}. Native checks and all required release gates passed for this scope. Receipts and source/dependency identities are included."
     release_state "$tag"
   elif [[ $status != 0 ]]; then
     return "$status"
@@ -132,4 +133,4 @@ publish() {
 }
 publish "runtime-$runtime_id" "Compiled runtime ${runtime_id:0:12}" runtime "${runtime_files[@]}" "$dist/runtime-manifest.json"
 publish "build-$sha" "ccvl ${sha:0:12}" workspace "${bundle_files[@]}" "${evidence_files[@]}"
-printf 'Published six native runtime assets and six matching workspace bundles for %s.\n' "$sha"
+printf 'Published %s native runtime(s) and matching workspace bundle(s) for %s: %s.\n' "${#platforms[@]}" "$sha" "${platforms[*]}"

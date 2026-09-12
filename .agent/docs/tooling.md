@@ -8,11 +8,12 @@ ccvl uses one native runtime and a small verification toolchain:
 | Stable Rust + Cargo (minimum in `Cargo.toml`) | explicit developer builds with `setup --from-source` |
 | Poppler + QPDF | secondary Linux CI validation |
 
-Run `bash ./ccvl bootstrap` on Linux/macOS or `.\ccvl.cmd bootstrap` on Windows
-for a read-only setup plan. The matching `setup` command installs only the precompiled runtime whose embedded
-source identity matches the workspace, then runs the complete check. Platform
-bundles already include this executable below `.agent/cache/ccvl/`. It supports Linux and macOS on x86_64/aarch64 plus native Windows on
-x86_64/ARM64.
+Run `bash ./ccvl bootstrap` on Linux x86_64 for a read-only setup plan. The
+matching `setup` command installs only the precompiled runtime whose embedded
+source identity matches the workspace, then runs the complete check. The Linux
+x86_64 bundle includes this executable below `.agent/cache/ccvl/`; its ordinary
+Linux runtime is verified on Ubuntu 24.04 with glibc 2.39. Linux ARM64, macOS and
+Windows have no verified prebuilt release.
 
 For development, `setup --from-source` reuses an installed stable compiler
 meeting the `Cargo.toml` minimum, including a newer system version. The plan
@@ -20,7 +21,12 @@ reports the actual compiler version. An experienced user may provide Rust
 independently and run the platform `doctor` plus `check` commands. If no suitable
 compiler exists, explicit developer setup installs the stable channel in the
 repository-local cache; it does not replace the global toolchain. Normal users
-continue to use the matching precompiled runtime without Rust.
+continue to use the matching precompiled runtime without Rust. Native source
+build paths remain available for Linux x86_64/ARM64, macOS Intel/Apple Silicon
+and Windows x86_64/ARM64; their presence is not native release evidence. Use
+`bash ./ccvl setup --from-source` on Linux/macOS or
+`.\ccvl.cmd setup --from-source` on Windows only for an explicitly requested
+developer build.
 
 ## Line measurement
 

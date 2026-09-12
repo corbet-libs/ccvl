@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/corbet-labs/ccvl/actions/workflows/ci.yml/badge.svg)](https://github.com/corbet-labs/ccvl/actions/workflows/ci.yml)
 [![Skill evaluation](https://github.com/corbet-labs/ccvl/actions/workflows/skill-eval.yml/badge.svg)](https://github.com/corbet-labs/ccvl/actions/workflows/skill-eval.yml)
+[Verification and release checks](.agent/docs/ci.md)
 
 ccvl is a local-first, forkable CV and application system built as a native
 Rust binary with an embedded Typst engine. It ships a real bilingual career
@@ -53,7 +54,7 @@ Included are:
 
 ## Quick start
 
-No Git or Typst experience is required. [Download and extract your platform bundle](https://github.com/corbet-labs/ccvl/releases/latest), or
+On Linux x86_64, no Git or Typst experience is required. [Download and extract the Linux bundle](https://github.com/corbet-labs/ccvl/releases/latest), or
 clone the repository if you already use Git. Open the folder in a
 filesystem-capable coding agent and ask it to set up ccvl using `AGENTS.md`.
 The complete novice and terminal workflows are in [Getting
@@ -70,17 +71,6 @@ bash ./ccvl new-opportunity example-org strategy-lead
 bash ./ccvl build-opportunity example-org strategy-lead
 ```
 
-On native Windows, use the root dispatcher from Command Prompt or PowerShell:
-
-```powershell
-.\ccvl.cmd setup
-.\ccvl.cmd check
-.\ccvl.cmd build
-.\ccvl.cmd new-opportunity example-org strategy-lead
-# Complete the new application.toml with the ccvl-apply skill, then:
-.\ccvl.cmd build-opportunity example-org strategy-lead
-```
-
 Generated general documents are written to
 `cvl/cv/<style>/<substyle>/<language>/<region>/pdf/cv-{2,3,4}.pdf` and
 `cvl/cl/<style>/<substyle>/<language>/<region>/pdf/cl.pdf`.
@@ -93,9 +83,9 @@ Opportunity-specific documents are written beside their job record under
 `opportunities/<organisation>/<position>/typst/` (resolved standalone
 Typst copies).
 
-The platform bundles include the tested, optimized executable and its matching
-workspace. Linux x86_64/aarch64, macOS Intel/Apple Silicon, and Windows
-x86_64/ARM64 are all compiled and verified before a release becomes available.
+The Linux x86_64 bundle includes the tested, optimized executable and its
+matching workspace. Its ordinary Linux runtime is verified on Ubuntu 24.04
+with glibc 2.39. Linux ARM64, macOS and Windows have no verified prebuilt release.
 Git, Rust, and an external Typst installation are unnecessary for normal use.
 
 For an existing checkout, setup downloads the checksum-verified runtime that
@@ -103,7 +93,9 @@ matches its compiler source. It rejects older binaries, and every launcher
 checks the installed runtime again before executing a command. Personal CV,
 interview, and opportunity changes do not require recompilation. Developers
 can explicitly opt into a locked source build with `bash ./ccvl setup
---from-source` or `.\ccvl.cmd setup --from-source`.
+--from-source` on Linux/macOS or `.\ccvl.cmd setup --from-source` on Windows.
+These native developer paths do not establish binary release support on those
+other platforms.
 
 The [release contract](.agent/docs/releases.md) describes the required native
 builds, shared artifacts, dependency caches, and publication gate.

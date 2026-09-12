@@ -166,6 +166,11 @@ if [[ -x "$binary" && -n "$fingerprint" ]] \
   binary_state=ready
 fi
 release_base="${CCVL_RELEASE_BASE:-https://github.com/corbet-labs/ccvl/releases/download/runtime-$fingerprint}"
+if [[ "$binary_state" != ready && "$from_source" != 1 ]] \
+  && ! grep -Fxq -- "${release_asset#ccvl-}" "$repo_root/.agent/release-platforms.txt"; then
+  printf 'No prebuilt runtime is released for %s in this workspace. See .agent/docs/tooling.md for developer source builds.\n' "$platform" >&2
+  exit 2
+fi
 
 toolchain_state=install
 if managed_rust_matches; then

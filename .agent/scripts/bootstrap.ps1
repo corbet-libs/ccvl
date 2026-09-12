@@ -157,6 +157,11 @@ if (Test-Path -LiteralPath $Binary -PathType Leaf) {
     $RuntimeId = Invoke-OutsideRepository $Binary @("runtime-id")
     if ($RuntimeId -eq $Fingerprint) { $BinaryState = "ready" }
 }
+$ReleasedPlatforms = @(Get-Content -LiteralPath (Join-Path $RepoRoot ".agent/release-platforms.txt"))
+$ReleasePlatform = $ReleaseAsset -replace '^ccvl-', '' -replace '\.exe$', ''
+if ($BinaryState -ne "ready" -and -not $FromSource -and $ReleasePlatform -cnotin $ReleasedPlatforms) {
+    throw "No prebuilt runtime is released for $Platform in this workspace. See .agent/docs/tooling.md for developer source builds."
+}
 
 $SystemKind = "none"
 $SystemCargo = $null

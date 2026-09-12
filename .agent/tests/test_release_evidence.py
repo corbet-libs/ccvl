@@ -34,6 +34,7 @@ class ReleaseGuards(unittest.TestCase):
             'Cargo.toml': b'[package]\nrust-version="1.94"\n', 'Cargo.lock': b'fixture lock\n',
             'rust-toolchain.toml': b'[toolchain]\nchannel="stable"\n', '.agent/build.rs': b'fn main() {}\n',
             '.agent/src/main.rs': b'fn main() {}\n',
+            '.agent/release-platforms.txt': (ROOT / '.agent/release-platforms.txt').read_bytes(),
         }
         for name in ('release-evidence.py', 'publish-release.sh'):
             files['.agent/scripts/' + name] = (ROOT / '.agent/scripts' / name).read_bytes()
@@ -59,7 +60,8 @@ class ReleaseGuards(unittest.TestCase):
         self.populate()
 
     def populate(self):
-        for platform, host in RELEASE.PLATFORMS.items():
+        for platform in RELEASE.release_platforms():
+            host = RELEASE.PLATFORMS[platform]
             name = 'ccvl-' + platform + ('.exe' if platform.startswith('windows-') else '')
             assets = {}
             for filename in (name, 'ccvl-' + platform + '.tar.gz'):
@@ -94,19 +96,21 @@ class ReleaseGuards(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             RELEASE.check(type('Arguments', (), {'output': str(self.output)})())
 
-    def test_complete_six_native_results_and_gates(self):
+    def test_complete_explicit_native_results_and_gates(self):
         self.check()
         manifest = json.loads((self.output / 'manifest.json').read_text())
-        self.assertEqual(len(manifest['platforms']), 6)
-        self.assertEqual(len(manifest['receipts']), 10)
+        self.assertEqual(manifest['platforms'], ['linux-x86_64'])
+        self.assertEqual(len(manifest['receipts']), 5)
+        runtime = json.loads((self.output / 'runtime-manifest.json').read_text())
+        self.assertEqual(list(runtime['platforms']), ['linux-x86_64'])
 
     def test_one_platform_absent_never_passes(self):
-        (self.output / 'ccvl-windows-arm64.receipt.json').unlink()
+        (self.output / 'ccvl-linux-x86_64.receipt.json').unlink()
         with self.assertRaises(FileNotFoundError):
             self.check()
 
     def test_cross_host_cannot_claim_native_platform(self):
-        self.change('ccvl-macos-arm64.receipt.json', 'rust_host', 'x86_64-unknown-linux-gnu')
+        self.change('ccvl-linux-x86_64.receipt.json', 'rust_host', 'aarch64-apple-darwin')
         with self.assertRaisesRegex(ValueError, 'native platform'):
             self.check()
 
@@ -114,11 +118,11 @@ class ReleaseGuards(unittest.TestCase):
         for field in ('source_commit', 'source_sha256', 'cargo_lock_sha256', 'runtime_id'):
             with self.subTest(field=field):
                 self.populate()
-                self.change('ccvl-windows-arm64.receipt.json', field, 'b' * 64)
+                self.change('ccvl-linux-x86_64.receipt.json', field, 'b' * 64)
                 with self.assertRaisesRegex(ValueError, field):
                     self.check()
         self.populate()
-        (self.output / 'ccvl-windows-arm64.exe').write_bytes(b'changed binary')
+        (self.output / 'ccvl-linux-x86_64').write_bytes(b'changed binary')
         with self.assertRaisesRegex(ValueError, 'checksum'):
             self.check()
 
@@ -130,6 +134,19 @@ class ReleaseGuards(unittest.TestCase):
         self.change('gate-linux-deep.json', 'native_receipt_sha256', '0' * 64)
         with self.assertRaisesRegex(ValueError, 'different native package'):
             self.check()
+
+    def test_artifact_availability_cannot_expand_release_scope(self):
+        self.write('ccvl-windows-arm64.receipt.json', {})
+        with self.assertRaisesRegex(ValueError, 'outside the explicit release platform policy'):
+            self.check()
+
+    def test_invalid_platform_policy_refused(self):
+        for policy in ('', 'macos-arm64\n', 'linux-x86_64\nlinux-x86_64\n',
+                       'linux-x86_64\ninvented\n'):
+            with self.subTest(policy=policy):
+                (self.root / '.agent/release-platforms.txt').write_text(policy)
+                with self.assertRaisesRegex(ValueError, 'Invalid release platform policy'):
+                    RELEASE.release_platforms()
 
     def test_source_archive_or_worktree_mutation_refused(self):
         with patch.dict(os.environ, {'SOURCE_SHA256': '0' * 64}):
@@ -212,6 +229,13 @@ raise SystemExit('Unexpected gh call '+repr(args))
         calls = Path(self.temp.name) / 'github/calls'
         first_uploads = calls.read_text().count('"upload"')
         self.assertGreater(first_uploads, 0)
+        create_calls = [json.loads(line) for line in calls.read_text().splitlines()
+                        if json.loads(line)[:2] == ['release', 'create']]
+        for call in create_calls:
+            notes = call[call.index('--notes') + 1]
+            self.assertIn('Released platforms: linux-x86_64.', notes)
+            self.assertNotIn('All six', notes)
+        self.assertEqual(first_uploads, 12)
         result = self.publisher(directory)
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(calls.read_text().count('"upload"'), first_uploads)
@@ -276,7 +300,7 @@ raise SystemExit('Unexpected gh call '+repr(args))
 
     def test_missing_native_evidence_prevents_any_publication_call(self):
         directory = self.fake_gh()
-        (self.output / 'ccvl-windows-arm64.receipt.json').unlink()
+        (self.output / 'ccvl-linux-x86_64.receipt.json').unlink()
         result = self.publisher(directory)
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse((Path(self.temp.name) / 'github/calls').exists())
