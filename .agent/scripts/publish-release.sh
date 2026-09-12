@@ -43,7 +43,21 @@ api_object() {
 }
 
 release_state() {
-  api_object "repos/$repository/releases/tags/$1" "$scratch/release.json" || return "$?"
+  local tag="$1" status=0 release_id
+  api_object "repos/$repository/releases/tags/$tag" "$scratch/release.json" || status=$?
+  if [[ $status == 4 ]]; then
+    # GitHub's tag endpoint can omit drafts. Resolve their database ID through
+    # GraphQL before deciding that a release does not exist.
+    gh api graphql -f query='query($owner:String!,$name:String!,$tag:String!){repository(owner:$owner,name:$name){release(tagName:$tag){databaseId tagName}}}' \
+      -f owner="${repository%/*}" -f name="${repository#*/}" -f tag="$tag" > "$scratch/lookup.json" || return 2
+    jq -e '((.errors // []) | length) == 0 and (.data.repository | type == "object" and has("release"))' "$scratch/lookup.json" >/dev/null || return 2
+    if jq -e '.data.repository.release == null' "$scratch/lookup.json" >/dev/null; then return 4; fi
+    release_id="$(jq -er --arg tag "$tag" '.data.repository.release | select(.tagName == $tag) | .databaseId | select(type == "number" and . > 0 and . == floor)' "$scratch/lookup.json")" || return 2
+    api_object "repos/$repository/releases/$release_id" "$scratch/release.json" || return 2
+    jq -e --arg tag "$tag" --argjson id "$release_id" '.id == $id and .tag_name == $tag' "$scratch/release.json" >/dev/null || return 2
+  elif [[ $status != 0 ]]; then
+    return "$status"
+  fi
   jq -er '.id and (.draft | type == "boolean")' "$scratch/release.json" >/dev/null
 }
 

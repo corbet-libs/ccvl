@@ -178,6 +178,14 @@ args=sys.argv[1:]
 root=pathlib.Path(os.environ['FAKE_GH_ROOT']); root.mkdir(exist_ok=True)
 with (root/'calls').open('a') as log: log.write(json.dumps(args)+'\\n')
 if args[0]=='api':
+    if args[1]=='graphql':
+        if (root/'lookup-error').exists():
+            print((root/'lookup-error').read_text());sys.exit()
+        tag=next(arg[4:] for arg in args if arg.startswith('tag='));release=root/tag
+        found=None
+        if (release/'state').exists():
+            found={'databaseId':json.loads((release/'state').read_text())['id'],'tagName':tag}
+        print(json.dumps({'data':{'repository':{'release':found}}}));sys.exit()
     target=next(arg for arg in args[1:] if arg.startswith('repos/'))
     if target.endswith('/git/ref/heads/main'): print(os.environ['CI_COMMIT_SHA']); sys.exit()
     if '/git/tags/' in target:
@@ -189,16 +197,24 @@ if args[0]=='api':
             kind='tag' if (release/'annotated').exists() else 'commit'
             print('HTTP/2.0 200 OK\\n\\n'+json.dumps({'object':{'type':kind,'sha':commit}}));sys.exit()
         print('HTTP/2.0 404 Not Found\\n\\n{}');sys.exit(1)
-    tag=target.split('/tags/')[1]; release=root/tag
+    if '/releases/tags/' in target:
+        tag=target.split('/tags/')[1];release=root/tag
+        if (release/'state').exists() and json.loads((release/'state').read_text())['draft']:
+            print('HTTP/2.0 404 Not Found\\n\\n{}');sys.exit(1)
+    else:
+        release=next(p for p in root.iterdir() if p.is_dir() and (p/'state').exists()
+                     and str(json.loads((p/'state').read_text())['id'])==target.rsplit('/',1)[1])
+        tag=release.name
     if not (release/'state').exists():
         print('HTTP/2.0 404 Not Found\\n\\n{}');sys.exit(1)
     data=json.loads((release/'state').read_text())
+    data['tag_name']=tag
     data['assets']=[{'name':p.name} for p in (release/'assets').iterdir()]
     print('HTTP/2.0 200 OK\\n\\n'+json.dumps(data));sys.exit()
 assert args[0]=='release'
 action,tag=args[1:3];release=root/tag
 if action=='create':
-    release.mkdir();(release/'assets').mkdir();(release/'state').write_text(json.dumps({'id':1,'draft':True,'target_commitish':os.environ['CI_COMMIT_SHA']}));sys.exit()
+    release.mkdir();(release/'assets').mkdir();(release/'state').write_text(json.dumps({'id':1 if tag.startswith('runtime-') else 2,'draft':True,'target_commitish':os.environ['CI_COMMIT_SHA']}));sys.exit()
 if action=='upload':
     assert '--clobber' not in args
     asset=pathlib.Path(args[-1]);dest=release/'assets'/asset.name
@@ -208,7 +224,8 @@ if action=='download':
     name=args[args.index('--pattern')+1];dest=pathlib.Path(args[args.index('--output')+1])
     assert not dest.exists();shutil.copyfile(release/'assets'/name,dest);sys.exit()
 if action=='edit':
-    (release/'state').write_text(json.dumps({'id':1,'draft':False,'target_commitish':os.environ['CI_COMMIT_SHA']}));sys.exit()
+    data=json.loads((release/'state').read_text());data['draft']=False
+    (release/'state').write_text(json.dumps(data));sys.exit()
 raise SystemExit('Unexpected gh call '+repr(args))
 ''')
         path.chmod(0o755)
@@ -236,6 +253,7 @@ raise SystemExit('Unexpected gh call '+repr(args))
             self.assertIn('Released platforms: linux-x86_64.', notes)
             self.assertNotIn('All six', notes)
         self.assertEqual(first_uploads, 12)
+        self.assertIn('"graphql"', calls.read_text())
         result = self.publisher(directory)
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(calls.read_text().count('"upload"'), first_uploads)
@@ -245,6 +263,27 @@ raise SystemExit('Unexpected gh call '+repr(args))
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('No overwrite attempted', result.stdout)
         self.assertEqual(calls.read_text().count('"upload"'), first_uploads)
+
+    def test_unknown_draft_lookup_never_creates_or_uploads(self):
+        directory = self.fake_gh()
+        remote = Path(self.temp.name) / 'github'
+        remote.mkdir()
+        cases = [
+            {'errors': [{'message': 'fixture lookup unavailable'}]},
+            {'data': {'repository': None}},
+            {'data': {'repository': {}}},
+            {'data': {'repository': {'release': {'databaseId': 1, 'tagName': 'another-release'}}}},
+            {'data': {'repository': {'release': {'databaseId': None,
+                                                'tagName': 'runtime-' + self.identity['runtime_id']}}}},
+        ]
+        for response in cases:
+            with self.subTest(response=response):
+                (remote / 'lookup-error').write_text(json.dumps(response))
+                result = self.publisher(directory)
+                self.assertNotEqual(result.returncode, 0)
+        calls = (remote / 'calls').read_text()
+        self.assertNotIn('"create"', calls)
+        self.assertNotIn('"upload"', calls)
 
     def test_existing_wrong_tag_prevents_further_publication(self):
         directory = self.fake_gh()
