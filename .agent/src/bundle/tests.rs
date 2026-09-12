@@ -62,10 +62,11 @@ fn upstream_and_portable_renderers_produce_the_same_document() {
                 locale,
                 Some(style),
                 Some(substyle),
-                Some(1),
+                None,
                 Some(paper),
             )
             .unwrap();
+            let pages = bundle.pages;
             let mut job = json!({});
             for key in [
                 "id",
@@ -86,7 +87,7 @@ fn upstream_and_portable_renderers_produce_the_same_document() {
                 json!({"name":"","title":"","company":"","address_line_1":"","address_line_2":""});
             let record = json!({"schema_version":4,"revision":0,
                 "options":{"language":locale,"pages":1,"generate_cl":true,"application_date":"2026-01-01",
-                    "cl_style":style,"cl_substyle":substyle,"cl_pages":1,"cl_paper":paper},
+                    "cl_style":style,"cl_substyle":substyle,"cl_pages":pages,"cl_paper":paper},
                 "job":job,"cl":{"subject":"Style integration fixture", "opening":"Synthetic document for rendering verification.",
                     "body":["This is a test fixture. It contains no candidate claims.", "The same upstream assets must render in both consumers."],
                     "closing":"End of fixture"}});
@@ -100,7 +101,7 @@ fn upstream_and_portable_renderers_produce_the_same_document() {
             let spec = crate::render::document_spec(
                 &workspace,
                 &leaf,
-                1,
+                pages,
                 &record_path,
                 &profile_path,
                 Some(&scratch.path().join("direct.pdf")),

@@ -253,3 +253,28 @@ explicit user/style overrides and preserving protected names, quotes and
 original evidence. A locale does not automatically override the selected paper.
 [Independent review](review.md) checks the actual selected contracts and pages,
 including general documents without a vacancy.
+
+## Portable consumer bundles
+
+`ccvl export-style cl en-ch --style test-style-1 --substyle sidebar --paper a4
+--output style.json` exports an exact variant, including template sources,
+contracts, fonts and license notices. A bundle contains no profile, application,
+wording records or rendered showcase output. Styles with embedded candidate
+`source_files` must move those facts into explicit inputs before export.
+
+`ccvl render-style --bundle style.json --application application.toml --profile
+profile.toml --output document.pdf` renders outside a CCVL filesystem workspace.
+The application must contain resolved wording and select the same variant.
+
+The `ccvl-core` crate lives in `.agent/core`. Its `render` feature provides the
+same portable renderer to native consumers. The bundle owns field structure;
+`StyleDocument::editable_fields`, `field_value` and `set_field` are shared by
+manual editors and chat tools. Arrays and objects use complete JSON replacements.
+`editing_context` excludes template sources and binary assets from chat context.
+A content hash binds each document to an explicitly selected bundle version.
+
+Storage and chat hosts remain consumer responsibilities. CCVL stays the rapid
+style contribution upstream: edit a style here, verify its affected variants,
+then publish a new bundle. Consumers do not maintain template copies. A style
+bundle and a rendered PDF do not establish editorial readiness or authorize
+signatures and application submission.

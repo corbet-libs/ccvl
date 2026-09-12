@@ -6,6 +6,7 @@ rust-version = "1.94"
 description = "Portable CCVL style contracts and document bundles"
 license = "FSL-1.1-ALv2"
 repository = "https://github.com/corbet-labs/ccvl"
+readme = "README.md"
 
 [features]
 default = []

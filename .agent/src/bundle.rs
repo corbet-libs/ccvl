@@ -46,6 +46,7 @@ pub fn export(
     inputs.remove("application");
     inputs.remove("profile");
     let mut files = BTreeMap::new();
+    add(workspace, &workspace.path("REUSE.toml"), &mut files)?;
     for directory in [
         workspace.path(".agent/typst"),
         leaf.style_dir().to_path_buf(),
