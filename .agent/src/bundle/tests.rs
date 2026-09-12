@@ -89,7 +89,7 @@ fn upstream_and_portable_renderers_produce_the_same_document() {
                 "options":{"language":locale,"pages":1,"generate_cl":true,"application_date":"2026-01-01",
                     "cl_style":style,"cl_substyle":substyle,"cl_pages":pages,"cl_paper":paper},
                 "job":job,"cl":{"subject":"Style integration fixture", "opening":"Synthetic document for rendering verification.",
-                    "body":["This is a test fixture. It contains no candidate claims.", "The same upstream assets must render in both consumers."],
+                    "body":["This is a test fixture. It contains no candidate claims.", "The same upstream assets must render in both consumers.", "This third section verifies the two-page composition."],
                     "closing":"End of fixture"}});
             fs::write(&record_path, toml::to_string(&record).unwrap()).unwrap();
             let project = bundle.with_record(record, profile.clone()).unwrap();
