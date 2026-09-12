@@ -19,8 +19,20 @@ pub fn export(
     pages: Option<usize>,
     paper: Option<&str>,
 ) -> Result<StyleBundle> {
+    let document = match document {
+        "cv" => "cv",
+        "cl" => "cl",
+        _ => anyhow::bail!("unsupported document type: {document}"),
+    };
     let selection = styles::selection(workspace, document, style, substyle)?;
     let leaf = styles::leaf(workspace, document, locale, &selection)?;
+    ensure!(
+        leaf.contract
+            .get("source_files")
+            .and_then(serde_json::Value::as_array)
+            .is_none_or(Vec::is_empty),
+        "this style embeds candidate source files; move them to document inputs before exporting a reusable bundle"
+    );
     let pages = pages.unwrap_or(leaf.default_pages);
     ensure!(
         leaf.pages.contains(&pages),

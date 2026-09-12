@@ -30,6 +30,7 @@ fn bundles_exclude_showcase_records_and_unsupported_inputs() {
     let mut bad = bundle.clone();
     bad.engine_api += 1;
     assert!(bad.validate().is_err());
+    assert!(export(&source(), "cv", "en-ch", Some("harvard"), None, None, None).is_err());
     let mut bad = bundle;
     bad.files.insert("../escape".into(), vec![]);
     assert!(bad.validate().is_err());
@@ -113,10 +114,39 @@ fn upstream_and_portable_renderers_produce_the_same_document() {
                 fs::read(&spec.output).unwrap(),
                 "{style}/{substyle}/{locale}/{paper}"
             );
+            if let Some(directory) = std::env::var_os("CCVL_STYLE_EVIDENCE") {
+                let directory = std::path::PathBuf::from(directory)
+                    .join(format!("{style}-{substyle}-{locale}-{paper}"));
+                fs::create_dir_all(&directory).unwrap();
+                fs::write(
+                    directory.join("bundle.json"),
+                    serde_json::to_vec(&project.bundle).unwrap(),
+                )
+                .unwrap();
+                fs::copy(&record_path, directory.join("application.toml")).unwrap();
+                fs::copy(&profile_path, directory.join("profile.toml")).unwrap();
+                fs::copy(&spec.output, directory.join("expected.pdf")).unwrap();
+            }
+            let key = "/record/cl/body";
+            let mut edited = project.clone();
+            let before = edited.record.clone();
+            assert!(edited.set_field(key, "[invalid JSON").is_err());
+            assert_eq!(edited.record, before);
+            assert!(
+                edited
+                    .set_field("/record/options/cl_style", "another")
+                    .is_err()
+            );
+            edited
+                .set_field(key, r#"["A", "B", "C", "D", "E", "F"]"#)
+                .unwrap();
+            assert_eq!(edited.record["cl"]["body"].as_array().unwrap().len(), 6);
+            assert!(edited.editing_context().get("files").is_none());
             let mut changed = project.clone();
+            let entry = changed.bundle.entry.clone();
             std::sync::Arc::make_mut(&mut changed.bundle)
                 .files
-                .get_mut(&changed.bundle.entry.clone())
+                .get_mut(&entry)
                 .unwrap()
                 .push(b' ');
             assert!(changed.validate().is_err());
