@@ -114,8 +114,27 @@ fn german_flowing_summary_with_special_characters_validates() {
 }
 
 #[test]
-fn unknown_fields_are_rejected() {
-    let mut draft = application(&[3, 5, 5, 5, 5, 3]);
+fn document_prose_rejects_every_dash() {
+    assert!(reject_dashes("plain words, no dashes", "here").is_ok());
+    for text in [
+        "hyphen-ated",
+        "en–dash",
+        "em—dash",
+        "non‐breaking hyphen",
+        "figure‒dash",
+        "horizontal―bar",
+        "minus − sign",
+    ] {
+        let error = reject_dashes(text, "here").unwrap_err().to_string();
+        assert!(
+            error.contains("must not contain dashes"),
+            "unexpected error: {error}"
+        );
+    }
+}
+
+#[test]
+fn unknown_fields_are_rejected() {    let mut draft = application(&[3, 5, 5, 5, 5, 3]);
     draft["job"]["smuggled"] = json!("nope");
     let error = validate_record(&workspace(), &draft, "fixture", true)
         .unwrap_err()

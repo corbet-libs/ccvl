@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use regex::Regex;
 use serde_json::{Map, Value};
 
@@ -400,6 +400,9 @@ fn validate_record_scope(
                 !require_text || !summary.trim().is_empty(),
                 "{location}.cv.summary: a rendered summary cannot be empty"
             );
+            if opportunity {
+                reject_dashes(summary, &format!("{location}.cv.summary"))?;
+            }
             if let Some(allow_thin) = cv.get("allow_thin") {
                 ensure!(
                     allow_thin.is_boolean(),
@@ -497,6 +500,16 @@ fn validate_record_scope(
                 index + 1,
                 line_index + 1
             );
+            if opportunity {
+                reject_dashes(
+                    text,
+                    &format!(
+                        "{location}.cl.paragraphs[{}].lines[{}]",
+                        index + 1,
+                        line_index + 1
+                    ),
+                )?;
+            }
         }
     }
     let total = counts.iter().sum::<usize>();
@@ -557,6 +570,31 @@ fn validate_record_scope(
             "{location}.cl.highlights[{}]: a rendered highlight cannot be empty",
             index + 1
         );
+        if opportunity {
+            reject_dashes(
+                text,
+                &format!("{location}.cl.highlights[{}]", index + 1),
+            )?;
+        }
+    }
+    Ok(())
+}
+
+/// House style: document prose contains no dashes. Covers hyphen-minus and
+/// the common Unicode dash codepoints (non-breaking, figure, en, em).
+fn reject_dashes(text: &str, location: &str) -> Result<()> {
+    const DASHES: &[char] = &[
+        '-',
+        '\u{2010}',
+        '\u{2011}',
+        '\u{2012}',
+        '\u{2013}',
+        '\u{2014}',
+        '\u{2015}',
+        '\u{2212}',
+    ];
+    if let Some(found) = text.chars().find(|ch| DASHES.contains(ch)) {
+        bail!("{location}: document prose must not contain dashes (found {found:?}); rewrite without -/–/—");
     }
     Ok(())
 }
