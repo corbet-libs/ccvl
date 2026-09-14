@@ -23,8 +23,8 @@ defaults resolved for the record (application and profile paths, page
 count, style), so each compiles standalone and reproduces its neighbour
 PDF. They are build artifacts: editing `application.toml` regenerates
 both `typst/` and `pdfs/`; editing a locale template regenerates both as
-well. Do not hand-edit `typst/` — re-run `build-opportunity`. Commit
-`pdfs/` and `typst/`; PDFs are stored via Git LFS.
+well. Do not hand-edit `typst/` — re-run `build-opportunity`. `pdfs/` and
+`typst/` are tracked in git (PDFs via LFS); commit whenever you feel like it.
 
 Both keys use lowercase ASCII letters, numbers, hyphens, or underscores. The
 single `application.toml` owns the options (language, pages, cover-letter
