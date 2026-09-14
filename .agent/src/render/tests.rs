@@ -86,16 +86,21 @@ fn cleanup_removes_only_exact_generated_opportunity_outputs() {
         pdfs.join("cl.pdf"),
         typst.join("cv.typ"),
         typst.join("cl.typ"),
-    ];
-    let letter = [
+        // Previous kind-last scheme, migrated on rebuild.
+        pdfs.join(format!("{stem}_CV.pdf")),
         pdfs.join(format!("{stem}_CL.pdf")),
+        typst.join(format!("{stem}_CV.typ")),
         typst.join(format!("{stem}_CL.typ")),
     ];
+    let letter = [
+        pdfs.join(format!("CL_{stem}.pdf")),
+        typst.join(format!("CL_{stem}.typ")),
+    ];
     let keep = [
-        pdfs.join(format!("{stem}_CV.pdf")),
-        typst.join(format!("{stem}_CV.typ")),
-        pdfs.join("Other_Acme_Lead_CL.pdf"),
-        typst.join("notes_CL.typ"),
+        pdfs.join(format!("CV_{stem}.pdf")),
+        typst.join(format!("CV_{stem}.typ")),
+        pdfs.join("CL_Other_Acme_Lead.pdf"),
+        typst.join("CL_notes.typ"),
     ];
     for path in legacy.iter().chain(&letter).chain(&keep) {
         fs::write(path, b"preserved bytes").unwrap();
@@ -186,11 +191,11 @@ fn failed_opportunity_replacement_preserves_legacy_bytes_until_every_copy_succee
     let specs = opportunity_specs(&workspace, "acme", "platform-lead").unwrap();
     assert_eq!(
         specs[0].output,
-        parent.join("pdfs/Taylor_Acme_Platform-Lead_CV.pdf")
+        parent.join("pdfs/CV_Taylor_Acme_Platform-Lead.pdf")
     );
     assert_eq!(
         specs[1].output,
-        parent.join("pdfs/Taylor_Acme_Platform-Lead_CL.pdf")
+        parent.join("pdfs/CL_Taylor_Acme_Platform-Lead.pdf")
     );
     let legacy = ["pdfs/cv.pdf", "pdfs/cl.pdf", "typst/cv.typ", "typst/cl.typ"];
     for path in legacy {
@@ -198,7 +203,7 @@ fn failed_opportunity_replacement_preserves_legacy_bytes_until_every_copy_succee
         fs::create_dir_all(target.parent().unwrap()).unwrap();
         fs::write(target, path.as_bytes()).unwrap();
     }
-    let unrelated = parent.join("typst/Personal_Notes_CL.typ");
+    let unrelated = parent.join("typst/CL_Personal_Notes.typ");
     fs::write(&unrelated, "user-owned note").unwrap();
     let original = fs::read_to_string(&specs[1].source).unwrap();
     fs::write(&specs[1].source, "#panic(\"synthetic render failure\")").unwrap();
@@ -207,19 +212,19 @@ fn failed_opportunity_replacement_preserves_legacy_bytes_until_every_copy_succee
         assert_eq!(fs::read(parent.join(path)).unwrap(), path.as_bytes());
     }
     fs::write(&specs[1].source, original).unwrap();
-    let last_copy = parent.join("typst/Taylor_Acme_Platform-Lead_CL.typ");
+    let last_copy = parent.join("typst/CL_Taylor_Acme_Platform-Lead.typ");
     fs::create_dir(&last_copy).unwrap();
     let error = render_opportunity(&workspace, "acme", "platform-lead").unwrap_err();
     assert!(error.to_string().contains("cannot write"), "{error:#}");
     assert!(
         error
             .to_string()
-            .contains("Taylor_Acme_Platform-Lead_CL.typ")
+            .contains("CL_Taylor_Acme_Platform-Lead.typ")
     );
     assert!(specs.iter().all(|spec| spec.output.is_file()));
     assert!(
         parent
-            .join("typst/Taylor_Acme_Platform-Lead_CV.typ")
+            .join("typst/CV_Taylor_Acme_Platform-Lead.typ")
             .is_file()
     );
     for path in legacy {
@@ -267,8 +272,8 @@ fn opportunity_output_symlinks_cannot_redirect_writes_or_cleanup() {
         }
     }
     for output in [
-        "pdfs/Taylor_Acme_Platform-Lead_CV.pdf",
-        "typst/Taylor_Acme_Platform-Lead_CL.typ",
+        "pdfs/CV_Taylor_Acme_Platform-Lead.pdf",
+        "typst/CL_Taylor_Acme_Platform-Lead.typ",
         "pdfs/cl.pdf",
     ] {
         let (_directory, workspace) = named_opportunity_workspace();

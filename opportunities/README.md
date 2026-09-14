@@ -11,11 +11,11 @@ opportunities/<organisation-key>/<position-key>/
 ├── submission.md              optional observed submission
 ├── outcome.md                 optional observed outcome
 ├── typst/
-│   ├── cv.typ                 resolved standalone copy (generated, do not edit)
-│   └── cl.typ                 only when the cover letter is enabled (generated)
+│   ├── CV_<Last>_<org>_<pos>.typ   resolved standalone copy (generated, do not edit)
+│   └── CL_<Last>_<org>_<pos>.typ   only when the cover letter is enabled (generated)
 └── pdfs/
-    ├── cv.pdf
-    └── cl.pdf                 only when the cover letter is enabled
+    ├── CV_<Last>_<org>_<pos>.pdf
+    └── CL_<Last>_<org>_<pos>.pdf   only when the cover letter is enabled
 ```
 
 The `typst/` copies are the locale templates with their `sys.inputs`

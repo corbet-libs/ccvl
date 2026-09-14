@@ -456,6 +456,26 @@ fn opportunity_file_stem(
     ))
 }
 
+/// File name (without extension) for one opportunity document:
+/// `{Kind}_{Last}_{Organisation-key}_{position-key}`, e.g.
+/// `CV_Corbet_Pilatus_Cloud-Platform-Engineer`. The kind comes first so a
+/// directory listing groups CVs and letters; underscores stay the top-level
+/// separators because no segment ever contains one (`applicant_filename_token`
+/// and `filename_key` both emit hyphens, never underscores).
+fn opportunity_filename(
+    workspace: &Workspace,
+    organisation: &str,
+    position: &str,
+    kind: &DocumentKind,
+) -> Result<String> {
+    let stem = opportunity_file_stem(workspace, organisation, position)?;
+    let prefix = match kind {
+        DocumentKind::Cv => "CV",
+        DocumentKind::CoverLetter => "CL",
+    };
+    Ok(format!("{prefix}_{stem}"))
+}
+
 pub fn opportunity_specs(
     workspace: &Workspace,
     organisation: &str,
@@ -480,14 +500,14 @@ pub fn opportunity_specs(
         .context("application record has no parent")?;
     let pdfs = parent.join("pdfs");
     let profile = workspace.path("cvl/profile.toml");
-    let stem = opportunity_file_stem(workspace, organisation, position)?;
+    let cv_name = opportunity_filename(workspace, organisation, position, &DocumentKind::Cv)?;
     let mut specs = vec![cv_spec(
         workspace,
         &locale,
         pages,
         &application,
         &profile,
-        &pdfs.join(format!("{stem}_CV.pdf")),
+        &pdfs.join(format!("{cv_name}.pdf")),
         &cv_selection,
     )?];
     specs[0].name = format!("CV {organisation}/{position}");
@@ -505,7 +525,15 @@ pub fn opportunity_specs(
             letter_pages,
             &application,
             &profile,
-            &pdfs.join(format!("{stem}_CL.pdf")),
+            &pdfs.join(format!(
+                "{}.pdf",
+                opportunity_filename(
+                    workspace,
+                    organisation,
+                    position,
+                    &DocumentKind::CoverLetter
+                )?
+            )),
             &letter_selection,
         )?;
         spec.name = format!("cover letter {organisation}/{position}");
@@ -665,6 +693,13 @@ fn guard_opportunity_output_paths(workspace: &Workspace, parent: &Path, stem: &s
         paths.push(directory.clone());
         for document in ["cv", "cl"] {
             paths.push(directory.join(format!("{document}.{extension}")));
+            // Current kind-first scheme (`CV_{stem}`, `CL_{stem}`) and the
+            // previous kind-last scheme (`{stem}_CV`, `{stem}_CL`), which a
+            // rebuild migrates away.
+            paths.push(directory.join(format!(
+                "{}_{stem}.{extension}",
+                document.to_ascii_uppercase()
+            )));
             paths.push(directory.join(format!(
                 "{stem}_{}.{extension}",
                 document.to_ascii_uppercase()
@@ -698,11 +733,16 @@ fn remove_stale_opportunity_outputs(
         pdfs_dir.join("cl.pdf"),
         typst_dir.join("cv.typ"),
         typst_dir.join("cl.typ"),
+        // Previous kind-last scheme, migrated to kind-first on rebuild.
+        pdfs_dir.join(format!("{stem}_CV.pdf")),
+        pdfs_dir.join(format!("{stem}_CL.pdf")),
+        typst_dir.join(format!("{stem}_CV.typ")),
+        typst_dir.join(format!("{stem}_CL.typ")),
     ];
     if !cover_enabled {
         stale.extend([
-            pdfs_dir.join(format!("{stem}_CL.pdf")),
-            typst_dir.join(format!("{stem}_CL.typ")),
+            pdfs_dir.join(format!("CL_{stem}.pdf")),
+            typst_dir.join(format!("CL_{stem}.typ")),
         ]);
     }
     for path in stale {
