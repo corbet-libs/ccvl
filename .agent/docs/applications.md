@@ -83,9 +83,8 @@ enabled, `typst/<Name>_<Org>_<Pos>_CL.typ`. Each copy is the locale template wit
 defaults resolved for the opportunity (application and profile paths, the
 record's page count for the CV, and the resolved style), so it compiles standalone and reproduces
 the neighbouring PDF. The copies are build artifacts: do not edit them by
-hand; re-run `build-opportunity` to refresh. Commit `pdfs/` and `typst/`
-alongside `submission.md` when you send; intermediate tailoring builds stay
-uncommitted. PDFs are stored via Git LFS.
+hand; re-run `build-opportunity` to refresh. Commit `pdfs/` and `typst/`;
+PDFs are stored via Git LFS.
 
 Once every replacement PDF and Typst copy succeeds, the build removes the four
 legacy generated files `pdfs/cv.pdf`, `pdfs/cl.pdf`, `typst/cv.typ` and

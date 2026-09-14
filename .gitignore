@@ -1,5 +1,4 @@
-# Opportunity outputs (pdfs/ + typst/) are committed on submission (PDFs via LFS).
-# Intermediate tailoring builds stay uncommitted; only `git add` alongside submission.md.
+# Opportunity outputs (pdfs/ + typst/) are committed (PDFs via LFS).
 
 # Private user knowledge; only the public scaffold and station example ship.
 /interview/*
