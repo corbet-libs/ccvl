@@ -604,7 +604,25 @@ fn individual_build_validates_only_its_document_but_records_validate_enabled_doc
             application::validate_record(&workspace, &record, "fixture", true).unwrap();
             let opportunity = workspace.path("opportunities/fixture/lead/application.toml");
             fs::create_dir_all(opportunity.parent().unwrap()).unwrap();
-            fs::write(&opportunity, toml::to_string(&record).unwrap()).unwrap();
+            // Opportunity records keep the role identity; position prose
+            // lives in posting.md.
+            let mut slim = record.clone();
+            for field in [
+                "source",
+                "url",
+                "description",
+                "connections",
+                "company_context",
+                "notes",
+            ] {
+                slim["job"].as_object_mut().unwrap().remove(field);
+            }
+            fs::write(&opportunity, toml::to_string(&slim).unwrap()).unwrap();
+            fs::write(
+                opportunity.parent().unwrap().join("posting.md"),
+                "# Posting reference — fixture/lead\n",
+            )
+            .unwrap();
             assert_eq!(
                 render::opportunity_specs(&workspace, "fixture", "lead")
                     .unwrap()

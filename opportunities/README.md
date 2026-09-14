@@ -5,7 +5,7 @@ Every concrete job lives directly under a stable two-part key:
 ```text
 opportunities/<organisation-key>/<position-key>/
 ├── application.toml
-├── posting.md                 optional archived source
+├── posting.md                 required human-readable position reference
 ├── research.md                optional attributable company and role research
 ├── interview-<stage>.md       optional preparation
 ├── submission.md              optional observed submission
@@ -17,6 +17,12 @@ opportunities/<organisation-key>/<position-key>/
     ├── CV_<Last>_<org>_<pos>.pdf
     └── CL_<Last>_<org>_<pos>.pdf   only when the cover letter is enabled
 ```
+
+MECE split: `application.toml` holds the document build (options, tailored
+wording, recipient) plus the role identity. Everything else about the
+position — source, tasks, requirements, company context, preparation notes —
+lives in `posting.md`. The build refuses records whose sibling `posting.md`
+is missing.
 
 The `typst/` copies are the locale templates with their `sys.inputs`
 defaults resolved for the record (application and profile paths, page

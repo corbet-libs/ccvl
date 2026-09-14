@@ -64,6 +64,8 @@
   }
 
   let job = application.job
+  // Opportunity records keep the role identity; everything else about the
+  // position lives in the sibling posting.md (see opportunities/README.md).
   require-fields(
     job,
     (
@@ -71,12 +73,6 @@
       "title",
       "organization",
       "location",
-      "source",
-      "url",
-      "description",
-      "connections",
-      "company_context",
-      "notes",
       "cl_recipient",
     ),
     "application.job",

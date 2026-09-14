@@ -1,4 +1,9 @@
 # Neutral opportunity record. The selected styles supply page defaults and blank content fields.
+#
+# Template shape: new-opportunity strips the position-prose fields below into
+# the sibling posting.md (the one human-readable position reference) and keeps
+# only the role identity plus the document build here. Mechanical header
+# (schema_version, revision, id) is managed, not hand-edited.
 
 schema_version = 4
 revision = 0

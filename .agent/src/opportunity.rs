@@ -75,6 +75,27 @@ pub fn blank_record(workspace: &Workspace) -> Result<toml::Value> {
     Ok(record)
 }
 
+/// MECE split: position prose lives in posting.md, the one human-readable
+/// position reference. The record keeps only the role identity plus the
+/// document build.
+pub fn strip_position_prose(document: &mut toml::Value) {
+    if let Some(job) = document
+        .get_mut("job")
+        .and_then(toml::Value::as_table_mut)
+    {
+        for field in [
+            "source",
+            "url",
+            "description",
+            "connections",
+            "company_context",
+            "notes",
+        ] {
+            job.remove(field);
+        }
+    }
+}
+
 pub fn create_record(
     workspace: &Workspace,
     organisation: &str,
@@ -90,6 +111,7 @@ pub fn create_record(
     }
     let mut document = blank_record(workspace)?;
     document["job"]["id"] = toml::Value::String(format!("{organisation}--{position}"));
+    strip_position_prose(&mut document);
     if !cover_letter {
         // No letter needed: leave it out in the first place instead of
         // writing a [cl] table the user must delete (validation rejects a
@@ -104,6 +126,26 @@ pub fn create_record(
         .context("opportunity path has no parent")?;
     fs::create_dir_all(parent)?;
     fs::write(&destination, format!("{}\n", toml::to_string(&document)?))?;
+    let posting = parent.join("posting.md");
+    if !posting.exists() {
+        fs::write(
+            &posting,
+            format!(
+                "# Posting reference — {organisation}/{position}\n\
+                 \n\
+                 - Source:\n\
+                 - Retrieved:\n\
+                 - Organisation:\n\
+                 - Contact:\n\
+                 - Workplace:\n\
+                 - Tasks:\n\
+                 - Requirements:\n\
+                 - Process:\n\
+                 - Company context:\n\
+                 - Notes:\n"
+            ),
+        )?;
+    }
     Ok(destination)
 }
 
@@ -155,8 +197,16 @@ mod tests {
             document["job"]["id"].as_str(),
             Some("example_org--strategy-lead")
         );
+        assert!(document["job"].get("description").is_none());
+        assert!(document["job"].get("notes").is_none());
         assert_eq!(document["options"]["generate_cl"].as_bool(), Some(true));
         assert!(document.get("cl").is_some());
+        let skeleton =
+            fs::read_to_string(record.parent().unwrap().join("posting.md")).unwrap();
+        assert!(
+            skeleton.starts_with("# Posting reference — example_org/strategy-lead"),
+            "unexpected skeleton: {skeleton}"
+        );
         let error = create_record(&workspace, "example_org", "strategy-lead", true)
             .unwrap_err()
             .to_string();

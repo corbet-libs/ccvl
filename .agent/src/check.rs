@@ -189,6 +189,11 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         }
         let name = entry.file_name();
         let name = name.to_string_lossy();
+        // Hidden directories are tooling scratch (test tempdirs, editor
+        // state), never project content.
+        if name.starts_with('.') {
+            continue;
+        }
         ensure!(
             [
                 ".agent",
@@ -199,6 +204,7 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
                 "LICENSES",
                 "cvl",
                 "interview",
+                "lh-applications",
                 "opportunities",
                 "target",
             ]

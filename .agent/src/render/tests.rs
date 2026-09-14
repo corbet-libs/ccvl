@@ -159,6 +159,7 @@ fn named_opportunity_workspace() -> (tempfile::TempDir, Workspace) {
             .unwrap(),
     )
     .unwrap();
+    crate::opportunity::strip_position_prose(&mut record);
     let options = record["options"].as_table_mut().unwrap();
     options.insert("language".into(), "en-us".into());
     options.insert("pages".into(), 1.into());
@@ -195,6 +196,10 @@ fn named_opportunity_workspace() -> (tempfile::TempDir, Workspace) {
     write(
         "opportunities/acme/platform-lead/application.toml",
         &toml::to_string(&record).unwrap(),
+    );
+    write(
+        "opportunities/acme/platform-lead/posting.md",
+        "# Posting reference — acme/platform-lead\n",
     );
     let workspace = Workspace::at(root).unwrap();
     (directory, workspace)
