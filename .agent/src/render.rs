@@ -398,22 +398,26 @@ pub fn list_documents(workspace: &Workspace) -> Result<Value> {
 /// Use the final whitespace-delimited display-name token as a filename
 /// convention. This does not identify a person's family name.
 fn applicant_filename_token(name: &str) -> Result<String> {
+    sanitized_token(name, '_')
+}
+
+fn sanitized_token(name: &str, separator: char) -> Result<String> {
     let token = name
         .split_whitespace()
         .last()
         .context("cvl/profile.toml: name is empty")?;
     let mut sanitized = String::with_capacity(token.len());
-    let mut last_was_hyphen = true;
+    let mut last_was_separator = true;
     for ch in token.chars() {
         if ch.is_alphanumeric() {
             sanitized.push(ch);
-            last_was_hyphen = false;
-        } else if !last_was_hyphen {
-            sanitized.push('-');
-            last_was_hyphen = true;
+            last_was_separator = false;
+        } else if !last_was_separator {
+            sanitized.push(separator);
+            last_was_separator = true;
         }
     }
-    while sanitized.ends_with('-') {
+    while sanitized.ends_with(separator) {
         sanitized.pop();
     }
     ensure!(
@@ -424,8 +428,13 @@ fn applicant_filename_token(name: &str) -> Result<String> {
 }
 
 /// Opportunity keys have already passed `record_path`'s lowercase ASCII check.
-/// Reserve underscores for filename sections and capitalize each key segment.
+/// Split on hyphens and underscores, capitalize each segment, join with
+/// underscores: every dash becomes one, so filenames never contain `-`.
 fn filename_key(key: &str) -> String {
+    joined_key(key, '_')
+}
+
+fn joined_key(key: &str, separator: char) -> String {
     key.split(['-', '_'])
         .map(|part| {
             let mut chars = part.chars();
@@ -435,7 +444,7 @@ fn filename_key(key: &str) -> String {
             }
         })
         .collect::<Vec<_>>()
-        .join("-")
+        .join(&separator.to_string())
 }
 
 fn opportunity_file_stem(
@@ -458,10 +467,9 @@ fn opportunity_file_stem(
 
 /// File name (without extension) for one opportunity document:
 /// `{Kind}_{Last}_{Organisation-key}_{position-key}`, e.g.
-/// `CV_Corbet_Pilatus_Cloud-Platform-Engineer`. The kind comes first so a
-/// directory listing groups CVs and letters; underscores stay the top-level
-/// separators because no segment ever contains one (`applicant_filename_token`
-/// and `filename_key` both emit hyphens, never underscores).
+/// `CV_Corbet_Pilatus_Cloud_Platform_Engineer`. The kind comes first so a
+/// directory listing groups CVs and letters. Names use underscores only, so
+/// sections are a reading convention, not a machine-split contract.
 fn opportunity_filename(
     workspace: &Workspace,
     organisation: &str,
@@ -469,6 +477,33 @@ fn opportunity_filename(
     kind: &DocumentKind,
 ) -> Result<String> {
     let stem = opportunity_file_stem(workspace, organisation, position)?;
+    let prefix = match kind {
+        DocumentKind::Cv => "CV",
+        DocumentKind::CoverLetter => "CL",
+    };
+    Ok(format!("{prefix}_{stem}"))
+}
+
+/// Previous interim scheme: kind-first names with hyphens inside segments
+/// (e.g. `CV_Corbet_Pilatus_Cloud-Platform-Engineer`). Shipped once, migrated
+/// on rebuild. Used only for stale-output removal and symlink guards.
+fn previous_kind_first_filename(
+    workspace: &Workspace,
+    organisation: &str,
+    position: &str,
+    kind: &DocumentKind,
+) -> Result<String> {
+    let profile = workspace.read_toml_value("cvl/profile.toml")?;
+    let name = profile
+        .get("name")
+        .and_then(Value::as_str)
+        .context("cvl/profile.toml: name is missing")?;
+    let stem = format!(
+        "{}_{}_{}",
+        sanitized_token(name, '-')?,
+        joined_key(organisation, '-'),
+        joined_key(position, '-')
+    );
     let prefix = match kind {
         DocumentKind::Cv => "CV",
         DocumentKind::CoverLetter => "CL",
@@ -577,7 +612,18 @@ pub fn render_opportunity(
         .context("record has no parent")?
         .to_path_buf();
     let stem = opportunity_file_stem(workspace, organisation, position)?;
-    guard_opportunity_output_paths(workspace, &parent, &stem)?;
+    let previous = ["cv", "cl"]
+        .iter()
+        .map(|document| {
+            let kind = if *document == "cv" {
+                DocumentKind::Cv
+            } else {
+                DocumentKind::CoverLetter
+            };
+            previous_kind_first_filename(workspace, organisation, position, &kind)
+        })
+        .collect::<Result<Vec<_>>>()?;
+    guard_opportunity_output_paths(workspace, &parent, &stem, &previous)?;
     let compiler = Compiler::new(workspace)?;
     let mut outputs = Vec::new();
     for spec in &specs {
@@ -586,12 +632,12 @@ pub fn render_opportunity(
     // Emit the resolved customization copies in typst/ beside the PDFs only
     // after the PDFs render, so the .typ files always describe the PDFs
     // next to them.
-    guard_opportunity_output_paths(workspace, &parent, &stem)?;
+    guard_opportunity_output_paths(workspace, &parent, &stem, &previous)?;
     for spec in &specs {
         outputs.push(emit_resolved_typ(workspace, spec, organisation, position)?);
     }
     // Keep the old outputs until every replacement PDF and Typst copy exists.
-    guard_opportunity_output_paths(workspace, &parent, &stem)?;
+    guard_opportunity_output_paths(workspace, &parent, &stem, &previous)?;
     remove_stale_opportunity_outputs(
         &parent.join("pdfs"),
         &parent.join("typst"),
@@ -599,6 +645,7 @@ pub fn render_opportunity(
         specs
             .iter()
             .any(|spec| spec.kind == DocumentKind::CoverLetter),
+        &previous,
     )?;
     Ok(outputs)
 }
@@ -681,7 +728,12 @@ fn rewrite_input_default(source: &str, key: &str, default: &str) -> String {
 
 /// Generated opportunity outputs must stay in their physical job directory.
 /// Reject directory aliases even when they point elsewhere within the workspace.
-fn guard_opportunity_output_paths(workspace: &Workspace, parent: &Path, stem: &str) -> Result<()> {
+fn guard_opportunity_output_paths(
+    workspace: &Workspace,
+    parent: &Path,
+    stem: &str,
+    previous: &[String],
+) -> Result<()> {
     let mut paths = Vec::new();
     let mut ancestor = workspace.root().to_path_buf();
     for component in workspace.relative(parent)?.components() {
@@ -693,9 +745,8 @@ fn guard_opportunity_output_paths(workspace: &Workspace, parent: &Path, stem: &s
         paths.push(directory.clone());
         for document in ["cv", "cl"] {
             paths.push(directory.join(format!("{document}.{extension}")));
-            // Current kind-first scheme (`CV_{stem}`, `CL_{stem}`) and the
-            // previous kind-last scheme (`{stem}_CV`, `{stem}_CL`), which a
-            // rebuild migrates away.
+            // Current underscore-only scheme (`CV_{stem}`, `CL_{stem}`) and
+            // the previous schemes, which a rebuild migrates away.
             paths.push(directory.join(format!(
                 "{}_{stem}.{extension}",
                 document.to_ascii_uppercase()
@@ -704,6 +755,9 @@ fn guard_opportunity_output_paths(workspace: &Workspace, parent: &Path, stem: &s
                 "{stem}_{}.{extension}",
                 document.to_ascii_uppercase()
             )));
+        }
+        for name in previous {
+            paths.push(directory.join(format!("{name}.{extension}")));
         }
     }
     for path in paths {
@@ -727,6 +781,7 @@ fn remove_stale_opportunity_outputs(
     typst_dir: &Path,
     stem: &str,
     cover_enabled: bool,
+    previous: &[String],
 ) -> Result<()> {
     let mut stale = vec![
         pdfs_dir.join("cv.pdf"),
@@ -739,6 +794,11 @@ fn remove_stale_opportunity_outputs(
         typst_dir.join(format!("{stem}_CV.typ")),
         typst_dir.join(format!("{stem}_CL.typ")),
     ];
+    // Previous interim scheme (kind-first with hyphens inside segments).
+    for name in previous {
+        stale.push(pdfs_dir.join(format!("{name}.pdf")));
+        stale.push(typst_dir.join(format!("{name}.typ")));
+    }
     if !cover_enabled {
         stale.extend([
             pdfs_dir.join(format!("CL_{stem}.pdf")),

@@ -61,7 +61,7 @@ fn filename_tokens_are_explicit_sanitized_display_name_tokens() {
     for (name, expected) in [
         ("Sample Taylor", "Taylor"),
         ("Sample de Silva", "Silva"),
-        ("\tSample  O'Neil_--  ", "O-Neil"),
+        ("\tSample  O'Neil_--  ", "O_Neil"),
         ("Sample /../Ng\\", "Ng"),
         ("Sample 王", "王"),
     ] {
@@ -69,8 +69,8 @@ fn filename_tokens_are_explicit_sanitized_display_name_tokens() {
     }
     assert!(applicant_filename_token(" \t").is_err());
     assert!(applicant_filename_token("Sample _/../_").is_err());
-    assert_eq!(filename_key("acme_labs"), "Acme-Labs");
-    assert_eq!(filename_key("platform-lead"), "Platform-Lead");
+    assert_eq!(filename_key("acme_labs"), "Acme_Labs");
+    assert_eq!(filename_key("platform-lead"), "Platform_Lead");
 }
 
 #[test]
@@ -92,6 +92,17 @@ fn cleanup_removes_only_exact_generated_opportunity_outputs() {
         typst.join(format!("{stem}_CV.typ")),
         typst.join(format!("{stem}_CL.typ")),
     ];
+    // Previous interim scheme: kind-first with hyphens inside segments.
+    let interim = [
+        pdfs.join("CV_Taylor_Acme_Platform-Lead.pdf"),
+        pdfs.join("CL_Taylor_Acme_Platform-Lead.pdf"),
+        typst.join("CV_Taylor_Acme_Platform-Lead.typ"),
+        typst.join("CL_Taylor_Acme_Platform-Lead.typ"),
+    ];
+    let interim_names = [
+        "CV_Taylor_Acme_Platform-Lead".to_owned(),
+        "CL_Taylor_Acme_Platform-Lead".to_owned(),
+    ];
     let letter = [
         pdfs.join(format!("CL_{stem}.pdf")),
         typst.join(format!("CL_{stem}.typ")),
@@ -102,15 +113,20 @@ fn cleanup_removes_only_exact_generated_opportunity_outputs() {
         pdfs.join("CL_Other_Acme_Lead.pdf"),
         typst.join("CL_notes.typ"),
     ];
-    for path in legacy.iter().chain(&letter).chain(&keep) {
+    for path in legacy
+        .iter()
+        .chain(&interim)
+        .chain(&letter)
+        .chain(&keep)
+    {
         fs::write(path, b"preserved bytes").unwrap();
     }
-    remove_stale_opportunity_outputs(&pdfs, &typst, stem, true).unwrap();
-    assert!(legacy.iter().all(|path| !path.exists()));
+    remove_stale_opportunity_outputs(&pdfs, &typst, stem, true, &interim_names).unwrap();
+    assert!(legacy.iter().chain(&interim).all(|path| !path.exists()));
     for path in letter.iter().chain(&keep) {
         assert_eq!(fs::read(path).unwrap(), b"preserved bytes");
     }
-    remove_stale_opportunity_outputs(&pdfs, &typst, stem, false).unwrap();
+    remove_stale_opportunity_outputs(&pdfs, &typst, stem, false, &interim_names).unwrap();
     assert!(letter.iter().all(|path| !path.exists()));
     for path in keep {
         assert_eq!(fs::read(path).unwrap(), b"preserved bytes");
@@ -191,11 +207,11 @@ fn failed_opportunity_replacement_preserves_legacy_bytes_until_every_copy_succee
     let specs = opportunity_specs(&workspace, "acme", "platform-lead").unwrap();
     assert_eq!(
         specs[0].output,
-        parent.join("pdfs/CV_Taylor_Acme_Platform-Lead.pdf")
+        parent.join("pdfs/CV_Taylor_Acme_Platform_Lead.pdf")
     );
     assert_eq!(
         specs[1].output,
-        parent.join("pdfs/CL_Taylor_Acme_Platform-Lead.pdf")
+        parent.join("pdfs/CL_Taylor_Acme_Platform_Lead.pdf")
     );
     let legacy = ["pdfs/cv.pdf", "pdfs/cl.pdf", "typst/cv.typ", "typst/cl.typ"];
     for path in legacy {
@@ -212,19 +228,19 @@ fn failed_opportunity_replacement_preserves_legacy_bytes_until_every_copy_succee
         assert_eq!(fs::read(parent.join(path)).unwrap(), path.as_bytes());
     }
     fs::write(&specs[1].source, original).unwrap();
-    let last_copy = parent.join("typst/CL_Taylor_Acme_Platform-Lead.typ");
+    let last_copy = parent.join("typst/CL_Taylor_Acme_Platform_Lead.typ");
     fs::create_dir(&last_copy).unwrap();
     let error = render_opportunity(&workspace, "acme", "platform-lead").unwrap_err();
     assert!(error.to_string().contains("cannot write"), "{error:#}");
     assert!(
         error
             .to_string()
-            .contains("CL_Taylor_Acme_Platform-Lead.typ")
+            .contains("CL_Taylor_Acme_Platform_Lead.typ")
     );
     assert!(specs.iter().all(|spec| spec.output.is_file()));
     assert!(
         parent
-            .join("typst/CV_Taylor_Acme_Platform-Lead.typ")
+            .join("typst/CV_Taylor_Acme_Platform_Lead.typ")
             .is_file()
     );
     for path in legacy {
@@ -272,8 +288,8 @@ fn opportunity_output_symlinks_cannot_redirect_writes_or_cleanup() {
         }
     }
     for output in [
-        "pdfs/CV_Taylor_Acme_Platform-Lead.pdf",
-        "typst/CL_Taylor_Acme_Platform-Lead.typ",
+        "pdfs/CV_Taylor_Acme_Platform_Lead.pdf",
+        "typst/CL_Taylor_Acme_Platform_Lead.typ",
         "pdfs/cl.pdf",
     ] {
         let (_directory, workspace) = named_opportunity_workspace();

@@ -71,13 +71,13 @@ On Windows:
 No locale or page argument is needed: the record owns both. The build writes
 `pdfs/CV_<Name>_<Org>_<Pos>.pdf` and, when enabled,
 `pdfs/CL_<Name>_<Org>_<Pos>.pdf` below the keyed opportunity. The kind comes
-first; underscores separate the sections because no segment ever contains one.
-`<Name>` is the final whitespace-delimited token of `cvl/profile.toml` `name`,
-used only as a filename convention. Letters and numbers are retained; other
-characters become hyphens, consecutive hyphens collapse and edge hyphens are
-trimmed. `<Org>` and `<Pos>` use the validated opportunity keys with each
-segment capitalized and underscores changed to hyphens, for example
-`CV_Ng_Acme_Platform-Lead.pdf`.
+first; names use underscores only, never dashes. `<Name>` is the
+final whitespace-delimited token of `cvl/profile.toml` `name`, used only as a
+filename convention. Letters and numbers are retained; every other character
+becomes an underscore, runs collapse and edge underscores are trimmed. `<Org>`
+and `<Pos>` use the validated opportunity keys with each segment capitalized
+and every dash changed to an underscore, for example
+`CV_Ng_Acme_Platform_Lead.pdf`.
 
 Alongside them it emits resolved customization copies of the rendered templates
 into `typst/` under the same names: `typst/CV_<Name>_<Org>_<Pos>.typ` and, when
@@ -89,8 +89,9 @@ hand; re-run `build-opportunity` to refresh. `pdfs/` and `typst/` are tracked
 in git (PDFs via LFS); commit whenever you feel like it.
 
 Once every replacement PDF and Typst copy succeeds, the build removes legacy
-generated files: `pdfs/cv.pdf`, `pdfs/cl.pdf`, `typst/cv.typ`, `typst/cl.typ`
-and the previous kind-last names (`<Name>_<Org>_<Pos>_CV/CL`). A CV-only build
+generated files: `pdfs/cv.pdf`, `pdfs/cl.pdf`, `typst/cv.typ`, `typst/cl.typ`,
+the previous kind-last names (`<Name>_<Org>_<Pos>_CV/CL`) and the interim
+kind-first names with dashes inside segments. A CV-only build
 also removes the exact current named letter files. Other filenames remain for
 explicit review. If rendering or copy writing fails, legacy files remain
 available; some new outputs may already exist.
