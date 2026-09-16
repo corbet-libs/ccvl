@@ -114,23 +114,74 @@ fn german_flowing_summary_with_special_characters_validates() {
 }
 
 #[test]
-fn document_prose_rejects_every_dash() {
-    assert!(reject_dashes("plain words, no dashes", "here").is_ok());
+fn document_prose_rejects_punctuation_tics() {
+    assert!(reject_punctuation_tics("plain words, no dashes", "here").is_ok());
+    // Necessary compounds stay valid here; they surface as advisories
+    // for author judgment instead of failing validation.
     for text in [
         "hyphen-ated",
-        "en–dash",
-        "em—dash",
-        "non‐breaking hyphen",
-        "figure‒dash",
-        "horizontal―bar",
-        "minus − sign",
+        "RAG-Systeme",
+        "Cloud-Ökonomie",
+        "50-100%",
+        "unspaced–en–dashes",
     ] {
-        let error = reject_dashes(text, "here").unwrap_err().to_string();
         assert!(
-            error.contains("must not contain dashes"),
-            "unexpected error: {error}"
+            reject_punctuation_tics(text, "here").is_ok(),
+            "unexpected rejection: {text}"
         );
     }
+    for text in [
+        "em—dash",
+        "bar―here",
+        "spaced – dash",
+        "trailing —",
+        "— leading em dash",
+        "dash - punctuation",
+        "minus − sign",
+        "ellipsis…",
+        "dots...",
+        "double--hyphen",
+        "non\u{2011}breaking hyphen",
+    ] {
+        let error = reject_punctuation_tics(text, "here")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("must not"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+}
+
+#[test]
+fn hyphen_marks_are_highlighted_for_author_judgment() {
+    assert!(hyphen_advisories("plain words", "here").is_empty());
+    let advisories = hyphen_advisories("RAG-Systeme und Cloud-Ökonomie", "here");
+    assert_eq!(advisories.len(), 2, "unexpected advisories: {advisories:?}");
+    assert!(advisories[0].contains("here"));
+    assert!(advisories[0].contains("RAG-Systeme"));
+    assert!(advisories[1].contains("Cloud-Ökonomie"));
+    assert!(advisories[1].contains("author judgment"));
+}
+
+#[test]
+fn opportunity_walk_collects_hyphen_advisories() {
+    let mut draft = application(&[3, 5, 5, 5, 5, 3]);
+    draft["cv"]["summary"] = json!("RAG-Systeme in der Praxis.");
+    draft["cl"]["highlights"][0] = json!("AI-Plattformen");
+    let advisories = opportunity_hyphen_advisories(&draft, "opportunities/fixture/lead");
+    assert!(
+        advisories
+            .iter()
+            .any(|entry| entry.contains("cv.summary") && entry.contains("RAG-Systeme")),
+        "unexpected advisories: {advisories:?}"
+    );
+    assert!(
+        advisories
+            .iter()
+            .any(|entry| entry.contains("cl.highlights[1]") && entry.contains("AI-Plattformen")),
+        "unexpected advisories: {advisories:?}"
+    );
 }
 
 #[test]

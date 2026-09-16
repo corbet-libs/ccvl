@@ -8,7 +8,9 @@ use anyhow::{Context, Result, ensure};
 use ctypst::{CompileRequest, Document, Engine, PageConstraint};
 use serde_json::Value;
 
-use crate::application::{validate_document_record, validate_record};
+use crate::application::{
+    opportunity_hyphen_advisories, validate_document_record, validate_record,
+};
 use crate::opportunity;
 use crate::stations;
 use crate::styles::{self, Selection, StyleLeaf};
@@ -529,6 +531,12 @@ pub fn opportunity_specs(
     let pages = options.pages;
     let cover_enabled = options.cover_letter;
     let relative = workspace.relative(&application)?.display().to_string();
+    // Step two of the hyphen rule: every remaining hyphen is an advisory
+    // for the authoring agent, printed like other preference warnings.
+    // Hard LLM tics already failed validation above.
+    for advisory in opportunity_hyphen_advisories(&document, &relative) {
+        println!("WARN {advisory}");
+    }
     let cv_selection = styles::record_selection(workspace, "cv", &document, &relative)?;
     let parent = application
         .parent()

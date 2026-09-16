@@ -401,7 +401,7 @@ fn validate_record_scope(
                 "{location}.cv.summary: a rendered summary cannot be empty"
             );
             if opportunity {
-                reject_dashes(summary, &format!("{location}.cv.summary"))?;
+                reject_punctuation_tics(summary, &format!("{location}.cv.summary"))?;
             }
             if let Some(allow_thin) = cv.get("allow_thin") {
                 ensure!(
@@ -501,7 +501,7 @@ fn validate_record_scope(
                 line_index + 1
             );
             if opportunity {
-                reject_dashes(
+                reject_punctuation_tics(
                     text,
                     &format!(
                         "{location}.cl.paragraphs[{}].lines[{}]",
@@ -571,32 +571,171 @@ fn validate_record_scope(
             index + 1
         );
         if opportunity {
-            reject_dashes(
-                text,
-                &format!("{location}.cl.highlights[{}]", index + 1),
-            )?;
+            reject_punctuation_tics(text, &format!("{location}.cl.highlights[{}]", index + 1))?;
         }
     }
     Ok(())
 }
 
-/// House style: document prose contains no dashes. Covers hyphen-minus and
-/// the common Unicode dash codepoints (non-breaking, figure, en, em).
-fn reject_dashes(text: &str, location: &str) -> Result<()> {
-    const DASHES: &[char] = &[
-        '-',
-        '\u{2010}',
-        '\u{2011}',
-        '\u{2012}',
-        '\u{2013}',
-        '\u{2014}',
-        '\u{2015}',
-        '\u{2212}',
-    ];
-    if let Some(found) = text.chars().find(|ch| DASHES.contains(ch)) {
-        bail!("{location}: document prose must not contain dashes (found {found:?}); rewrite without -/–/—");
+/// Step one of the hyphen rule: the mechanical pass enumerates every
+/// dash-like mark with its byte offset so nothing hides, including the
+/// invisible non-breaking hyphen. Step two is author judgment: the
+/// authoring agent walks [`hyphen_advisories`] against the editorial hyphen
+/// criteria, keeps necessary German compounds, and rephrases the rest.
+/// Only unambiguous LLM tics fail validation here.
+#[derive(Debug, PartialEq)]
+struct DashMark {
+    offset: usize,
+    ch: char,
+}
+
+const UNICODE_DASHES: &[char] = &[
+    '\u{2010}', // hyphen
+    '\u{2011}', // non-breaking hyphen (invisible: always a tic)
+    '\u{2012}', // figure dash
+    '\u{2013}', // en dash
+    '\u{2014}', // em dash
+    '\u{2015}', // horizontal bar
+    '\u{2212}', // minus sign
+];
+
+fn dash_marks(text: &str) -> Vec<DashMark> {
+    text.char_indices()
+        .filter(|(_, ch)| *ch == '-' || UNICODE_DASHES.contains(ch))
+        .map(|(offset, ch)| DashMark { offset, ch })
+        .collect()
+}
+
+/// Hard fail: unambiguous LLM tics that no compound needs. Em dashes,
+/// horizontal bars, ellipses, doubled hyphens, and dashes used as
+/// punctuation (whitespace on either side, including the German
+/// parenthetical " – ") never survive; rephrase with a comma, period,
+/// or colon. A dash beside a digit (ranges, signed numbers) is not
+/// punctuation and falls through to author judgment instead.
+fn reject_punctuation_tics(text: &str, location: &str) -> Result<()> {
+    if text.contains("...") || text.contains('\u{2026}') {
+        bail!("{location}: document prose must not contain ellipses; write the sentence out");
+    }
+    let marks = dash_marks(text);
+    for pair in marks.windows(2) {
+        if pair[0].ch == '-'
+            && pair[1].ch == '-'
+            && pair[1].offset == pair[0].offset + pair[0].ch.len_utf8()
+        {
+            bail!(
+                "{location}: document prose must not contain doubled hyphens; rephrase without --"
+            );
+        }
+    }
+    for mark in &marks {
+        if mark.ch == '\u{2011}' {
+            bail!(
+                "{location}: document prose must not contain non-breaking hyphens (invisible in review); use a plain hyphen or rephrase"
+            );
+        }
+        if matches!(mark.ch, '\u{2014}' | '\u{2015}') {
+            bail!(
+                "{location}: document prose must not contain em dashes (found {:?}); rephrase with a comma, period, or colon",
+                mark.ch
+            );
+        }
+        let left = text[..mark.offset].chars().next_back();
+        let right = text[mark.offset + mark.ch.len_utf8()..].chars().next();
+        let beside_space = |side: Option<char>| side.is_none_or(char::is_whitespace);
+        let beside_digit = |side: Option<char>| side.is_some_and(|ch| ch.is_ascii_digit());
+        if (beside_space(left) || beside_space(right))
+            && !(beside_digit(left) || beside_digit(right))
+        {
+            bail!(
+                "{location}: document prose must not use dashes as punctuation (found {:?}); rephrase with a comma, period, or colon",
+                mark.ch
+            );
+        }
     }
     Ok(())
+}
+
+/// Maximal whitespace-delimited token around a byte offset (which must be
+/// a character boundary). Gives advisories a readable context word.
+fn surrounding_word(text: &str, offset: usize) -> &str {
+    let start = text[..offset]
+        .char_indices()
+        .rev()
+        .find(|(_, ch)| ch.is_whitespace())
+        .map_or(0, |(index, ch)| index + ch.len_utf8());
+    let end = text[offset..]
+        .find(char::is_whitespace)
+        .map(|index| offset + index)
+        .unwrap_or(text.len());
+    &text[start..end]
+}
+
+/// Step-two input: one advisory per hyphen occurrence left standing after
+/// the tic rejection, with the surrounding word as context. The authoring
+/// agent keeps necessary German compounds (RAG-Systeme, Cloud-Ökonomie)
+/// and rephrases the rest per the editorial hyphen criteria.
+#[must_use]
+pub fn hyphen_advisories(text: &str, location: &str) -> Vec<String> {
+    dash_marks(text)
+        .iter()
+        .map(|mark| {
+            let word = surrounding_word(text, mark.offset);
+            format!(
+                "{location}: hyphen {:?} in {:?} needs author judgment: keep a necessary German compound or rephrase without the hyphen (see editorial hyphen criteria)",
+                mark.ch, word
+            )
+        })
+        .collect()
+}
+
+/// Collect hyphen advisories across the opportunity prose sites
+/// (cv.summary, cl paragraph lines, cl highlights). Shape validation stays
+/// in [`validate_record`]; this only highlights marks for the authoring
+/// agent. Missing or non-text fields yield no advisories.
+#[must_use]
+pub fn opportunity_hyphen_advisories(application: &Value, location: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Some(summary) = application.pointer("/cv/summary").and_then(Value::as_str) {
+        out.extend(hyphen_advisories(
+            summary,
+            &format!("{location}.cv.summary"),
+        ));
+    }
+    if let Some(paragraphs) = application
+        .pointer("/cl/paragraphs")
+        .and_then(Value::as_array)
+    {
+        for (index, paragraph) in paragraphs.iter().enumerate() {
+            if let Some(lines) = paragraph.as_array() {
+                for (line_index, line) in lines.iter().enumerate() {
+                    if let Some(text) = line.as_str() {
+                        out.extend(hyphen_advisories(
+                            text,
+                            &format!(
+                                "{location}.cl.paragraphs[{}].lines[{}]",
+                                index + 1,
+                                line_index + 1
+                            ),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    if let Some(highlights) = application
+        .pointer("/cl/highlights")
+        .and_then(Value::as_array)
+    {
+        for (index, highlight) in highlights.iter().enumerate() {
+            if let Some(text) = highlight.as_str() {
+                out.extend(hyphen_advisories(
+                    text,
+                    &format!("{location}.cl.highlights[{}]", index + 1),
+                ));
+            }
+        }
+    }
+    out
 }
 
 fn validate_content_fields(

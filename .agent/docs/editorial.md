@@ -119,9 +119,12 @@ ordinary uses of “attention,” “interest,” “desire” or “action” a
 
 ## Register and locale
 
-Use clear, active, concrete and professional language. Document prose contains
-no dashes: neither hyphen-minus nor en/em dashes. Rewrite compounds and ranges
-without them instead of compressing meaning into punctuation. A specific task or
+Use clear, active, concrete and professional language. Dashes follow a rule in
+two steps. The validator always rejects em dashes, ellipses, doubled hyphens,
+and dashes used as punctuation, including the spaced parenthetical dash;
+rephrase those with a comma, period, or colon. Every remaining hyphen is listed
+as a warning with its location: keep necessary German compounds such as
+RAG-Systeme or Cloud-Ökonomie, and rephrase the rest. A specific task or
 result usually does more work than generic enthusiasm, stacked adjectives or
 unexplained management vocabulary. Remove repetition and paragraphs explaining
 what that paragraph should contain. Avoid treating every conventional phrase
