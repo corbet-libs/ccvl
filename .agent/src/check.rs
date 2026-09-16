@@ -204,12 +204,42 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
                 "LICENSES",
                 "cvl",
                 "interview",
-                "lh-applications",
                 "opportunities",
                 "target",
             ]
             .contains(&name.as_ref()),
             "unexpected top-level directory: {name}"
+        );
+    }
+    // Generic single-home rule: every concrete application record must live
+    // under opportunities/<organisation>/<position>/. Any application.toml
+    // elsewhere (a second applications tree, a backup copy, ...) fails
+    // closed no matter what the stray directory is called. The only
+    // exception is the neutral scaffold template shipped upstream.
+    for entry in walkdir::WalkDir::new(workspace.root())
+        .into_iter()
+        .filter_entry(|entry| {
+            let name = entry.file_name().to_string_lossy();
+            name != ".git" && name != "target"
+        })
+    {
+        let entry = entry?;
+        if !entry.file_type().is_file() || entry.file_name().to_string_lossy() != "application.toml" {
+            continue;
+        }
+        let relative = workspace
+            .relative(entry.path())?
+            .display()
+            .to_string()
+            .replace('\\', "/");
+        if relative == ".agent/scaffolds/opportunity/application.toml"
+            || relative.starts_with("opportunities/")
+        {
+            continue;
+        }
+        ensure!(
+            false,
+            "application record outside opportunities/: {relative}; all applications must live under opportunities/<organisation>/<position>/"
         );
     }
     Ok(())
