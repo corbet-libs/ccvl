@@ -643,9 +643,23 @@ fn reject_punctuation_tics(text: &str, location: &str) -> Result<()> {
         let right = text[mark.offset + mark.ch.len_utf8()..].chars().next();
         let beside_space = |side: Option<char>| side.is_none_or(char::is_whitespace);
         let beside_digit = |side: Option<char>| side.is_some_and(|ch| ch.is_ascii_digit());
-        if (beside_space(left) || beside_space(right))
-            && !(beside_digit(left) || beside_digit(right))
+        if beside_digit(left) || beside_digit(right) {
+            continue; // Ranges and signed numbers: author judgment.
+        }
+        // Suspended hyphen (Ergänzungsbindestrich): a letter, then a hyphen,
+        // then a lowercase continuation ("GenAI- und RAG-Systeme"). A real
+        // German compound form, so judgment call, not punctuation.
+        if mark.ch == '-'
+            && left.is_some_and(|ch| ch.is_alphabetic())
+            && right.is_some_and(|ch| ch.is_whitespace())
+            && text[mark.offset + mark.ch.len_utf8()..]
+                .chars()
+                .find(|ch| !ch.is_whitespace())
+                .is_some_and(|ch| ch.is_lowercase())
         {
+            continue;
+        }
+        if beside_space(left) || beside_space(right) {
             bail!(
                 "{location}: document prose must not use dashes as punctuation (found {:?}); rephrase with a comma, period, or colon",
                 mark.ch

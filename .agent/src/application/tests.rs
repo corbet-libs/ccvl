@@ -124,6 +124,7 @@ fn document_prose_rejects_punctuation_tics() {
         "Cloud-Ökonomie",
         "50-100%",
         "unspaced–en–dashes",
+        "GenAI- und RAG-Systeme",
     ] {
         assert!(
             reject_punctuation_tics(text, "here").is_ok(),
@@ -137,6 +138,7 @@ fn document_prose_rejects_punctuation_tics() {
         "trailing —",
         "— leading em dash",
         "dash - punctuation",
+        "broken- Continuation",
         "minus − sign",
         "ellipsis…",
         "dots...",

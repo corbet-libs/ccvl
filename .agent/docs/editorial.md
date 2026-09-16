@@ -124,7 +124,9 @@ two steps. The validator always rejects em dashes, ellipses, doubled hyphens,
 and dashes used as punctuation, including the spaced parenthetical dash;
 rephrase those with a comma, period, or colon. Every remaining hyphen is listed
 as a warning with its location: keep necessary German compounds such as
-RAG-Systeme or Cloud-Ökonomie, and rephrase the rest. A specific task or
+RAG-Systeme or Cloud-Ökonomie, and rephrase the rest. A suspended hyphen
+before und, oder, or a lowercase continuation counts as a compound, not
+as punctuation. A specific task or
 result usually does more work than generic enthusiasm, stacked adjectives or
 unexplained management vocabulary. Remove repetition and paragraphs explaining
 what that paragraph should contain. Avoid treating every conventional phrase
