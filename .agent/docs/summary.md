@@ -28,6 +28,19 @@ its author. Its closing exposes the adaptation formula:
 target profile | differentiation | two evidenced results | value offered
 ```
 
+## Opening
+
+Never open with a formula application phrase: no „Bewerbung als …",
+no „Applying as …", no „I am applying as …" plus job title and place.
+The role, company and location already live in the CV header, the
+record's `job` block and the cover letter; restating them wastes the
+first of five lines on a self-evident fact, and the same sentence frame
+across opportunities reads as template slop. Lead with target profile,
+differentiation, or the strongest evidence instead and move the target
+context organically to the end („… bringe ich in … ein"). Opportunity
+records fail validation on formula openings; the general showcase keeps
+author judgment.
+
 For a real application, the formula remains but the prose must be rewritten
 for the specific opportunity. Keywords may improve retrieval, but they never
 turn an unsupported capability into a fact. Use plain language that a

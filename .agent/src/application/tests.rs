@@ -156,6 +156,35 @@ fn document_prose_rejects_punctuation_tics() {
 }
 
 #[test]
+fn summary_rejects_formula_openings() {
+    // Competence-first openings from real fixed records stay valid.
+    for text in [
+        "Als Cloud & Platform Engineer baue und betreibe ich Cloud Infrastrukturen.",
+        "Analytiker für Gremien, die entscheiden müssen.",
+        "Mit Physikstudium (Bestnote: 6,0) und CDI Executive Education bringe ich Kalkulation.",
+        "As a physicist and consultant turned AI builder, I ship production GenAI.",
+    ] {
+        assert!(
+            reject_formula_opening(text, "here").is_ok(),
+            "unexpected rejection: {text}"
+        );
+    }
+    for text in [
+        "Bewerbung als Project Controller bei Pilatus in Stans.",
+        "bewerbung als Strategy & Portfolio Manager.",
+        "Applying as Machine Learning Engineer at Destinus in Zurich, CH.",
+        "I am applying as Intern in the Lufthansa Group Digital Hangar.",
+        "\"Bewerbung als Training System Engineer bei Rheinmetall.\"",
+    ] {
+        let error = reject_formula_opening(text, "here").unwrap_err().to_string();
+        assert!(
+            error.contains("must not open with a formula application phrase"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+}
+
+#[test]
 fn hyphen_marks_are_highlighted_for_author_judgment() {
     assert!(hyphen_advisories("plain words", "here").is_empty());
     let advisories = hyphen_advisories("RAG-Systeme und Cloud-Ökonomie", "here");
@@ -386,3 +415,4 @@ fn non_string_substyle_is_rejected() {
         "unexpected error: {error}"
     );
 }
+

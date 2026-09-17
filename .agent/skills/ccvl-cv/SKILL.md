@@ -57,7 +57,13 @@ target profile | differentiation | two evidenced results | value offered
 ```
 
 The public showcase may combine this formula with an invitation to contact the
-author. A real application must be target-specific.
+author. A real application must be target-specific. Never open a summary
+with a formula application phrase — no „Bewerbung als …", no „Applying as …",
+no „I am applying as …" plus job title and place. Role, company and location
+already live in the header, the record's `job` block and the letter; lead with
+target profile, differentiation, or the strongest evidence and move the target
+context organically to the end (see `.agent/docs/summary.md`). Opportunity
+records fail validation on formula openings.
 
 ## Fixed layout gate (Harvard CV contract)
 

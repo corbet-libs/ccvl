@@ -402,6 +402,7 @@ fn validate_record_scope(
             );
             if opportunity {
                 reject_punctuation_tics(summary, &format!("{location}.cv.summary"))?;
+                reject_formula_opening(summary, &format!("{location}.cv.summary"))?;
             }
             if let Some(allow_thin) = cv.get("allow_thin") {
                 ensure!(
@@ -663,6 +664,28 @@ fn reject_punctuation_tics(text: &str, location: &str) -> Result<()> {
             bail!(
                 "{location}: document prose must not use dashes as punctuation (found {:?}); rephrase with a comma, period, or colon",
                 mark.ch
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Hard fail: formula summary openings that read as template slop.
+/// "Bewerbung als X bei Y", "Applying as X at Y" and "I am applying as X"
+/// restate the role, company and place the record already carries, waste the
+/// first of five summary lines on a self-evident fact, and repeat the same
+/// sentence frame across opportunities. Summaries lead with target profile,
+/// differentiation, or strongest evidence instead (see summary.md); the
+/// target context moves organically to the end.
+fn reject_formula_opening(text: &str, location: &str) -> Result<()> {
+    let opening = text
+        .trim_start()
+        .trim_start_matches(|ch| "\"'„“”»«‚‘".contains(ch));
+    let lowered = opening.to_lowercase();
+    for phrase in ["bewerbung als ", "applying as ", "i am applying as "] {
+        if lowered.starts_with(phrase) {
+            bail!(
+                "{location}: summary must not open with a formula application phrase; lead with target profile, differentiation, or strongest evidence instead (see .agent/docs/summary.md)"
             );
         }
     }

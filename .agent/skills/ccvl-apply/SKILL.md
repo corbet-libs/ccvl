@@ -143,7 +143,9 @@ Apply library transformations to generated prose while preserving protected
 names, quotes, URLs and explicit user choices.
 
 Harvard requires `ccvl profile-status --verify-sources` and its five-line CV
-Summary. Its AIDA letter has `3 | 5 | 5 | 5 | 5 | 3` body lines and maps the six
+Summary. The summary never opens with a formula application phrase (no
+„Bewerbung als …" / „Applying as …" / „I am applying as …" plus title and
+place); see `.agent/docs/summary.md`. Its AIDA letter has `3 | 5 | 5 | 5 | 5 | 3` body lines and maps the six
 paragraphs to attention, interest, interest, desire, desire, action. Five
 one-line highlights connect the evidence and contribution between paragraphs
 3 and 4. Other document structures keep their own fields and geometry; a request
