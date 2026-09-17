@@ -165,25 +165,27 @@ fn hyphen_marks_are_highlighted_for_author_judgment() {
     assert!(advisories[1].contains("Cloud-Ökonomie"));
     assert!(advisories[1].contains("author judgment"));
 }
-
 #[test]
 fn opportunity_walk_collects_hyphen_advisories() {
     let mut draft = application(&[3, 5, 5, 5, 5, 3]);
     draft["cv"]["summary"] = json!("RAG-Systeme in der Praxis.");
     draft["cl"]["highlights"][0] = json!("AI-Plattformen");
     let advisories = opportunity_hyphen_advisories(&draft, "opportunities/fixture/lead");
+    assert_eq!(advisories.len(), 1, "unexpected advisories: {advisories:?}");
+    assert!(advisories[0].contains("opportunities/fixture/lead"));
+    assert!(advisories[0].contains("2 hyphens"));
+    assert!(advisories[0].contains("RAG-Systeme"));
+    assert!(advisories[0].contains("AI-Plattformen"));
+    draft["cv"]["summary"] = json!("RAG-Systeme und RAG-Systeme.");
+    draft["cl"]["highlights"][0] = json!("plain words");
+    let advisories = opportunity_hyphen_advisories(&draft, "opportunities/fixture/lead");
+    assert_eq!(advisories.len(), 1, "unexpected advisories: {advisories:?}");
     assert!(
-        advisories
-            .iter()
-            .any(|entry| entry.contains("cv.summary") && entry.contains("RAG-Systeme")),
+        advisories[0].contains("\"RAG-Systeme\" ×2"),
         "unexpected advisories: {advisories:?}"
     );
-    assert!(
-        advisories
-            .iter()
-            .any(|entry| entry.contains("cl.highlights[1]") && entry.contains("AI-Plattformen")),
-        "unexpected advisories: {advisories:?}"
-    );
+    let clean = application(&[3, 5, 5, 5, 5, 3]);
+    assert!(opportunity_hyphen_advisories(&clean, "opportunities/fixture/lead").is_empty());
 }
 
 #[test]

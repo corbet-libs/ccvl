@@ -1,6 +1,6 @@
 ---
 name: ccvl-apply
-description: Write a persuasive, truthful, MECE cover letter or targeted application package in the selected styles, then coordinate independent review.
+description: Write a persuasive, truthful, MECE cover letter or targeted application package in the selected styles when drafting or tailoring an application, then coordinate independent review.
 ---
 
 # Write an application or cover letter

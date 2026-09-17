@@ -669,6 +669,17 @@ fn reject_punctuation_tics(text: &str, location: &str) -> Result<()> {
     Ok(())
 }
 
+/// Push the context word of every dash-like mark in `text` onto `words`,
+/// preserving document order for the aggregated advisory. Trailing
+/// sentence punctuation is trimmed so `RAG-Systeme.` groups with
+/// `RAG-Systeme`.
+fn collect_mark_words<'a>(words: &mut Vec<&'a str>, text: &'a str) {
+    for mark in dash_marks(text) {
+        let word = surrounding_word(text, mark.offset);
+        words.push(word.trim_matches(|ch| ".,;:!?()\"'„“”".contains(ch)));
+    }
+}
+
 /// Maximal whitespace-delimited token around a byte offset (which must be
 /// a character boundary). Gives advisories a readable context word.
 fn surrounding_word(text: &str, offset: usize) -> &str {
@@ -703,34 +714,26 @@ pub fn hyphen_advisories(text: &str, location: &str) -> Vec<String> {
 }
 
 /// Collect hyphen advisories across the opportunity prose sites
-/// (cv.summary, cl paragraph lines, cl highlights). Shape validation stays
-/// in [`validate_record`]; this only highlights marks for the authoring
-/// agent. Missing or non-text fields yield no advisories.
+/// (cv.summary, cl paragraph lines, cl highlights) into a single warning
+/// line: token-cheap, with every flagged word listed once (repeats
+/// counted). Shape validation stays in [`validate_record`]; this only
+/// highlights marks for the authoring agent. Missing or non-text fields
+/// yield no advisories.
 #[must_use]
 pub fn opportunity_hyphen_advisories(application: &Value, location: &str) -> Vec<String> {
-    let mut out = Vec::new();
+    let mut words: Vec<&str> = Vec::new();
     if let Some(summary) = application.pointer("/cv/summary").and_then(Value::as_str) {
-        out.extend(hyphen_advisories(
-            summary,
-            &format!("{location}.cv.summary"),
-        ));
+        collect_mark_words(&mut words, summary);
     }
     if let Some(paragraphs) = application
         .pointer("/cl/paragraphs")
         .and_then(Value::as_array)
     {
-        for (index, paragraph) in paragraphs.iter().enumerate() {
+        for paragraph in paragraphs {
             if let Some(lines) = paragraph.as_array() {
-                for (line_index, line) in lines.iter().enumerate() {
+                for line in lines {
                     if let Some(text) = line.as_str() {
-                        out.extend(hyphen_advisories(
-                            text,
-                            &format!(
-                                "{location}.cl.paragraphs[{}].lines[{}]",
-                                index + 1,
-                                line_index + 1
-                            ),
-                        ));
+                        collect_mark_words(&mut words, text);
                     }
                 }
             }
@@ -740,16 +743,40 @@ pub fn opportunity_hyphen_advisories(application: &Value, location: &str) -> Vec
         .pointer("/cl/highlights")
         .and_then(Value::as_array)
     {
-        for (index, highlight) in highlights.iter().enumerate() {
+        for highlight in highlights {
             if let Some(text) = highlight.as_str() {
-                out.extend(hyphen_advisories(
-                    text,
-                    &format!("{location}.cl.highlights[{}]", index + 1),
-                ));
+                collect_mark_words(&mut words, text);
             }
         }
     }
-    out
+    if words.is_empty() {
+        return Vec::new();
+    }
+    let mut seen: Vec<(&str, usize)> = Vec::new();
+    for word in words {
+        if let Some(entry) = seen.iter_mut().find(|(known, _)| *known == word) {
+            entry.1 += 1;
+        } else {
+            seen.push((word, 1));
+        }
+    }
+    let listed = seen
+        .iter()
+        .map(|(word, count)| {
+            if *count > 1 {
+                format!("{word:?} ×{count}")
+            } else {
+                format!("{word:?}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    let total: usize = seen.iter().map(|(_, count)| count).sum();
+    vec![format!(
+        "{location}: {total} hyphen{} need author judgment ({}); keep necessary German compounds, rephrase the rest (see editorial hyphen criteria)",
+        if total == 1 { "" } else { "s" },
+        listed
+    )]
 }
 
 fn validate_content_fields(

@@ -93,7 +93,10 @@ confirmation. Persuasive embellishment is expected: retain strong framing,
 value and narrative when their factual implications are supported. A factual
 objection must name the unsupported implication; forceful wording or departure
 from a source's phrasing alone is not a defect. Preserve necessary scope and
-estimates while allowing unnecessary hedges to be removed.
+estimates while allowing unnecessary hedges to be removed. Judge locale
+exhibits against the matching per-locale file (BCP 47 primary subtag,
+English inline examples otherwise); quoted exhibits illustrate the rules,
+they never override them.
 
 Check MECE in both directions: each block contributes a distinct argument, and
 the package addresses the material priorities of its audience and purpose.

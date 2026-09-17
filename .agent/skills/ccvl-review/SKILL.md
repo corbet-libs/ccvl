@@ -1,6 +1,6 @@
 ---
 name: ccvl-review
-description: Independently review ccvl claims, persuasive writing, MECE coverage and rendered pages from an immutable package, with cited findings and bounded corrections.
+description: Independently review ccvl claims, persuasive writing, MECE coverage and rendered pages after a build, in fresh context from an immutable package, with cited findings and bounded corrections.
 ---
 
 # Review the actual application
