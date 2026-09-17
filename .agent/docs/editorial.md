@@ -8,8 +8,10 @@ correspondence conventions.
 
 Instruction prose in this repository stays English; other languages appear
 only inside quoted exhibits. Per locale exhibits live beside the general
-guidance: load only the file matching the record language
-(`.agent/docs/examples-de.md` for German records).
+guidance under one general rule: resolve the lowercase BCP 47 language
+tag to its primary subtag and load `.agent/docs/examples-<subtag>.md`
+when it exists (`de-ch` and `de-li` both resolve to `examples-de.md`).
+English examples stay inline and serve as the fallback.
 
 ## Three sources, three questions
 

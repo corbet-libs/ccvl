@@ -6,9 +6,10 @@ inside quoted exhibits like the one below, never as instruction text.
 Locale mechanics (spelling, greetings, closings, dates, correspondence
 behavior) belong to cletter and its family; ccvl passes selections and
 consumes their public interfaces. What lives here are drafting
-illustrations: recognizable patterns to keep or to avoid. Load this file
-only for German language records (`de-ch`, `de-li`); other locales fall
-back to the inline English examples in the editorial guidance.
+illustrations: recognizable patterns to keep or to avoid. This file serves
+every record whose language tag carries the German primary subtag
+(`de-ch`, `de-li`, `de-de`, `de-at`); load it through the general BCP 47
+rule, never by guessing.
 
 ## Evidence binding
 
