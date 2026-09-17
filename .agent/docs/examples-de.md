@@ -21,3 +21,11 @@ dass vereinbarte Schritte termingerecht umgesetzt wurden* demonstrates it
 through responsibilities. Where the evidence base holds a responsibility,
 a project, a delivered improvement, or a figure, use it in place of the
 adjective.
+
+## Register
+
+Openings of the kind the guidance exists to prevent: “Mit grosser
+Begeisterung habe ich Ihre spannende Stellenausschreibung gelesen” and
+“Meine ausgeprägte Leidenschaft und meine vielseitigen Kompetenzen
+machen mich zur idealen Kandidatin.” Both are pure assertion. Replace
+them with what actually happened.
