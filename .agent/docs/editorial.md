@@ -6,6 +6,11 @@ the creator's showcase is one example, never the default candidate profile.
 They concern claims and writing, independently of page layout and national
 correspondence conventions.
 
+Instruction prose in this repository stays English; other languages appear
+only inside quoted exhibits. Per locale exhibits live beside the general
+guidance: load only the file matching the record language
+(`.agent/docs/examples-de.md` for German records).
+
 ## Three sources, three questions
 
 | Source | Establishes |
