@@ -7,7 +7,6 @@
       "subject_prefix": "Bewerbung als",
       "subject_unsolicited": "Initiativbewerbung",
       "use_ss": false,
-      "region": "de",
     ),
     "de-ch": (
       "formal": "Sehr geehrte Damen und Herren",
@@ -15,7 +14,6 @@
       "subject_prefix": "Bewerbung als",
       "subject_unsolicited": "Initiativbewerbung",
       "use_ss": true,
-      "region": "ch",
     ),
     "de-li": (
       "formal": "Sehr geehrte Damen und Herren",
@@ -23,7 +21,6 @@
       "subject_prefix": "Bewerbung als",
       "subject_unsolicited": "Initiativbewerbung",
       "use_ss": true,
-      "region": "li",
     ),
     "de-at": (
       "formal": "Sehr geehrte Damen und Herren,",
@@ -31,7 +28,6 @@
       "subject_prefix": "Bewerbung als",
       "subject_unsolicited": "Initiativbewerbung",
       "use_ss": false,
-      "region": "at",
     ),
     "en": (
       "formal": "Dear Sir or Madam,",
@@ -285,6 +281,13 @@
       "subject_unsolicited": "自荐信",
       "use_ss": false,
     ),
+    "rm": (
+      "formal": "Stimadas dunnas, stimads signurs,",
+      "named": "Stimadas dunnas, stimads signurs,",
+      "subject_prefix": "Candidatura per",
+      "subject_unsolicited": "Candidatura spontana",
+      "use_ss": false,
+    ),
   ),
   "supported": (
     "ar",
@@ -326,6 +329,7 @@
     "pt",
     "pt-br",
     "pt-pt",
+    "rm",
     "ro",
     "ru",
     "sk",

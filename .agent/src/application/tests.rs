@@ -18,7 +18,7 @@ fn application(paragraph_lengths: &[usize]) -> Value {
             "language": "de-ch",
             "pages": 4,
             "generate_cl": true,
-            "application_date": "September 2026",
+            "application_date": "2026-09",
         },
         "job": {
             "id": "fixture",
@@ -45,6 +45,16 @@ fn application(paragraph_lengths: &[usize]) -> Value {
             "highlights": lines(5),
         },
     })
+}
+
+#[test]
+fn application_date_rejects_preformatted_prose() {
+    let mut draft = application(&[3, 5, 5, 5, 5, 3]);
+    draft["options"]["application_date"] = json!("October 7, 2026");
+    let error = validate_record(&workspace(), &draft, "fixture", true).unwrap_err();
+    assert!(format!("{error:#}").contains("use quoted YYYY-MM-DD or YYYY-MM"));
+    draft["options"]["application_date"] = json!("2026-10-07");
+    validate_record(&workspace(), &draft, "fixture", true).unwrap();
 }
 
 #[test]
@@ -156,6 +166,118 @@ fn document_prose_rejects_punctuation_tics() {
 }
 
 #[test]
+fn document_prose_rejects_space_before_comma() {
+    assert!(reject_punctuation_spacing("Worte, sauber getrennt.", "here").is_ok());
+    assert!(reject_punctuation_spacing("Aufzählung ohne Fehler", "here").is_ok());
+    for text in ["Worte , sauber", "Worte  , sauber", "Worte\u{a0}, sauber"] {
+        let error = reject_punctuation_spacing(text, "here")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("must not contain a space before a comma"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+}
+
+#[test]
+fn closing_line_requires_fixed_opener() {
+    // The fixed opener is a prefix contract, never a full verbatim
+    // sentence: any contribution wording may follow it.
+    for line in [
+        "Ich freue mich auf ein persönliches Gespräch.",
+        "\"Ich freue mich, meine Erfahrung einzubringen.\"",
+    ] {
+        assert!(
+            reject_closing_opener(
+                &[json!("erste Zeile"), json!("zweite Zeile"), json!(line)],
+                "here"
+            )
+            .is_ok(),
+            "unexpected rejection: {line}"
+        );
+    }
+    for line in [
+        "Vielen Dank für Ihr Interesse.",
+        "ich freue mich auf ein Gespräch.",
+        "Gerne freue ich mich auf ein Gespräch.",
+        "",
+    ] {
+        let error = reject_closing_opener(
+            &[json!("erste Zeile"), json!("zweite Zeile"), json!(line)],
+            "here",
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            error.contains("must open its final line"),
+            "unexpected pass: {line} ({error})"
+        );
+    }
+    // Non-text or missing closing lines belong to the shape gates, not
+    // this wording gate.
+    assert!(reject_closing_opener(&[], "here").is_ok());
+    assert!(reject_closing_opener(&[json!(3)], "here").is_ok());
+}
+
+#[test]
+fn closing_rejects_forbidden_phrases() {
+    for text in [
+        "Ich passe fit im Team gut.",
+        "FIT IM TEAM beizutragen.",
+        "„Fit im Team“ wäre schön.",
+        "Dank für Ihre Überlegungen im Voraus.",
+        "dank für ihre überlegungen.",
+    ] {
+        let error = reject_forbidden_close(text, "here")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("must not use the forbidden phrase"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+    for text in [
+        "Ich freue mich darauf, in Ihrem Team zum Erfolg beizutragen.",
+        "Die Zusammenarbeit im Team stärkt die Datenstrecke.",
+    ] {
+        assert!(
+            reject_forbidden_close(text, "here").is_ok(),
+            "unexpected rejection: {text}"
+        );
+    }
+}
+
+#[test]
+fn summary_rejects_formula_openings() {
+    // Competence-first openings from real fixed records stay valid.
+    for text in [
+        "Als Cloud & Platform Engineer baue und betreibe ich Cloud Infrastrukturen.",
+        "Analytiker für Gremien, die entscheiden müssen.",
+        "Mit Physikstudium (Bestnote: 6,0) und CDI Executive Education bringe ich Kalkulation.",
+        "As a physicist and consultant turned AI builder, I ship production GenAI.",
+    ] {
+        assert!(
+            reject_formula_opening(text, "here").is_ok(),
+            "unexpected rejection: {text}"
+        );
+    }
+    for text in [
+        "Bewerbung als Project Controller bei Pilatus in Stans.",
+        "bewerbung als Strategy & Portfolio Manager.",
+        "Applying as Machine Learning Engineer at Destinus in Zurich, CH.",
+        "I am applying as Intern in the Lufthansa Group Digital Hangar.",
+        "\"Bewerbung als Training System Engineer bei Rheinmetall.\"",
+    ] {
+        let error = reject_formula_opening(text, "here").unwrap_err().to_string();
+        assert!(
+            error.contains("must not open with a formula application phrase"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+}
+
+#[test]
 fn hyphen_marks_are_highlighted_for_author_judgment() {
     assert!(hyphen_advisories("plain words", "here").is_empty());
     let advisories = hyphen_advisories("RAG-Systeme und Cloud-Ökonomie", "here");
@@ -225,7 +347,7 @@ fn missing_recipient_name_warns_without_failing_validation() {
     )
     .expect("empty showcase recipient must warn");
     assert!(warning.contains("job.cl_recipient.name is empty"));
-    assert!(warning.contains("generic salutation"));
+    assert!(warning.contains("formal salutation"));
     assert!(recipient_salutation_warning("fixture", "Dr. Jane Doe").is_none());
     assert!(recipient_salutation_warning("fixture", "   ").is_some());
 }
@@ -386,3 +508,4 @@ fn non_string_substyle_is_rejected() {
         "unexpected error: {error}"
     );
 }
+

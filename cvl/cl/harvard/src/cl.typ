@@ -1,13 +1,12 @@
 #import "/.agent/typst/paper.typ": paper-settings, resolve-paper
 #import "/.agent/typst/application.typ": load-application
+#import "/.agent/typst/application-date.typ": format-application-date
 // Shared Harvard cover letter; inputs belong to the calling leaf.
 #import "/cvl/shared/harvard/style.typ": document-style
 #import "/cvl/shared/harvard/application.typ": load-cover-letter-contract, validate-application
 #import "/.agent/typst/line-contract.typ": line-contract-mode, measured-content-line, measured-paragraph
 #import "/.agent/typst/profile.typ": load-profile
-#import "/.agent/typst/letter/letter.typ": (
-  closing as farewell-closing, de-salutation, opening, salutation-last-name, signature-image,
-)
+#import "/.agent/typst/letter/letter.typ": closing as farewell-closing, salutation, signature-image
 
 #let cover-letter-contract = load-cover-letter-contract()
 
@@ -58,7 +57,6 @@
   // Locale comes from the leaf's strings file and is cross-checked against
   // the record below: a de-ch record through en-ch strings fails here.
   let doc-locale = cl-strings.locale
-  let doc-region = doc-locale.split("-").last()
   let application = load-application(application-path)
   let paper = resolve-paper(toml("../style.toml"), doc-locale, requested: paper-input, recorded: application.options.at(
     "cl_paper",
@@ -91,15 +89,8 @@
   } else {
     [#cl-strings.subject_application_for #job.title]
   }
-  let salutation-name = salutation-last-name(recipient.name)
-  let salutation = if doc-locale == "de-ch" {
-    [#de-salutation(recipient.name, region: doc-region)]
-  } else if salutation-name != "" {
-    [#opening(doc-locale, name: salutation-name, override: "Dear " + salutation-name + ",")]
-  } else {
-    [#opening(doc-locale, override: "Dear Hiring Manager,")]
-  }
-  let closing = [#farewell-closing(if doc-locale == "de-ch" { "de-ch" } else { "en" })]
+  let salutation = [#salutation(doc-locale, recipient.name)]
+  let closing = [#farewell-closing(doc-locale)]
 
   let paragraph(index) = block(width: 100%, breakable: false)[
     #measured-paragraph(
@@ -181,7 +172,8 @@
     #grid(
       columns: (1fr, auto),
       align: (left, right),
-      text(size: 12pt, weight: "bold", subject), text(size: 10.5pt, application.options.application_date),
+      text(size: 12pt, weight: "bold", subject),
+      text(size: 10.5pt, format-application-date(doc-locale, application.options.application_date)),
     )
     #v(subject-after)
     #line(length: 100%, stroke: 0.5pt + black)

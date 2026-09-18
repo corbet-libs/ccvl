@@ -82,7 +82,9 @@ The record owns:
 
 - posting source and role context;
 - attributable organisation research and fit notes;
-- language and application date;
+- language and application date (`options.application_date` is quoted
+  `YYYY-MM-DD`, `YYYY-MM` for month-only precision, or `""` for no date;
+  cletter/cdate formats it for the letter's locale);
 - whether a cover letter is required (`options.generate_cl`);
 - selected CV `pages` and optional letter `cl_pages`, within each style's presets;
 - optional `options.cv_paper` / `options.cl_paper`, chosen from the selected

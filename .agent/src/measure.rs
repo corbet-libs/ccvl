@@ -417,7 +417,7 @@ pub fn preference_warnings(
 }
 
 /// Visible, non-blocking counsel when a cover letter has no recipient name.
-/// The Typst renderer falls back to the generic salutation ("Dear Hiring
+/// The Typst renderer falls back to the formal salutation ("Dear Hiring
 /// Manager," / "Sehr geehrte Damen und Herren"), which stays valid for the
 /// target-neutral showcase; a tailored opportunity should name a person.
 /// German records additionally warn when the name carries no parsable

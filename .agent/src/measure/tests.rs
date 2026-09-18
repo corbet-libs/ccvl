@@ -402,8 +402,8 @@ fn recipient_counsel_uses_correspondence_locale_rules_without_duplicate_warnings
     let workspace = Workspace::at(directory.path()).unwrap();
     let spec = cover_letter_spec_with_application("record.toml");
     for (locale, name, expected) in [
-        ("DE-ch", "Alex Example", Some("Herr/Frau honorific")),
-        ("en-us", "Alex Example", None),
+        ("DE-ch", "Alex Example", Some("no parsable honorific")),
+        ("en-us", "Alex Example", Some("no parsable honorific")),
         // An unrelated three-letter language beginning with "de" is not German.
         ("den-ca", "Alex Example", None),
         ("de-ch", "Frau Dr. Müller", None),
@@ -435,7 +435,7 @@ fn recipient_counsel_uses_correspondence_locale_rules_without_duplicate_warnings
 #[test]
 fn empty_recipient_name_warns_but_stays_valid() {
     let workspace = workspace();
-    // Showcase records ship with an empty recipient: generic salutation
+    // Showcase records ship with an empty recipient: formal salutation
     // stays valid, but measurement must surface a visible advisory.
     for locale in [
         "cvl/cl/harvard/left-rule/de/ch/content.toml",
@@ -445,14 +445,14 @@ fn empty_recipient_name_warns_but_stays_valid() {
         let warnings = recipient_warnings(&workspace, &spec).unwrap();
         assert_eq!(warnings.len(), 1, "locale: {locale}");
         assert!(warnings[0].contains("job.cl_recipient.name is empty"));
-        assert!(warnings[0].contains("generic salutation"));
+        assert!(warnings[0].contains("formal salutation"));
         let metrics = metric_set(&[3, 5, 5, 5, 5, 3]);
         validate_metric_set(&workspace, &spec, &metrics).unwrap();
         let warnings = preference_warnings(&workspace, &spec, &metrics).unwrap();
         assert!(
             warnings
                 .iter()
-                .any(|warning| warning.contains("generic salutation")),
+                .any(|warning| warning.contains("formal salutation")),
             "locale: {locale}"
         );
     }
@@ -480,7 +480,7 @@ fn typst_salutation_helper_keeps_only_the_last_token() {
         .fonts(ctypst::fonts::documents())
         .build()
         .unwrap();
-    let source = "#import \"/.agent/typst/letter/letter.typ\": salutation-last-name, de-salutation\n\
+    let source = "#import \"/.agent/typst/letter/letter.typ\": salutation-last-name, salutation\n\
             #assert(salutation-last-name(\"Dr. Jane Doe\") == \"Doe\", message: \"title prefix\")\n\
             #assert(salutation-last-name(\"Ms Test Person\") == \"Person\", message: \"multi-token\")\n\
             #assert(salutation-last-name(\"Madonna\") == \"Madonna\", message: \"single token\")\n\
@@ -488,16 +488,20 @@ fn typst_salutation_helper_keeps_only_the_last_token() {
             #assert(salutation-last-name(\"  Jane   Doe  \") == \"Doe\", message: \"padded\")\n\
             #assert(salutation-last-name(\"\") == \"\", message: \"empty\")\n\
             #assert(salutation-last-name(\"   \") == \"\", message: \"whitespace\")\n\
-            #assert(de-salutation(\"Frau Dr. Müller\", region: \"ch\") == \"Sehr geehrte Frau Dr. Müller\", message: \"ch titled\")\n\
-            #assert(de-salutation(\"Herr Müller\", region: \"ch\") == \"Sehr geehrter Herr Müller\", message: \"ch plain\")\n\
-            #assert(de-salutation(\"Frau Müller\", region: \"li\") == \"Sehr geehrte Frau Müller\", message: \"li no comma\")\n\
-            #assert(de-salutation(\"Frau Müller\", region: \"de\") == \"Sehr geehrte Frau Müller,\", message: \"de comma\")\n\
-            #assert(de-salutation(\"Herr Müller\", region: \"at\") == \"Sehr geehrter Herr Müller,\", message: \"at comma\")\n\
-            #assert(de-salutation(\"Herr Prof. Dr. Müller\", region: \"ch\") == \"Sehr geehrter Herr Professor Müller\", message: \"professor wins\")\n\
-            #assert(de-salutation(\"\", region: \"ch\") == \"Sehr geehrte Damen und Herren\", message: \"ch generic\")\n\
-            #assert(de-salutation(\"\", region: \"de\") == \"Sehr geehrte Damen und Herren,\", message: \"de generic\")\n\
-            #assert(de-salutation(\"Jane Doe\", region: \"ch\") == \"Sehr geehrte Damen und Herren\", message: \"no honorific\")\n\
-            #assert(de-salutation(\"Hr. Müller\", region: \"ch\") == \"Sehr geehrte Damen und Herren\", message: \"abbreviation rejected\")\n\
+            #assert(salutation(\"de-ch\", \"Frau Dr. Müller\") == \"Sehr geehrte Frau Dr. Müller\", message: \"ch titled\")\n\
+            #assert(salutation(\"de-ch\", \"Herr Müller\") == \"Sehr geehrter Herr Müller\", message: \"ch plain\")\n\
+            #assert(salutation(\"de-li\", \"Frau Müller\") == \"Sehr geehrte Frau Müller\", message: \"li no comma\")\n\
+            #assert(salutation(\"de\", \"Frau Müller\") == \"Sehr geehrte Frau Müller,\", message: \"de comma\")\n\
+            #assert(salutation(\"de-at\", \"Herr Müller\") == \"Sehr geehrter Herr Müller,\", message: \"at comma\")\n\
+            #assert(salutation(\"de-ch\", \"Herr Prof. Dr. Müller\") == \"Sehr geehrter Herr Professor Müller\", message: \"professor wins\")\n\
+            #assert(salutation(\"de-ch\", \"\") == \"Sehr geehrte Damen und Herren\", message: \"ch generic\")\n\
+            #assert(salutation(\"de\", \"\") == \"Sehr geehrte Damen und Herren,\", message: \"de generic\")\n\
+            #assert(salutation(\"de-ch\", \"Jane Doe\") == \"Sehr geehrte Damen und Herren\", message: \"no honorific\")\n\
+            #assert(salutation(\"de-ch\", \"Hr. Müller\") == \"Sehr geehrte Damen und Herren\", message: \"abbreviation rejected\")\n\
+            #assert(salutation(\"fr\", \"Madame Dupont\") == \"Madame Dupont,\", message: \"french\")\n\
+            #assert(salutation(\"it\", \"Sig. Rossi\") == \"Gentile Sig. Rossi,\", message: \"italian\")\n\
+            #assert(salutation(\"rm\", \"signur Schmid\") == \"Stimà signur Schmid,\", message: \"romansh\")\n\
+            #assert(salutation(\"en\", \"Ms Smith\") == \"Dear Ms Smith,\", message: \"english\")\n\
             Hello";
     engine
         .compile(

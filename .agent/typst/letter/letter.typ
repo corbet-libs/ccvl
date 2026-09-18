@@ -1,6 +1,7 @@
 #import "generated/tables.typ": locales-table, countries-table
-#import "vendor/cgreet/typst/greet.typ": parse-region, region-uses-comma, salutation-last-name, salutation-honorific, salutation-title-kind, salutation-titles, salutation-surname, de-salutation, recipient-salutation-warning, de-honorific-warning
-#import "vendor/cfarewell/typst/farewell.typ": closing, available-locales
+#import "vendor/cnice/typst/greet.typ" as cnice-greet
+#import "vendor/cnice/typst/greet.typ": salutation-last-name, salutation-honorific, salutation-titles, salutation-surname, recipient-salutation-warning, honorific-warning, is-supported
+#import "vendor/cnice/typst/farewell.typ": closing, available-locales
 #import "vendor/cdate/typst/date.typ": long-date, medium-date, short-date, month-year, is-valid-date
 #import "vendor/cink/typst/ink.typ": signature-image
 
@@ -20,14 +21,18 @@
   }
 }
 
-/// Opening line: the `named` template with `{name}` filled when a name is
-/// given, otherwise the formal address. An explicit override always wins.
+/// Opening line: when a name is given for a locale covered by the uniform
+/// salutation renderer, the name is parsed and rendered the same way as
+/// `salutation`; otherwise the `named` template is filled verbatim, or the
+/// formal address when no name is given. An explicit override always wins.
 #let opening(locale, name: none, override: none) = {
     if override != none {
         override
     } else {
         let entry = locales-table.locales.at(resolve-key(locale))
-        if name != none and name.trim() != "" {
+        if name != none and name.trim() != "" and is-supported(locale) {
+            cnice-greet.salutation(locale, name.trim())
+        } else if name != none and name.trim() != "" {
             entry.named.replace("{name}", name.trim())
         } else {
             entry.formal
@@ -132,24 +137,27 @@
     }
 }
 
-/// cgreet region for locales whose salutation it implements.
-#let region-for(locale) = {
-    parse-region(locales-table.locales.at(resolve-key(locale)).at("region", default: ""))
-}
-
-/// German locales use cgreet; other locales use the named opening template.
+/// Locale-correct salutation through the uniform renderer for every locale
+/// it covers (no per-language branch: coverage is data in the salutation
+/// tables); all other locales resolve the opening template.
 #let salutation(locale, name) = {
-    let region = region-for(locale)
-    if region == none { opening(locale, name: name) } else { de-salutation(name, region: region) }
+    let who = if name == none { "" } else { name }
+    if is-supported(locale) {
+        cnice-greet.salutation(locale, who)
+    } else {
+        opening(locale, name: who)
+    }
 }
 
-/// Nonblocking recipient advisories, matching the Rust/TS/Python facade.
+/// Non-blocking advisories for a recipient name: the missing-name warning
+/// in every locale, the honorific warning wherever the uniform renderer
+/// applies. Empty means the record is clean.
 #let warnings(location, locale, name) = {
     let result = ()
     let missing = recipient-salutation-warning(location, name)
     if missing != none { result.push(missing) }
-    if region-for(locale) != none {
-        let honorific = de-honorific-warning(location, name)
+    if is-supported(locale) {
+        let honorific = honorific-warning(location, locale, name)
         if honorific != none { result.push(honorific) }
     }
     result

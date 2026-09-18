@@ -64,9 +64,12 @@ const PROFILE_TOP: &[&str] = &[
 /// Correspondence rules live in cletter and its subordinate libraries.
 /// The renderer uses the same upstream facade's pinned Typst sources.
 pub use cletter::{
-    Region, de_honorific_warning, de_salutation, recipient_salutation_warning,
-    salutation_honorific, salutation_last_name, salutation_surname, salutation_titles,
+    honorific_warning, recipient_salutation_warning, salutation, salutation_honorific,
+    salutation_last_name, salutation_surname, salutation_supported, salutation_titles,
 };
+
+mod date;
+pub use date::format_application_date;
 
 /// Non-mutating correspondence guidance for a selected explicit locale.
 /// Reviewers decide whether a match is prose or protected original content.
@@ -317,10 +320,12 @@ fn validate_record_scope(
         .get("generate_cl")
         .and_then(Value::as_bool)
         .context("options.generate_cl is not a boolean")?;
-    options
+    let application_date = options
         .get("application_date")
         .and_then(Value::as_str)
         .context("options.application_date is missing")?;
+    format_application_date(language, application_date)
+        .with_context(|| format!("{location}.options.application_date is invalid"))?;
 
     let job = object_at(application, "/job")?;
     // Location strings use the workspace-relative display form; normalize
@@ -402,6 +407,8 @@ fn validate_record_scope(
             );
             if opportunity {
                 reject_punctuation_tics(summary, &format!("{location}.cv.summary"))?;
+                reject_punctuation_spacing(summary, &format!("{location}.cv.summary"))?;
+                reject_formula_opening(summary, &format!("{location}.cv.summary"))?;
             }
             if let Some(allow_thin) = cv.get("allow_thin") {
                 ensure!(
@@ -509,6 +516,14 @@ fn validate_record_scope(
                         line_index + 1
                     ),
                 )?;
+                reject_punctuation_spacing(
+                    text,
+                    &format!(
+                        "{location}.cl.paragraphs[{}].lines[{}]",
+                        index + 1,
+                        line_index + 1
+                    ),
+                )?;
             }
         }
     }
@@ -548,6 +563,23 @@ fn validate_record_scope(
         )?;
     }
 
+    if opportunity
+        && paragraphs.len() == 6
+        && let Some(closing) = paragraphs[5].as_array()
+    {
+        for (line_index, line) in closing.iter().enumerate() {
+            if let Some(text) = line.as_str() {
+                reject_forbidden_close(
+                    text,
+                    &format!("{location}.cl.paragraphs[6].lines[{}]", line_index + 1),
+                )?;
+            }
+        }
+        if language.starts_with("de") {
+            reject_closing_opener(closing, &format!("{location}.cl.paragraphs[6]"))?;
+        }
+    }
+
     if letter_contract.get("highlights").is_none() {
         return Ok(());
     }
@@ -572,6 +604,7 @@ fn validate_record_scope(
         );
         if opportunity {
             reject_punctuation_tics(text, &format!("{location}.cl.highlights[{}]", index + 1))?;
+            reject_punctuation_spacing(text, &format!("{location}.cl.highlights[{}]", index + 1))?;
         }
     }
     Ok(())
@@ -665,6 +698,98 @@ fn reject_punctuation_tics(text: &str, location: &str) -> Result<()> {
                 mark.ch
             );
         }
+    }
+    Ok(())
+}
+
+/// Hard fail: formula summary openings that read as template slop.
+/// "Bewerbung als X bei Y", "Applying as X at Y" and "I am applying as X"
+/// restate the role, company and place the record already carries, waste the
+/// first of five summary lines on a self-evident fact, and repeat the same
+/// sentence frame across opportunities. Summaries lead with target profile,
+/// differentiation, or strongest evidence instead (see summary.md); the
+/// target context moves organically to the end.
+fn reject_formula_opening(text: &str, location: &str) -> Result<()> {
+    let opening = text
+        .trim_start()
+        .trim_start_matches(|ch| "\"'„“”»«‚‘".contains(ch));
+    let lowered = opening.to_lowercase();
+    for phrase in ["bewerbung als ", "applying as ", "i am applying as "] {
+        if lowered.starts_with(phrase) {
+            bail!(
+                "{location}: summary must not open with a formula application phrase; lead with target profile, differentiation, or strongest evidence instead (see .agent/docs/summary.md)"
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Hard fail: a whitespace before a comma is never correct German
+/// punctuation. This is the only comma rule precise enough for mechanical
+/// enforcement: a comma before "und"/"oder" is wrong in a flat enumeration
+/// but correct at a clause boundary, so that distinction — like enumeration
+/// structure, subordinate-clause commas, and keyword prioritisation — stays
+/// author and reviewer judgment (see summary.md precision limits).
+fn reject_punctuation_spacing(text: &str, location: &str) -> Result<()> {
+    let mut previous: Option<char> = None;
+    for ch in text.chars() {
+        if ch == ',' && previous.is_some_and(char::is_whitespace) {
+            bail!(
+                "{location}: document prose must not contain a space before a comma; attach the comma to the preceding word"
+            );
+        }
+        previous = Some(ch);
+    }
+    Ok(())
+}
+
+/// Hard fail (German opportunity letters): paragraph 6 closes with a fixed
+/// opener. The contract already enforces exactly three lines; this enforces
+/// the wording contract that the final line opens with "Ich freue mich"
+/// and points at the contribution to the team (see cover-letter.md). Only
+/// the opener prefix is enforced, never a full verbatim sentence, and only
+/// for German records: English letters keep author judgment.
+fn reject_closing_opener(closing: &[Value], location: &str) -> Result<()> {
+    if let Some(text) = closing.last().and_then(Value::as_str) {
+        let opening = text
+            .trim_start()
+            .trim_start_matches(|ch| "\"'„“”»«‚‘".contains(ch));
+        ensure!(
+            opening.starts_with("Ich freue mich"),
+            "{location}: the closing paragraph must open its final line with \"Ich freue mich\" and point at the contribution to the team (see .agent/docs/cover-letter.md)"
+        );
+    }
+    Ok(())
+}
+
+/// Lowercase, map German/typographic quotes to spaces, and collapse
+/// whitespace so forbidden close phrases match regardless of casing or
+/// quotation style.
+fn normalize_close_text(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .map(|ch| match ch {
+            '„' | '“' | '”' | '»' | '«' | '‚' | '‘' | '’' | '\'' | '"' => ' ',
+            _ => ch,
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Hard fail: forbidden close phrases. Team-fit formulas of the
+/// "fit im Team" pattern and thanks-for-consideration formulas of the
+/// "Dank für Ihre Überlegungen" pattern never close the letter; the
+/// paragraph-6 contract names the contribution instead. Matched
+/// case-insensitively on quote-normalized text.
+fn reject_forbidden_close(text: &str, location: &str) -> Result<()> {
+    let normalized = normalize_close_text(text);
+    for phrase in ["fit im team", "dank für ihre überlegungen"] {
+        ensure!(
+            !normalized.contains(phrase),
+            "{location}: the closing paragraph must not use the forbidden phrase {phrase:?}; name the contribution per the paragraph-6 contract instead (see .agent/docs/cover-letter.md)"
+        );
     }
     Ok(())
 }

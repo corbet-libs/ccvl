@@ -220,7 +220,13 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         .into_iter()
         .filter_entry(|entry| {
             let name = entry.file_name().to_string_lossy();
-            name != ".git" && name != "target"
+            // Hidden directories are tooling scratch (test tempdirs, editor
+            // state), never project content — same rule as the top-level
+            // layout check above. Pruning here keeps parallel test tempdirs
+            // with fixture records from tripping the single-home rule.
+            !(name.starts_with('.') && entry.file_type().is_dir())
+                && name != ".git"
+                && name != "target"
         })
     {
         let entry = entry?;

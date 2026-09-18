@@ -143,7 +143,13 @@ Apply library transformations to generated prose while preserving protected
 names, quotes, URLs and explicit user choices.
 
 Harvard requires `ccvl profile-status --verify-sources` and its five-line CV
-Summary. Its AIDA letter has `3 | 5 | 5 | 5 | 5 | 3` body lines and maps the six
+Summary. The summary never opens with a formula application phrase (no
+„Bewerbung als …" / „Applying as …" / „I am applying as …" plus title and
+place); see `.agent/docs/summary.md`. For German opportunity letters the
+closing paragraph has exactly three lines naming the posting's core tasks
+first and opening its final line with „Ich freue mich"; forbidden close
+phrases fail validation (see [the AIDA contract](../../docs/cover-letter.md)).
+Its AIDA letter has `3 | 5 | 5 | 5 | 5 | 3` body lines and maps the six
 paragraphs to attention, interest, interest, desire, desire, action. Five
 one-line highlights connect the evidence and contribution between paragraphs
 3 and 4. Other document structures keep their own fields and geometry; a request
@@ -151,6 +157,10 @@ for AIDA requires this complete paragraph and line structure.
 If Harvard's station gate is underfilled or overcrowded, return to profile
 collection/allocation rather than accepting sparse or malformed sections.
 Set `options.generate_cl` explicitly and preserve a requested page variant.
+Set `options.application_date` to a quoted `YYYY-MM-DD` or `YYYY-MM` calendar
+value, preserving the intended precision; `""` explicitly leaves it undated.
+The renderer uses cletter/cdate and the selected locale for the displayed date.
+Never author an English or German date label in this field or infer a missing day.
 
 ## Check and review
 

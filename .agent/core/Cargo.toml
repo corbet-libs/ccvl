@@ -14,7 +14,7 @@ render = ["dep:ctypst", "dep:lopdf"]
 
 [dependencies]
 anyhow = "1.0"
-cletter = "=0.2.2"
+cletter = ">=0.2.2,<0.5"
 ctypst = { version = "=0.3.2", optional = true, default-features = false, features = ["document-fonts", "pdf", "raster"] }
 lopdf = { version = "0.44", optional = true, default-features = false }
 regex = "1.12"

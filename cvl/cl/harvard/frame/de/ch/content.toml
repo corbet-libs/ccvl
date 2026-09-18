@@ -9,7 +9,7 @@ cl_style = "harvard"
 language = "de-ch"
 pages = 4
 generate_cl = true
-application_date = "September 2026"
+application_date = "2026-09"
 # Render look: one entry of cvl/cl/harvard/style.toml substyles. This leaf is the
 # frame cover letter; records without the field render as left-rule.
 cl_substyle = "frame"

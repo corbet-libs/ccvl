@@ -106,7 +106,7 @@
       #v(cv-subheading-after)
       #cv-b[Tutor (für 3 Jahre gewählt) & Nachhilfe: Angewandte Statistik (SPSS, Python, R) & Mathematik]
       #v(cv-bullet-after)
-      #cv-b[Marktforschung: 50+ CEOs interviewt und 1.000+ Gespräche analysiert, Auswertungen & Dashboards]
+      #cv-b[Marktforschung: 50+ CEOs interviewt und 1'000+ Gespräche analysiert, Auswertungen & Dashboards]
       #v(cv-bullet-after)
       #cv-b[Eigene Nebentätigkeit über 16 Jahre aufgebaut und geführt; vom technischen Service bis zum eCommerce]
     ]
