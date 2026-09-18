@@ -48,6 +48,36 @@ and account for evidence gaps in preparation without inventing qualifications.
 The valediction and signature follow paragraph 6 and do not count as a seventh
 paragraph.
 
+## Paragraph 6: warm close (Action)
+
+Paragraph 6 has exactly three lines — part of the `3 | 5 | 5 | 5 | 5 | 3`
+budgets above, never two or four:
+
+| Line | Content | Function |
+|---|---|---|
+| 1 | Core tasks of the posting, named in its terms | Shows role understanding |
+| 2 | Continuation framing the contribution at the employer and place | Locates the contribution |
+| 3 | Closing sentence opening with “Ich freue mich” | Fixed opener, no variation |
+
+Three hard conditions for German opportunity letters (the general
+showcase keeps author judgment):
+
+1. Always exactly 3 lines; the contract already enforces this.
+2. Line 1 names core tasks from `posting.md` in concrete posting terms —
+   actual task nouns, never generic placeholders for challenges.
+3. Line 3 opens with “Ich freue mich” and points at the contribution to
+   the team, with slots for the supported role and context:
+   `… als XXX … ZZZ …` (XXX = the contribution role, ZZZ = the project
+   or company context). Only the opener prefix is enforced, never a full
+   verbatim sentence. Opportunity records fail validation when the final
+   line does not open with the fixed opener.
+
+Forbidden in the close: team-fit formulas of the “fit im Team” pattern
+and thanks-for-consideration formulas of the “Dank für Ihre
+Überlegungen” pattern (matched case-insensitively; opportunity records
+fail validation). Never invite the reader to send test questions or a
+problem statement in exchange for a solution.
+
 ## Shared line budgets
 
 The framework is strict: `3 | 5 | 5 | 5 | 5 | 3`, with 20 central lines and

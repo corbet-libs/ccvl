@@ -111,8 +111,13 @@ than treating all repetition or every unmentioned job keyword as blocking.
 Check the strongest relevant supported facts before residual CV material,
 while retaining useful transferable evidence. For an AIDA letter, check the
 defined six paragraph roles, exact 26 body lines and five additional highlights
-between paragraphs 3 and 4 together. Other document structures keep their
-declared contracts. A short conventional
+between paragraphs 3 and 4 together. For German opportunity letters also check
+the paragraph-6 close against its contract (three lines, core tasks named,
+final line opening with „Ich freue mich"; forbidden close phrases are language
+findings). Other document structures keep their declared contracts. Check
+punctuation on the rendered summary and letter text (space before a comma and
+„, und"/„, oder" in flat enumerations are defects; enumeration structure and
+keyword prioritisation are language findings). A short conventional
 close, ordinary “interest” or a supported skill label is not inherently a defect.
 
 ## Result interface

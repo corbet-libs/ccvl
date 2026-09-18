@@ -145,7 +145,11 @@ names, quotes, URLs and explicit user choices.
 Harvard requires `ccvl profile-status --verify-sources` and its five-line CV
 Summary. The summary never opens with a formula application phrase (no
 „Bewerbung als …" / „Applying as …" / „I am applying as …" plus title and
-place); see `.agent/docs/summary.md`. Its AIDA letter has `3 | 5 | 5 | 5 | 5 | 3` body lines and maps the six
+place); see `.agent/docs/summary.md`. For German opportunity letters the
+closing paragraph has exactly three lines naming the posting's core tasks
+first and opening its final line with „Ich freue mich"; forbidden close
+phrases fail validation (see [the AIDA contract](../../docs/cover-letter.md)).
+Its AIDA letter has `3 | 5 | 5 | 5 | 5 | 3` body lines and maps the six
 paragraphs to attention, interest, interest, desire, desire, action. Five
 one-line highlights connect the evidence and contribution between paragraphs
 3 and 4. Other document structures keep their own fields and geometry; a request

@@ -46,6 +46,34 @@ for the specific opportunity. Keywords may improve retrieval, but they never
 turn an unsupported capability into a fact. Use plain language that a
 recruiter can understand and a specialist can recognise.
 
+## Grades (Swiss scale)
+
+Swiss grades run 1–6 with 6.0 as the best note (5.5 very good, 5 good,
+4.5 satisfactory, 4 pass, below 4 fail) — the inverse of the German scale,
+where 1.0 is best. For records aimed at a Swiss audience the CH grade
+leads, in dot display with an explicit scale tag: the `6.0 (CH)` pattern
+(`<grade> (CH)`), optionally paired with the evidenced German equivalent
+where the record already carries it (`<CH> (CH) / <DE> (DE)` pattern).
+Never label a German-scale best grade as the best grade for a CH audience,
+and never present a top CH grade as a weak or adjacent result in
+`posting.md` notes. Scope is display only: convert and label evidenced
+grades, never invent new facts.
+
+## Punctuation and enumerations
+
+Summaries are grammatical sentences, never keyword lists. Use correct
+German enumeration commas — comma between coordinate items, no comma
+before “und”/“oder” in a flat enumeration, subordinate and relative
+clauses set off correctly — and embed posting keywords in the sentence
+flow with priority instead of appending them as a comma-separated
+stuffing list.
+
+Mechanical precision limits: opportunity validation rejects only what is
+unambiguous — a space before a comma. A comma before “und”/“oder” is
+correct at a clause boundary, so that distinction stays author and
+reviewer judgment, as do enumeration structure, clause commas, and
+keyword prioritisation. Review checks punctuation on the rendered text.
+
 Underfill and overflow past the closing-line maximum fail: add relevant,
 verified signal or tighten the wording, then run `bash ./ccvl measure` or
 `.\ccvl.cmd measure` again. Never pass measurement by adding filler.

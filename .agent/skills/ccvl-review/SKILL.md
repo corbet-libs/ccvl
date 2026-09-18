@@ -65,7 +65,16 @@ the intended reader's benefit. Flag formula summary openings („Bewerbung als �
 „Applying as …", „I am applying as …" plus job title and place) as a language
 finding against the summary contract: opportunity records fail the mechanical
 gate on them, and the opening wastes the first of five lines on facts the
-record already carries. Preserve qualifications needed for factual
+record already carries. Check summary and letter punctuation on the rendered
+text: a space before a comma and „, und"/„, oder" in flat enumerations are
+defects, while enumeration structure and keyword prioritisation are language
+findings against the summary contract (only the space fails mechanically;
+see `.agent/docs/summary.md`). Check Swiss-audience grade display (CH grade
+first, dot form with scale tag, Swiss 6.0 best). For German opportunity
+letters check the paragraph-6 close against its contract (three lines, core
+tasks named, final line opening with „Ich freue mich") and flag forbidden
+close phrases as language findings; opportunity records fail the mechanical
+gate on the opener and the phrases. Preserve qualifications needed for factual
 meaning; allow unnecessary hedges to be removed. Help strengthen weak writing
 while preserving legitimate persuasion. Supported short skill labels and a
 conventional close can be valid.

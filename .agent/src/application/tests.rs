@@ -166,6 +166,89 @@ fn document_prose_rejects_punctuation_tics() {
 }
 
 #[test]
+fn document_prose_rejects_space_before_comma() {
+    assert!(reject_punctuation_spacing("Worte, sauber getrennt.", "here").is_ok());
+    assert!(reject_punctuation_spacing("Aufzählung ohne Fehler", "here").is_ok());
+    for text in ["Worte , sauber", "Worte  , sauber", "Worte\u{a0}, sauber"] {
+        let error = reject_punctuation_spacing(text, "here")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("must not contain a space before a comma"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+}
+
+#[test]
+fn closing_line_requires_fixed_opener() {
+    // The fixed opener is a prefix contract, never a full verbatim
+    // sentence: any contribution wording may follow it.
+    for line in [
+        "Ich freue mich auf ein persönliches Gespräch.",
+        "\"Ich freue mich, meine Erfahrung einzubringen.\"",
+    ] {
+        assert!(
+            reject_closing_opener(
+                &[json!("erste Zeile"), json!("zweite Zeile"), json!(line)],
+                "here"
+            )
+            .is_ok(),
+            "unexpected rejection: {line}"
+        );
+    }
+    for line in [
+        "Vielen Dank für Ihr Interesse.",
+        "ich freue mich auf ein Gespräch.",
+        "Gerne freue ich mich auf ein Gespräch.",
+        "",
+    ] {
+        let error = reject_closing_opener(
+            &[json!("erste Zeile"), json!("zweite Zeile"), json!(line)],
+            "here",
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            error.contains("must open its final line"),
+            "unexpected pass: {line} ({error})"
+        );
+    }
+    // Non-text or missing closing lines belong to the shape gates, not
+    // this wording gate.
+    assert!(reject_closing_opener(&[], "here").is_ok());
+    assert!(reject_closing_opener(&[json!(3)], "here").is_ok());
+}
+
+#[test]
+fn closing_rejects_forbidden_phrases() {
+    for text in [
+        "Ich passe fit im Team gut.",
+        "FIT IM TEAM beizutragen.",
+        "„Fit im Team“ wäre schön.",
+        "Dank für Ihre Überlegungen im Voraus.",
+        "dank für ihre überlegungen.",
+    ] {
+        let error = reject_forbidden_close(text, "here")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("must not use the forbidden phrase"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+    for text in [
+        "Ich freue mich darauf, in Ihrem Team zum Erfolg beizutragen.",
+        "Die Zusammenarbeit im Team stärkt die Datenstrecke.",
+    ] {
+        assert!(
+            reject_forbidden_close(text, "here").is_ok(),
+            "unexpected rejection: {text}"
+        );
+    }
+}
+
+#[test]
 fn summary_rejects_formula_openings() {
     // Competence-first openings from real fixed records stay valid.
     for text in [
