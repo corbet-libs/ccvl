@@ -68,6 +68,9 @@ pub use cletter::{
     salutation_honorific, salutation_last_name, salutation_surname, salutation_titles,
 };
 
+mod date;
+pub use date::format_application_date;
+
 /// Non-mutating correspondence guidance for a selected explicit locale.
 /// Reviewers decide whether a match is prose or protected original content.
 pub fn locale_conventions(locale: &str) -> Result<Value> {
@@ -317,10 +320,12 @@ fn validate_record_scope(
         .get("generate_cl")
         .and_then(Value::as_bool)
         .context("options.generate_cl is not a boolean")?;
-    options
+    let application_date = options
         .get("application_date")
         .and_then(Value::as_str)
         .context("options.application_date is missing")?;
+    format_application_date(language, application_date)
+        .with_context(|| format!("{location}.options.application_date is invalid"))?;
 
     let job = object_at(application, "/job")?;
     // Location strings use the workspace-relative display form; normalize

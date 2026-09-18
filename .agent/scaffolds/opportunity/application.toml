@@ -11,6 +11,7 @@ revision = 0
 [options]
 language = ""
 generate_cl = true
+# Quoted YYYY-MM-DD or YYYY-MM; empty deliberately omits the date.
 application_date = ""
 
 [job]

@@ -40,6 +40,14 @@ contains:
   `.agent/docs/cover-letter.md` and exactly five one-line highlights.
 
 Other styles define their own `[cv]` / `[cl]` fields and layout contracts.
+Store `options.application_date` as a quoted calendar value: `"2026-10-07"`
+for a full date or `"2026-10"` for month-only precision. The letter formats it
+through cletter/cdate using its selected locale: `7. Oktober 2026` in German,
+`October 7, 2026` in English. `""` intentionally leaves the date blank.
+Invalid dates and localized free text are rejected. When updating an existing
+record, preserve its date and precision (for example, `"September 2026"`
+becomes `"2026-09"`); do not infer a day or substitute today's date.
+
 For Harvard, line lengths are authored as plain text; fill bounds come from `cvl/cv/harvard/contract.toml` and `cvl/cl/harvard/contract.toml`.
 Typst measures actual glyph width with the bundled font. The Summary must
 render to exactly five lines; thin Summary lines fail unless explicitly

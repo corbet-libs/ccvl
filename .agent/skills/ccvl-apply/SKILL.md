@@ -153,6 +153,10 @@ for AIDA requires this complete paragraph and line structure.
 If Harvard's station gate is underfilled or overcrowded, return to profile
 collection/allocation rather than accepting sparse or malformed sections.
 Set `options.generate_cl` explicitly and preserve a requested page variant.
+Set `options.application_date` to a quoted `YYYY-MM-DD` or `YYYY-MM` calendar
+value, preserving the intended precision; `""` explicitly leaves it undated.
+The renderer uses cletter/cdate and the selected locale for the displayed date.
+Never author an English or German date label in this field or infer a missing day.
 
 ## Check and review
 

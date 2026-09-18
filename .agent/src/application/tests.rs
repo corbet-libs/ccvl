@@ -18,7 +18,7 @@ fn application(paragraph_lengths: &[usize]) -> Value {
             "language": "de-ch",
             "pages": 4,
             "generate_cl": true,
-            "application_date": "September 2026",
+            "application_date": "2026-09",
         },
         "job": {
             "id": "fixture",
@@ -45,6 +45,16 @@ fn application(paragraph_lengths: &[usize]) -> Value {
             "highlights": lines(5),
         },
     })
+}
+
+#[test]
+fn application_date_rejects_preformatted_prose() {
+    let mut draft = application(&[3, 5, 5, 5, 5, 3]);
+    draft["options"]["application_date"] = json!("October 7, 2026");
+    let error = validate_record(&workspace(), &draft, "fixture", true).unwrap_err();
+    assert!(format!("{error:#}").contains("use quoted YYYY-MM-DD or YYYY-MM"));
+    draft["options"]["application_date"] = json!("2026-10-07");
+    validate_record(&workspace(), &draft, "fixture", true).unwrap();
 }
 
 #[test]

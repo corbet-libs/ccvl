@@ -1,5 +1,6 @@
 #import "/.agent/typst/paper.typ": paper-settings, resolve-paper
 #import "/.agent/typst/application.typ": load-application
+#import "/.agent/typst/application-date.typ": format-application-date
 // Shared Harvard cover letter; inputs belong to the calling leaf.
 #import "/cvl/shared/harvard/style.typ": document-style
 #import "/cvl/shared/harvard/application.typ": load-cover-letter-contract, validate-application
@@ -181,7 +182,7 @@
     #grid(
       columns: (1fr, auto),
       align: (left, right),
-      text(size: 12pt, weight: "bold", subject), text(size: 10.5pt, application.options.application_date),
+      text(size: 12pt, weight: "bold", subject), text(size: 10.5pt, format-application-date(doc-locale, application.options.application_date)),
     )
     #v(subject-after)
     #line(length: 100%, stroke: 0.5pt + black)
