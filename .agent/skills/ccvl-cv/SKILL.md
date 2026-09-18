@@ -62,7 +62,9 @@ application phrase (no „Bewerbung als …" / „Applying as …" / „I am app
 as …" plus job title and place); lead with target profile, differentiation,
 or the strongest evidence instead. For a Swiss audience the CH grade leads
 in dot display with a scale tag (the `6.0 (CH)` pattern; Swiss 6.0 is best,
-inverse of the German scale; numerics follow `cgrade`). Write grammatical
+inverse of the German scale; numerics follow `cgrade`). Opportunity
+validation additionally rejects German/US grouping (`1'000`, never
+`1.000`/`1,000`), comma CH grades and German-scale best labels. Write grammatical
 sentences with correct enumeration commas and embedded, prioritised keywords
 — never a stuffing list (see `.agent/docs/summary.md`).
 

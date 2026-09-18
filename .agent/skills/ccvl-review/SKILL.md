@@ -104,6 +104,9 @@ Swiss-audience grade display (CH grade first, dot form with scale tag, Swiss
 6.0 best). For German opportunity letters check the paragraph-6 close against
 its contract (three lines, core tasks named, final line opening with
 „Ich freue mich") and flag forbidden close phrases as language findings.
+Flag reader-task invitations (“Schicken Sie mir …”, “send me …”,
+“problem statement”) as language findings; opportunity records fail the
+mechanical gate on them in every language.
 For English opportunity letters check the same paragraph-6 structure (three
 lines, core tasks, contribution close in the house voice) without enforcing
 a fixed opener prefix.
