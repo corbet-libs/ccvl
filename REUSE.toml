@@ -115,10 +115,7 @@ path = [
 ]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"
-SPDX-License-Identifier = "Apache-2.0"
-
-[[annotations]]
-path = [".agent/typst/letter/vendor/cgreet/**"]
-precedence = "override"
-SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"
-SPDX-License-Identifier = "MIT OR Apache-2.0"
+SPDX-License-Identifier = "LGPL-3.0-only WITH LGPL-3.0-linking-exception"
+# Historical Apache-2.0/MIT license copies are retained alongside inside
+# vendor/*/LICENSES for previously released distributions; the vendored
+# sources themselves follow the current cletter 0.4.0 line above.

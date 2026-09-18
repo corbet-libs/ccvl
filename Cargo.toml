@@ -23,10 +23,10 @@ path = ".agent/src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
-ccvl-core = { path = ".agent/core", version = "=0.1.0", features = ["render"] }
-cletter = "=0.2.2"
+ccvl-core = { path = ".agent/core", version = "0.1", features = ["render"] }
+cletter = ">=0.2.2,<0.5"
 clap = { version = "4.5", features = ["derive"] }
-ctypst = { version = "=0.3.2", default-features = false, features = ["document-fonts", "format", "pdf", "raster"] }
+ctypst = { version = "0.3", default-features = false, features = ["document-fonts", "format", "pdf", "raster"] }
 lopdf = { version = "0.44", default-features = false }
 png = "0.18"
 regex = "1.12"

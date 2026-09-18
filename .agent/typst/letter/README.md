@@ -1,7 +1,7 @@
 # Correspondence sources
 
 This is the self-contained Typst facade from cletter, including its subordinate
-cgreet, cfarewell, cdate and cink sources. The Rust binary depends on cletter too.
+cnice (greet + farewell), cdate and cink sources. The Rust binary depends on cletter too.
 The correspondence libraries own greeting/title parsing, closings, dates,
 signature helpers, lowercase locale IDs and explicit orthography conventions.
 Harvard owns its subject wording, English greeting overrides and composition.
