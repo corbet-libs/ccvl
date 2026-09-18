@@ -323,19 +323,9 @@ dependencies = [
 
 [[package]]
 name = "cdate"
-version = "0.2.1"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fc19591f061d6a7923354c1dc2274dd85472df3ac66e5b2b30cacffe4411c63"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "cfarewell"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b073c75c0ea685498a87296b24af926e3726857d44225cd24ebaee90b62e735"
+checksum = "b08805061eaa94a19bd1caf0c7ef90f4d2f7772e45ba2d04b3b6e97ff971d3e5"
 dependencies = [
  "serde",
  "serde_json",
@@ -346,16 +336,6 @@ name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
-
-[[package]]
-name = "cgreet"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9a1c90650cdd90bdf80a2c17c769a6824a01041ad9b737bde060c23e9d130c0"
-dependencies = [
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "chacha20"
@@ -428,9 +408,9 @@ dependencies = [
 
 [[package]]
 name = "cink"
-version = "0.1.4"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d72b2a4210a6a598fcaa305a636c50c28ae660e8dec140823f8c888f8c18eb2a"
+checksum = "1b5bf3a828019f08c1ce43751a03652e48413b82fb10725b057a7b686d0dc2fa"
 dependencies = [
  "base64 0.22.1",
  "serde",
@@ -500,14 +480,23 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "cletter"
-version = "0.2.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1807ab4a89837ed033e5f50d0798616a37f73d10057b54be15e67d4e9094257"
+checksum = "a3ed5e2abb03843d2701a881025cf75726126e7cfecd16ed508dd023fe3e89e2"
 dependencies = [
  "cdate",
- "cfarewell",
- "cgreet",
  "cink",
+ "cnice",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cnice"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f38f47ecfe8ead2704ad3adedc14c8a963b39d81dd6d75353871112fccc1eec7"
+dependencies = [
  "serde",
  "serde_json",
 ]

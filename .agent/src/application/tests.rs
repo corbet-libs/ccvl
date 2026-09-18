@@ -347,7 +347,7 @@ fn missing_recipient_name_warns_without_failing_validation() {
     )
     .expect("empty showcase recipient must warn");
     assert!(warning.contains("job.cl_recipient.name is empty"));
-    assert!(warning.contains("generic salutation"));
+    assert!(warning.contains("formal salutation"));
     assert!(recipient_salutation_warning("fixture", "Dr. Jane Doe").is_none());
     assert!(recipient_salutation_warning("fixture", "   ").is_some());
 }

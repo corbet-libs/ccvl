@@ -402,8 +402,8 @@ fn recipient_counsel_uses_correspondence_locale_rules_without_duplicate_warnings
     let workspace = Workspace::at(directory.path()).unwrap();
     let spec = cover_letter_spec_with_application("record.toml");
     for (locale, name, expected) in [
-        ("DE-ch", "Alex Example", Some("Herr/Frau honorific")),
-        ("en-us", "Alex Example", None),
+        ("DE-ch", "Alex Example", Some("no parsable honorific")),
+        ("en-us", "Alex Example", Some("no parsable honorific")),
         // An unrelated three-letter language beginning with "de" is not German.
         ("den-ca", "Alex Example", None),
         ("de-ch", "Frau Dr. Müller", None),
@@ -435,7 +435,7 @@ fn recipient_counsel_uses_correspondence_locale_rules_without_duplicate_warnings
 #[test]
 fn empty_recipient_name_warns_but_stays_valid() {
     let workspace = workspace();
-    // Showcase records ship with an empty recipient: generic salutation
+    // Showcase records ship with an empty recipient: formal salutation
     // stays valid, but measurement must surface a visible advisory.
     for locale in [
         "cvl/cl/harvard/left-rule/de/ch/content.toml",
@@ -445,14 +445,14 @@ fn empty_recipient_name_warns_but_stays_valid() {
         let warnings = recipient_warnings(&workspace, &spec).unwrap();
         assert_eq!(warnings.len(), 1, "locale: {locale}");
         assert!(warnings[0].contains("job.cl_recipient.name is empty"));
-        assert!(warnings[0].contains("generic salutation"));
+        assert!(warnings[0].contains("formal salutation"));
         let metrics = metric_set(&[3, 5, 5, 5, 5, 3]);
         validate_metric_set(&workspace, &spec, &metrics).unwrap();
         let warnings = preference_warnings(&workspace, &spec, &metrics).unwrap();
         assert!(
             warnings
                 .iter()
-                .any(|warning| warning.contains("generic salutation")),
+                .any(|warning| warning.contains("formal salutation")),
             "locale: {locale}"
         );
     }

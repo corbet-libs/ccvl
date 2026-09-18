@@ -64,8 +64,8 @@ const PROFILE_TOP: &[&str] = &[
 /// Correspondence rules live in cletter and its subordinate libraries.
 /// The renderer uses the same upstream facade's pinned Typst sources.
 pub use cletter::{
-    Region, de_honorific_warning, de_salutation, recipient_salutation_warning,
-    salutation_honorific, salutation_last_name, salutation_surname, salutation_titles,
+    honorific_warning, recipient_salutation_warning, salutation, salutation_honorific,
+    salutation_last_name, salutation_surname, salutation_supported, salutation_titles,
 };
 
 mod date;
