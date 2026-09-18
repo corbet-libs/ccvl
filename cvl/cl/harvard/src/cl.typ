@@ -6,9 +6,7 @@
 #import "/cvl/shared/harvard/application.typ": load-cover-letter-contract, validate-application
 #import "/.agent/typst/line-contract.typ": line-contract-mode, measured-content-line, measured-paragraph
 #import "/.agent/typst/profile.typ": load-profile
-#import "/.agent/typst/letter/letter.typ": (
-  closing as farewell-closing, salutation, signature-image,
-)
+#import "/.agent/typst/letter/letter.typ": closing as farewell-closing, salutation, signature-image
 
 #let cover-letter-contract = load-cover-letter-contract()
 
@@ -174,7 +172,8 @@
     #grid(
       columns: (1fr, auto),
       align: (left, right),
-      text(size: 12pt, weight: "bold", subject), text(size: 10.5pt, format-application-date(doc-locale, application.options.application_date)),
+      text(size: 12pt, weight: "bold", subject),
+      text(size: 10.5pt, format-application-date(doc-locale, application.options.application_date)),
     )
     #v(subject-after)
     #line(length: 100%, stroke: 0.5pt + black)
