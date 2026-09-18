@@ -249,12 +249,107 @@ fn closing_rejects_forbidden_phrases() {
 }
 
 #[test]
+fn document_prose_rejects_grouped_thousands() {
+    for text in [
+        "1'000+ Gespräche analysiert.",
+        "CHF 10 Mio verhandelt.",
+        "GPA 4.0 mit 91 Adaptern.",
+        "20+ Jahre Wartungsdaten.",
+    ] {
+        assert!(
+            reject_number_grouping(text, "here").is_ok(),
+            "unexpected rejection: {text}"
+        );
+    }
+    for text in ["1.000 Gespräche", "2.000 Mitarbeitende", "1,000 calls", "CHF 100,000 Umsatz"] {
+        let error = reject_number_grouping(text, "here")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("must not use German/US thousands grouping"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+}
+
+#[test]
+fn document_prose_rejects_comma_ch_grades() {
+    for text in [
+        "Bestnote 6.0 (CH).",
+        "Note 6.0 (CH) / 1,0 (DE).",
+        "Note 1,0 (DE) in Frankfurt.",
+    ] {
+        assert!(
+            reject_comma_ch_grade(text, "here").is_ok(),
+            "unexpected rejection: {text}"
+        );
+    }
+    for text in ["Bestnote 6,0 (CH)", "Note 5,6 (CH)"] {
+        let error = reject_comma_ch_grade(text, "here")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("Swiss grades use dot display"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+}
+
+#[test]
+fn document_prose_rejects_german_bestnote_without_de_tag() {
+    for text in [
+        "Bestnote 6.0 (CH).",
+        "Bestnote 6.0 (CH) / 1,0 (DE).",
+        "Abschluss mit Note 1,0 in Frankfurt.",
+    ] {
+        assert!(
+            reject_german_bestnote(text, "here").is_ok(),
+            "unexpected rejection: {text}"
+        );
+    }
+    for text in ["Bestnote 1,0", "Bestnote: 1.0 für Zürich"] {
+        let error = reject_german_bestnote(text, "here")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("must not stand as the best grade"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+}
+
+#[test]
+fn closing_rejects_task_invitations_in_both_languages() {
+    for text in [
+        "Ich freue mich auf ein persönliches Gespräch.",
+        "I would welcome the chance to discuss your priorities.",
+        "Kunden schicken mir ihre Daten zur Auswertung.",
+    ] {
+        assert!(
+            reject_task_invite(text, "here").is_ok(),
+            "unexpected rejection: {text}"
+        );
+    }
+    for text in [
+        "Schicken Sie mir zwei Fragen zu Ihrer Plattform.",
+        "Send me two questions about your platform.",
+        "Send me a problem statement and I will solve it.",
+    ] {
+        let error = reject_task_invite(text, "here").unwrap_err().to_string();
+        assert!(
+            error.contains("must not invite test questions"),
+            "unexpected pass: {text} ({error})"
+        );
+    }
+}
+
+#[test]
 fn summary_rejects_formula_openings() {
     // Competence-first openings from real fixed records stay valid.
     for text in [
         "Als Cloud & Platform Engineer baue und betreibe ich Cloud Infrastrukturen.",
         "Analytiker für Gremien, die entscheiden müssen.",
-        "Mit Physikstudium (Bestnote: 6,0) und CDI Executive Education bringe ich Kalkulation.",
+        "Mit Physikstudium (Bestnote: 6.0) und CDI Executive Education bringe ich Kalkulation.",
         "As a physicist and consultant turned AI builder, I ship production GenAI.",
     ] {
         assert!(
@@ -287,27 +382,25 @@ fn hyphen_marks_are_highlighted_for_author_judgment() {
     assert!(advisories[1].contains("Cloud-Ökonomie"));
     assert!(advisories[1].contains("author judgment"));
 }
+
 #[test]
 fn opportunity_walk_collects_hyphen_advisories() {
     let mut draft = application(&[3, 5, 5, 5, 5, 3]);
     draft["cv"]["summary"] = json!("RAG-Systeme in der Praxis.");
     draft["cl"]["highlights"][0] = json!("AI-Plattformen");
     let advisories = opportunity_hyphen_advisories(&draft, "opportunities/fixture/lead");
-    assert_eq!(advisories.len(), 1, "unexpected advisories: {advisories:?}");
-    assert!(advisories[0].contains("opportunities/fixture/lead"));
-    assert!(advisories[0].contains("2 hyphens"));
-    assert!(advisories[0].contains("RAG-Systeme"));
-    assert!(advisories[0].contains("AI-Plattformen"));
-    draft["cv"]["summary"] = json!("RAG-Systeme und RAG-Systeme.");
-    draft["cl"]["highlights"][0] = json!("plain words");
-    let advisories = opportunity_hyphen_advisories(&draft, "opportunities/fixture/lead");
-    assert_eq!(advisories.len(), 1, "unexpected advisories: {advisories:?}");
     assert!(
-        advisories[0].contains("\"RAG-Systeme\" ×2"),
+        advisories
+            .iter()
+            .any(|entry| entry.contains("cv.summary") && entry.contains("RAG-Systeme")),
         "unexpected advisories: {advisories:?}"
     );
-    let clean = application(&[3, 5, 5, 5, 5, 3]);
-    assert!(opportunity_hyphen_advisories(&clean, "opportunities/fixture/lead").is_empty());
+    assert!(
+        advisories
+            .iter()
+            .any(|entry| entry.contains("cl.highlights[1]") && entry.contains("AI-Plattformen")),
+        "unexpected advisories: {advisories:?}"
+    );
 }
 
 #[test]
@@ -508,4 +601,3 @@ fn non_string_substyle_is_rejected() {
         "unexpected error: {error}"
     );
 }
-

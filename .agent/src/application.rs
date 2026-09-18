@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::OnceLock;
 
 use anyhow::{Context, Result, bail, ensure};
 use regex::Regex;
@@ -409,6 +410,11 @@ fn validate_record_scope(
                 reject_punctuation_tics(summary, &format!("{location}.cv.summary"))?;
                 reject_punctuation_spacing(summary, &format!("{location}.cv.summary"))?;
                 reject_formula_opening(summary, &format!("{location}.cv.summary"))?;
+                reject_number_grouping(summary, &format!("{location}.cv.summary"))?;
+                reject_comma_ch_grade(summary, &format!("{location}.cv.summary"))?;
+                if language.starts_with("de") {
+                    reject_german_bestnote(summary, &format!("{location}.cv.summary"))?;
+                }
             }
             if let Some(allow_thin) = cv.get("allow_thin") {
                 ensure!(
@@ -524,6 +530,32 @@ fn validate_record_scope(
                         line_index + 1
                     ),
                 )?;
+                reject_number_grouping(
+                    text,
+                    &format!(
+                        "{location}.cl.paragraphs[{}].lines[{}]",
+                        index + 1,
+                        line_index + 1
+                    ),
+                )?;
+                reject_comma_ch_grade(
+                    text,
+                    &format!(
+                        "{location}.cl.paragraphs[{}].lines[{}]",
+                        index + 1,
+                        line_index + 1
+                    ),
+                )?;
+                if language.starts_with("de") {
+                    reject_german_bestnote(
+                        text,
+                        &format!(
+                            "{location}.cl.paragraphs[{}].lines[{}]",
+                            index + 1,
+                            line_index + 1
+                        ),
+                    )?;
+                }
             }
         }
     }
@@ -573,6 +605,10 @@ fn validate_record_scope(
                     text,
                     &format!("{location}.cl.paragraphs[6].lines[{}]", line_index + 1),
                 )?;
+                reject_task_invite(
+                    text,
+                    &format!("{location}.cl.paragraphs[6].lines[{}]", line_index + 1),
+                )?;
             }
         }
         if language.starts_with("de") {
@@ -605,6 +641,11 @@ fn validate_record_scope(
         if opportunity {
             reject_punctuation_tics(text, &format!("{location}.cl.highlights[{}]", index + 1))?;
             reject_punctuation_spacing(text, &format!("{location}.cl.highlights[{}]", index + 1))?;
+            reject_number_grouping(text, &format!("{location}.cl.highlights[{}]", index + 1))?;
+            reject_comma_ch_grade(text, &format!("{location}.cl.highlights[{}]", index + 1))?;
+            if language.starts_with("de") {
+                reject_german_bestnote(text, &format!("{location}.cl.highlights[{}]", index + 1))?;
+            }
         }
     }
     Ok(())
@@ -794,15 +835,84 @@ fn reject_forbidden_close(text: &str, location: &str) -> Result<()> {
     Ok(())
 }
 
-/// Push the context word of every dash-like mark in `text` onto `words`,
-/// preserving document order for the aggregated advisory. Trailing
-/// sentence punctuation is trimmed so `RAG-Systeme.` groups with
-/// `RAG-Systeme`.
-fn collect_mark_words<'a>(words: &mut Vec<&'a str>, text: &'a str) {
-    for mark in dash_marks(text) {
-        let word = surrounding_word(text, mark.offset);
-        words.push(word.trim_matches(|ch| ".,;:!?()\"'„“”".contains(ch)));
+/// Hard fail: German/US thousands grouping never appears in opportunity
+/// prose. Swiss grouping uses the apostrophe (`1'000`, see cnumber); a
+/// digit-dot/digit-comma-three-digits run is either such grouping or a
+/// three-decimal fraction, and application prose contains neither
+/// (grades use one decimal, amounts read `CHF 10 Mio` or `91 Adapter`).
+fn grouping_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| Regex::new(r"[0-9][.,][0-9]{3}").expect("fixed grouping pattern"))
+}
+
+fn reject_number_grouping(text: &str, location: &str) -> Result<()> {
+    if let Some(hit) = grouping_pattern().find(text) {
+        bail!(
+            "{location}: document prose must not use German/US thousands grouping (found {:?}); write Swiss grouping per cnumber (`1'000`), see .agent/docs/editorial.md",
+            hit.as_str()
+        );
     }
+    Ok(())
+}
+
+/// Hard fail: comma-decimal Swiss grades. CH display is always dot form
+/// with a scale tag (`6.0 (CH)`, see cgrade); a comma decimal directly
+/// before `(CH)` is never correct.
+fn ch_grade_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| Regex::new(r"[0-9],[0-9]+\s*\(CH\)").expect("fixed CH grade pattern"))
+}
+
+fn reject_comma_ch_grade(text: &str, location: &str) -> Result<()> {
+    if let Some(hit) = ch_grade_pattern().find(text) {
+        bail!(
+            "{location}: Swiss grades use dot display (found {:?}); write the `6.0 (CH)` pattern per cgrade, see .agent/docs/summary.md",
+            hit.as_str()
+        );
+    }
+    Ok(())
+}
+
+/// Hard fail (German opportunity records): a German-scale best grade must
+/// never stand as the best grade for a Swiss audience. `Bestnote 1,0`
+/// without an explicit `(DE)` tag misleads CH readers; lead with the CH
+/// grade instead (`Bestnote 6.0 (CH) / 1,0 (DE)`, see summary.md).
+fn reject_german_bestnote(text: &str, location: &str) -> Result<()> {
+    let lowered = text.to_lowercase();
+    for marker in ["bestnote 1,0", "bestnote 1.0", "bestnote: 1,0", "bestnote: 1.0"] {
+        if let Some(index) = lowered.find(marker) {
+            let rest = lowered[index + marker.len()..].trim_start();
+            if !rest.starts_with("(de)") {
+                bail!(
+                    "{location}: a German-scale best grade must not stand as the best grade for a Swiss audience (found {marker:?}); lead with the CH grade per cgrade, see .agent/docs/summary.md"
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Hard fail (closing paragraph, every language): never invite the reader
+/// to send test questions or a problem statement in exchange for a
+/// solution (see cover-letter.md). Matched case-insensitively on
+/// quote-normalized text; restricted to the close so evidence prose
+/// elsewhere (customers sending data) stays valid.
+fn reject_task_invite(text: &str, location: &str) -> Result<()> {
+    let normalized = normalize_close_text(text);
+    for phrase in [
+        "schicken sie mir",
+        "senden sie mir",
+        "send me",
+        "problem statement",
+        "testfrage",
+        "test question",
+    ] {
+        ensure!(
+            !normalized.contains(phrase),
+            "{location}: the closing paragraph must not invite test questions or a problem statement (found {phrase:?}); name the contribution per the paragraph-6 contract instead (see .agent/docs/cover-letter.md)"
+        );
+    }
+    Ok(())
 }
 
 /// Maximal whitespace-delimited token around a byte offset (which must be
@@ -839,26 +949,34 @@ pub fn hyphen_advisories(text: &str, location: &str) -> Vec<String> {
 }
 
 /// Collect hyphen advisories across the opportunity prose sites
-/// (cv.summary, cl paragraph lines, cl highlights) into a single warning
-/// line: token-cheap, with every flagged word listed once (repeats
-/// counted). Shape validation stays in [`validate_record`]; this only
-/// highlights marks for the authoring agent. Missing or non-text fields
-/// yield no advisories.
+/// (cv.summary, cl paragraph lines, cl highlights). Shape validation stays
+/// in [`validate_record`]; this only highlights marks for the authoring
+/// agent. Missing or non-text fields yield no advisories.
 #[must_use]
 pub fn opportunity_hyphen_advisories(application: &Value, location: &str) -> Vec<String> {
-    let mut words: Vec<&str> = Vec::new();
+    let mut out = Vec::new();
     if let Some(summary) = application.pointer("/cv/summary").and_then(Value::as_str) {
-        collect_mark_words(&mut words, summary);
+        out.extend(hyphen_advisories(
+            summary,
+            &format!("{location}.cv.summary"),
+        ));
     }
     if let Some(paragraphs) = application
         .pointer("/cl/paragraphs")
         .and_then(Value::as_array)
     {
-        for paragraph in paragraphs {
+        for (index, paragraph) in paragraphs.iter().enumerate() {
             if let Some(lines) = paragraph.as_array() {
-                for line in lines {
+                for (line_index, line) in lines.iter().enumerate() {
                     if let Some(text) = line.as_str() {
-                        collect_mark_words(&mut words, text);
+                        out.extend(hyphen_advisories(
+                            text,
+                            &format!(
+                                "{location}.cl.paragraphs[{}].lines[{}]",
+                                index + 1,
+                                line_index + 1
+                            ),
+                        ));
                     }
                 }
             }
@@ -868,40 +986,16 @@ pub fn opportunity_hyphen_advisories(application: &Value, location: &str) -> Vec
         .pointer("/cl/highlights")
         .and_then(Value::as_array)
     {
-        for highlight in highlights {
+        for (index, highlight) in highlights.iter().enumerate() {
             if let Some(text) = highlight.as_str() {
-                collect_mark_words(&mut words, text);
+                out.extend(hyphen_advisories(
+                    text,
+                    &format!("{location}.cl.highlights[{}]", index + 1),
+                ));
             }
         }
     }
-    if words.is_empty() {
-        return Vec::new();
-    }
-    let mut seen: Vec<(&str, usize)> = Vec::new();
-    for word in words {
-        if let Some(entry) = seen.iter_mut().find(|(known, _)| *known == word) {
-            entry.1 += 1;
-        } else {
-            seen.push((word, 1));
-        }
-    }
-    let listed = seen
-        .iter()
-        .map(|(word, count)| {
-            if *count > 1 {
-                format!("{word:?} ×{count}")
-            } else {
-                format!("{word:?}")
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
-    let total: usize = seen.iter().map(|(_, count)| count).sum();
-    vec![format!(
-        "{location}: {total} hyphen{} need author judgment ({}); keep necessary German compounds, rephrase the rest (see editorial hyphen criteria)",
-        if total == 1 { "" } else { "s" },
-        listed
-    )]
+    out
 }
 
 fn validate_content_fields(

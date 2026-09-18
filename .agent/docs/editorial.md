@@ -148,8 +148,12 @@ brevity. Do not claim these editorial heuristics detect AI authorship.
 Author locale identifiers in lowercase, including language and country.
 Reusable locale resolution/canonicalization, locale tables, spelling, greetings,
 closings, dates and correspondence behavior belong to cletter and its family.
-ccvl passes selections and explicit user/style overrides to their public
-interfaces and consumes the results. Add missing reusable functionality upstream;
+Numeric formatting belongs to `cnumber` and grade conversion to `cgrade`;
+ccvl defines only display, never its own tables: in `de-ch` prose group
+thousands with an apostrophe (`1'000`, never `1.000`) and write CHF amounts
+in code form (`CHF 100'000`). Grades follow the Swiss-scale display rule in
+`.agent/docs/summary.md`. ccvl passes selections and explicit user/style
+overrides to their public interfaces and consumes the results. Add missing reusable functionality upstream;
 do not maintain competing rules, tables or algorithms in ccvl code or skills.
 Apply library orthographic transformations only to appropriate generated prose.
 Preserve proper names, exact quotations, URLs and original evidence. When a

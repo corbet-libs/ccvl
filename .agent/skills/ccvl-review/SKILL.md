@@ -91,13 +91,29 @@ argument role as well as its measured structure. A three-paragraph draft does
 not satisfy AIDA. Other document structures retain their own contracts and
 paper choices; do not silently substitute between them and AIDA.
 Flag leaked drafting labels and paragraph self-description, not ordinary words
-such as “interest” or “action.”
+such as “interest” or “action.” Flag formula summary openings („Bewerbung als
+…", „Applying as …", „I am applying as …" plus job title and place) as a
+language finding against the summary contract. Check summary and letter
+punctuation on the rendered text: a space before a comma and „, und"/„, oder"
+in flat enumerations are defects, while enumeration structure and keyword
+prioritisation are language findings (see `.agent/docs/summary.md`). German/US
+thousands grouping, comma-decimal CH grades and German-scale best labels
+without a `(DE)` tag are defects; opportunity records fail the mechanical
+gate on them. Check
+Swiss-audience grade display (CH grade first, dot form with scale tag, Swiss
+6.0 best). For German opportunity letters check the paragraph-6 close against
+its contract (three lines, core tasks named, final line opening with
+„Ich freue mich") and flag forbidden close phrases as language findings.
+For English opportunity letters check the same paragraph-6 structure (three
+lines, core tasks, contribution close in the house voice) without enforcing
+a fixed opener prefix.
 
 Read every actual page for clipping, missing glyphs, awkward breaks, hierarchy,
 spacing and readability. Check the requested locale, page count, paper,
 substyle and the mechanical evidence. Shared locale resolution, orthography and
-correspondence come from cletter/family public behavior, without duplicate ccvl
-rules. Preserve names, exact quotations, source text, URLs and user
+correspondence come from cletter/family public behavior, number formatting
+from `cnumber` and grade conversion from `cgrade`, without duplicate ccvl
+rules (`de-ch`: apostrophe thousands `1'000`, CHF code form, `6.0 (CH)` grades). Preserve names, exact quotations, source text, URLs and user
 choices; do not globally normalise protected text. Authored locale IDs are
 lowercase. Missing images or lack of image access mean incomplete visual
 coverage, even if extraction and compilation succeeded.

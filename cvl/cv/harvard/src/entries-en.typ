@@ -106,7 +106,7 @@
       #v(cv-subheading-after)
       #cv-b[Elected tutor for three consecutive years & private tutor: applied statistics (SPSS, Python, R) and maths]
       #v(cv-bullet-after)
-      #cv-b[Market research: interviewed 50+ CEOs and analysed 1,000+ calls; produced analyses and dashboards]
+      #cv-b[Market research: interviewed 50+ CEOs and analysed 1'000+ calls; produced analyses and dashboards]
       #v(cv-bullet-after)
       #cv-b[Built and ran my own side venture for 16 years, spanning technical services, repairs and eCommerce]
     ]

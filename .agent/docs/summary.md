@@ -50,14 +50,16 @@ recruiter can understand and a specialist can recognise.
 
 Swiss grades run 1–6 with 6.0 as the best note (5.5 very good, 5 good,
 4.5 satisfactory, 4 pass, below 4 fail) — the inverse of the German scale,
-where 1.0 is best. For records aimed at a Swiss audience the CH grade
-leads, in dot display with an explicit scale tag: the `6.0 (CH)` pattern
-(`<grade> (CH)`), optionally paired with the evidenced German equivalent
-where the record already carries it (`<CH> (CH) / <DE> (DE)` pattern).
-Never label a German-scale best grade as the best grade for a CH audience,
-and never present a top CH grade as a weak or adjacent result in
-`posting.md` notes. Scope is display only: convert and label evidenced
-grades, never invent new facts.
+where 1.0 is best. Numeric equivalents follow `cgrade` (modified Bavarian
+formula); `ccvl` defines only display, never its own conversion table.
+For records aimed at a Swiss audience the CH grade leads, in dot display
+with an explicit scale tag: the `6.0 (CH)` pattern (`<grade> (CH)`),
+optionally paired with the evidenced German equivalent where the record
+already carries it (`<CH> (CH) / <DE> (DE)` pattern). Never label a
+German-scale best grade as the best grade for a CH audience, and never
+present a top CH grade as a weak or adjacent result in `posting.md`
+notes. Scope is display only: convert and label evidenced grades, never
+invent new facts.
 
 ## Punctuation and enumerations
 
@@ -69,7 +71,10 @@ flow with priority instead of appending them as a comma-separated
 stuffing list.
 
 Mechanical precision limits: opportunity validation rejects only what is
-unambiguous — a space before a comma. A comma before “und”/“oder” is
+unambiguous — a space before a comma, German/US thousands grouping
+(`1.000`, `1,000`; write `1'000`), comma-decimal CH grades (`6,0 (CH)`;
+write `6.0 (CH)`), and a German-scale best label without a `(DE)` tag.
+A comma before “und”/“oder” is
 correct at a clause boundary, so that distinction stays author and
 reviewer judgment, as do enumeration structure, clause commas, and
 keyword prioritisation. Review checks punctuation on the rendered text.

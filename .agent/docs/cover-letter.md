@@ -76,7 +76,19 @@ Forbidden in the close: team-fit formulas of the “fit im Team” pattern
 and thanks-for-consideration formulas of the “Dank für Ihre
 Überlegungen” pattern (matched case-insensitively; opportunity records
 fail validation). Never invite the reader to send test questions or a
-problem statement in exchange for a solution.
+problem statement in exchange for a solution — in German (“Schicken Sie
+mir …”) or in English (“send me … questions”, “problem statement”).
+Opportunity records fail validation on such invitations in every language.
+
+## English opportunity letters
+
+The same six-paragraph contract applies: paragraph 6 has exactly three
+lines naming the posting's core tasks first and closing on the
+contribution to the team, in the house voice (“I would welcome …”, as in
+the general showcase). The fixed-opener prefix is enforced for German
+records only; English closings stay reviewer judgment until the first
+targeted English letter pins the house opener with the user. The
+task-invitation ban and the line count bind English records mechanically.
 
 ## Shared line budgets
 
