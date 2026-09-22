@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.94"
 description = "Local-first, deterministic CV and cover-letter compiler"
 license = "FSL-1.1-ALv2"
-repository = "https://github.com/corbet-labs/ccvl"
+repository = "https://github.com/corbet-libs/ccvl"
 publish = false
 build = ".agent/build.rs"
 

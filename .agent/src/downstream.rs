@@ -205,7 +205,7 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
-    const TEST_UPSTREAM: &str = "https://github.com/corbet-labs/ccvl.git";
+    const TEST_UPSTREAM: &str = "https://github.com/corbet-libs/ccvl.git";
 
     fn git_at(root: &Path, args: &[&str]) -> String {
         let output = Command::new("git")
@@ -274,7 +274,7 @@ mod tests {
         );
         assert_eq!(
             git_at(root, &["remote", "get-url", "upstream"]),
-            "git@github.com:corbet-labs/ccvl.git"
+            "git@github.com:corbet-libs/ccvl.git"
         );
 
         fs::create_dir(root.join("interview")).unwrap();
@@ -286,7 +286,7 @@ mod tests {
                 "  \"schema_version\": 1,\n",
                 "  \"upstream\": {\n",
                 "    \"remote\": \"upstream\",\n",
-                "    \"url\": \"https://github.com/corbet-labs/ccvl.git\",\n",
+                "    \"url\": \"https://github.com/corbet-libs/ccvl.git\",\n",
                 "    \"branch\": \"main\"\n",
                 "  },\n",
                 "  \"allowed_paths\": [\"ccvl-downstream.json\", \"interview/\"]\n",

@@ -5,7 +5,7 @@ repo_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 action="${1:?Usage: release-ci.sh rust|lint|native|linux-deep|archive|check|publish}"
 if [[ -n ${CI_REPO:-} ]]; then
-  [[ "$CI_REPO" == corbet-labs/ccvl && ${CI_COMMIT_BRANCH:-} == main ]] || {
+  [[ "$CI_REPO" == corbet-libs/ccvl && ${CI_COMMIT_BRANCH:-} == main ]] || {
     echo 'Crow release stages require public ccvl main.' >&2; exit 2;
   }
   [[ -n ${CARGO_TARGET_DIR:-} && ${CCID_TARGET_LOCK_HELD:-} == "$CARGO_TARGET_DIR" ]] || {

@@ -38,7 +38,7 @@ steps:
         test "$CI" = crow
         test "$CI_REPO_PRIVATE" = true
         test "$CI_PIPELINE_EVENT" = manual
-        test "$CI_REPO" != corbet-labs/ccvl
+        test "$CI_REPO" != corbet-libs/ccvl
         test -z "$${GITHUB_ACTIONS:-}"
         printf '%s  %s\n' "$CI_TOOL_SHA256" "$CI_TOOL_ARCHIVE" | sha256sum --check --strict
         test "$(git get-tar-commit-id < "$CI_TOOL_ARCHIVE")" = "$CCID_REVISION"

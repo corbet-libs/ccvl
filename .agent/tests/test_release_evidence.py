@@ -50,7 +50,7 @@ class ReleaseGuards(unittest.TestCase):
                 entry.size, entry.mode = len(payload), 0o644
                 archive.addfile(entry, io.BytesIO(payload))
         self.env = {
-            'CI_REPO': 'corbet-labs/ccvl', 'CI_COMMIT_SHA': self.commit,
+            'CI_REPO': 'corbet-libs/ccvl', 'CI_COMMIT_SHA': self.commit,
             'CI_PIPELINE_NUMBER': '123', 'SOURCE_ARCHIVE': str(self.archive),
             'SOURCE_SHA256': RELEASE.file_hash(self.archive),
         }
@@ -369,7 +369,7 @@ class ArchiveExecutorGuards(unittest.TestCase):
             'test "$0" != "$ORIGINAL_EXECUTOR"\n'
             'printf executor > "$EXECUTOR_MARKER"\n'
             'exec bash "$1" "$2"\n')
-        self.env = {**os.environ, 'CI_REPO': 'corbet-labs/ccvl',
+        self.env = {**os.environ, 'CI_REPO': 'corbet-libs/ccvl',
                     'SOURCE_ARCHIVE': str(self.archive), 'SOURCE_SHA256': RELEASE.file_hash(self.archive),
                     'CCVL_RELEASE_DIR': str(self.dist), 'EXPECTED_DIST': str(self.dist),
                     'GATE_MARKER': str(self.marker), 'EXECUTOR_MARKER': str(self.root / 'executor-called'),

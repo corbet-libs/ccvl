@@ -7,7 +7,7 @@ Linux ARM64, macOS and Windows have no verified prebuilt release.
 
 ## With a coding agent
 
-[Download and extract the Linux x86_64 bundle](https://github.com/corbet-labs/ccvl/releases/latest), open
+[Download and extract the Linux x86_64 bundle](https://github.com/corbet-libs/ccvl/releases/latest), open
 the extracted folder in Codex or another filesystem-capable coding agent, and
 use this prompt:
 

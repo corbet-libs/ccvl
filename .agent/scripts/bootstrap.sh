@@ -165,7 +165,7 @@ if [[ -x "$binary" && -n "$fingerprint" ]] \
   && [[ "$("$binary" runtime-id 2>/dev/null)" == "$fingerprint" ]]; then
   binary_state=ready
 fi
-release_base="${CCVL_RELEASE_BASE:-https://github.com/corbet-labs/ccvl/releases/download/runtime-$fingerprint}"
+release_base="${CCVL_RELEASE_BASE:-https://github.com/corbet-libs/ccvl/releases/download/runtime-$fingerprint}"
 if [[ "$binary_state" != ready && "$from_source" != 1 ]] \
   && ! grep -Fxq -- "${release_asset#ccvl-}" "$repo_root/.agent/release-platforms.txt"; then
   printf 'No prebuilt runtime is released for %s in this workspace. See .agent/docs/tooling.md for developer source builds.\n' "$platform" >&2
@@ -397,7 +397,7 @@ fetch_prebuilt() {
 }
 
 fingerprint="$(source_fingerprint)"
-release_base="${CCVL_RELEASE_BASE:-https://github.com/corbet-labs/ccvl/releases/download/runtime-$fingerprint}"
+release_base="${CCVL_RELEASE_BASE:-https://github.com/corbet-libs/ccvl/releases/download/runtime-$fingerprint}"
 fetched_binary=0
 if [[ "$binary_state" == install && -n "$release_asset" && "$from_source" != 1 ]] \
   && { probe curl >/dev/null || probe wget >/dev/null; } \

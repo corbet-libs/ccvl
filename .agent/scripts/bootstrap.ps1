@@ -150,7 +150,7 @@ $Asset = $Assets[0]
 
 $Fingerprint = Get-SourceFingerprint
 $ReleaseBase = if (Test-Path Env:CCVL_RELEASE_BASE) { $env:CCVL_RELEASE_BASE } else {
-    "https://github.com/corbet-labs/ccvl/releases/download/runtime-$Fingerprint"
+    "https://github.com/corbet-libs/ccvl/releases/download/runtime-$Fingerprint"
 }
 $BinaryState = "install"
 if (Test-Path -LiteralPath $Binary -PathType Leaf) {

@@ -17,7 +17,7 @@ steps:
     commands:
       - |
         set -eu
-        test "$CI_REPO" = corbet-labs/ccvl
+        test "$CI_REPO" = corbet-libs/ccvl
         test -n "$CCVL_RELEASE_DIR"
         printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ARCHIVE" | sha256sum --check --strict
         scratch="$(mktemp -d)"

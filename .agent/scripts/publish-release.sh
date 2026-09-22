@@ -8,7 +8,7 @@ dist="$(cd "${1:?Missing verified release directory}" && pwd)"
 identity="$(python3 .agent/scripts/release-evidence.py check --output "$dist")"
 read -r sha runtime_id <<<"$identity"
 repository="${CI_REPO:-${GITHUB_REPOSITORY:-}}"
-[[ "$repository" == corbet-labs/ccvl && "$sha" =~ ^[0-9a-f]{40}$ && "$runtime_id" =~ ^[0-9a-f]{64}$ ]] || exit 2
+[[ "$repository" == corbet-libs/ccvl && "$sha" =~ ^[0-9a-f]{40}$ && "$runtime_id" =~ ^[0-9a-f]{64}$ ]] || exit 2
 [[ -n ${GH_TOKEN:-${GITHUB_TOKEN:-}} ]] || { echo 'A publication credential is required.' >&2; exit 2; }
 platform_policy="$(python3 .agent/scripts/release-evidence.py platforms)"
 mapfile -t platforms <<<"$platform_policy"

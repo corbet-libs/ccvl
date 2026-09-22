@@ -49,7 +49,7 @@ EOF
 chmod +x "$scratch/bin/rustc" "$scratch/bin/cargo" "$scratch/fake-ccvl"
 export FAKE_BINARY="$scratch/fake-ccvl" FAKE_CARGO_LOG="$scratch/cargo.log" FAKE_ARGUMENTS="$scratch/arguments"
 export CARGO_TARGET_DIR="$scratch/target" CCID_TARGET_LOCK_HELD="$scratch/target"
-export CI_REPO=corbet-labs/ccvl CI_COMMIT_BRANCH=main CI_REPO_DEFAULT_BRANCH=main
+export CI_REPO=corbet-libs/ccvl CI_COMMIT_BRANCH=main CI_REPO_DEFAULT_BRANCH=main
 export CI_COMMIT_SHA=0123456789012345678901234567890123456789
 export SOURCE_SHA256=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 unset RUST_TOOLCHAIN RUSTUP_TOOLCHAIN GROQ_API_KEY

@@ -50,7 +50,7 @@ def extract(snapshot, destination, commit):
 
 def check():
     require(os.environ.get('CI') == 'crow'
-            and os.environ.get('CI_REPO') == 'corbet-labs/ccvl'
+            and os.environ.get('CI_REPO') == 'corbet-libs/ccvl'
             and os.environ.get('CI_PIPELINE_EVENT') == 'manual',
             'Candidate date checks require the manual ccvl Crow route.')
     harness_commit = os.environ.get('CI_COMMIT_SHA', '')
@@ -72,7 +72,7 @@ def check():
     parent.mkdir(parents=True, exist_ok=True)
     output = Path(tempfile.mkdtemp(prefix='run-', dir=parent))
     receipt = {
-        'schema': 1, 'provider': 'crow', 'repository': 'corbet-labs/ccvl',
+        'schema': 1, 'provider': 'crow', 'repository': 'corbet-libs/ccvl',
         'check': 'candidate-date', 'harness_commit': harness_commit,
         'harness_source_sha256': os.environ.get('SOURCE_SHA256'),
         'candidate_commit': commit, 'candidate_source_sha256': expected,

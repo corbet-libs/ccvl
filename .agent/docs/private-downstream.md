@@ -4,7 +4,7 @@ GitHub does not allow a private repository inside the fork network of a public
 repository. Use a standalone private repository with shared Git history.
 
 ```sh
-git clone https://github.com/corbet-labs/ccvl.git applications
+git clone https://github.com/corbet-libs/ccvl.git applications
 cd applications
 git remote rename origin upstream
 gh repo create OWNER/applications --private
