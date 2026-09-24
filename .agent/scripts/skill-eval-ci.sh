@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
 fail() { printf '%s\n' "$1" >&2; exit 2; }
-[[ ${CI_REPO:-} == corbet-labs/ccvl && ${CI_COMMIT_BRANCH:-} == main &&
+[[ ${CI_REPO:-} == corbet-libs/ccvl && ${CI_COMMIT_BRANCH:-} == main &&
    ${CI_REPO_DEFAULT_BRANCH:-} == main ]] || fail 'Skill evaluation requires public ccvl main.'
 [[ ${CI_COMMIT_SHA:-} =~ ^[0-9a-f]{40}$ ]] || fail 'Missing verified source commit.'
 [[ ${SOURCE_SHA256:-} =~ ^[0-9a-f]{64}$ ]] || fail 'Missing verified source archive digest.'

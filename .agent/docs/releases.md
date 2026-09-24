@@ -1,7 +1,7 @@
 # Compiled releases
 
 Normal users download the Linux x86_64 workspace bundle from the
-[latest release](https://github.com/corbet-labs/ccvl/releases/latest). Each
+[latest release](https://github.com/corbet-libs/ccvl/releases/latest). Each
 archive contains the exact checked-in workspace plus its optimized native
 binary in `.agent/cache/ccvl/bin/`. Extract it and run the included dispatcher;
 neither Git nor Rust is required.

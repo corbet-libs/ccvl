@@ -16,7 +16,7 @@ receipt="$dist/ccvl-linux-x86_64.receipt.json"
 field() { sed -n 's/^  "'"$1"'": "\([^"]*\)"[,]*$/\1/p' "$receipt"; }
 sha="$(field source_commit)"
 [[ "$sha" =~ ^[0-9a-f]{40}$ && "$sha" == "${CI_COMMIT_SHA:-${GITHUB_SHA:-}}" ]] || exit 2
-[[ $(field repository) == corbet-labs/ccvl && $(field platform) == linux-x86_64 && $(field rust_host) == x86_64-unknown-linux-gnu ]] || exit 2
+[[ $(field repository) == corbet-libs/ccvl && $(field platform) == linux-x86_64 && $(field rust_host) == x86_64-unknown-linux-gnu ]] || exit 2
 source_hash="$(field source_sha256)"
 archive_hash="$(field source_archive_sha256)"
 if [[ -n ${SOURCE_SHA256:-} && "$archive_hash" != "$SOURCE_SHA256" ]]; then
@@ -43,7 +43,7 @@ native_hash="$(sha256sum "$receipt" | cut -d ' ' -f 1)"
 cat > "$scratch/gate-archive.json" <<EOF
 {
   "schema": 1,
-  "repository": "corbet-labs/ccvl",
+  "repository": "corbet-libs/ccvl",
   "source_commit": "$sha",
   "source_sha256": "$source_hash",
   "source_archive_sha256": "$archive_hash",

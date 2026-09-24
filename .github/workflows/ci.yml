@@ -22,12 +22,12 @@ jobs:
   binaries:
     # Compiled bundles and publication are explicit release actions; every released platform and shared gate remains required.
     if: >-
-      ${{ (github.repository == 'corbet-labs/ccvl') && (github.event_name == 'workflow_dispatch') }}
+      ${{ (github.repository == 'corbet-libs/ccvl') && (github.event_name == 'workflow_dispatch') }}
     uses: ./.github/workflows/binaries.yml
 
   rust-native:
     name: Native Rust compiler and document contracts
-    if: github.repository == 'corbet-labs/ccvl'
+    if: github.repository == 'corbet-libs/ccvl'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -69,7 +69,7 @@ jobs:
 
   lint:
     name: Workflow, shell, and license checks
-    if: github.repository == 'corbet-labs/ccvl'
+    if: github.repository == 'corbet-libs/ccvl'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -126,7 +126,7 @@ jobs:
     name: Linux release and independent PDF verification
     # Compiled bundles and publication are explicit release actions; every released platform and shared gate remains required.
     if: >-
-      ${{ (github.repository == 'corbet-labs/ccvl') && (github.event_name == 'workflow_dispatch') }}
+      ${{ (github.repository == 'corbet-libs/ccvl') && (github.event_name == 'workflow_dispatch') }}
     needs: [binaries]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -175,7 +175,7 @@ jobs:
     name: Run the precompiled bundle without Git or Rust
     # Compiled bundles and publication are explicit release actions; every released platform and shared gate remains required.
     if: >-
-      ${{ (github.repository == 'corbet-labs/ccvl') && (github.event_name == 'workflow_dispatch') }}
+      ${{ (github.repository == 'corbet-libs/ccvl') && (github.event_name == 'workflow_dispatch') }}
     needs: [binaries]
     runs-on: ubuntu-24.04
     container: ubuntu:24.04
@@ -208,7 +208,7 @@ jobs:
     needs: [binaries, rust-native, lint, verify, archive]
     # Compiled bundles and publication are explicit release actions; every released platform and shared gate remains required.
     if: >-
-      ${{ (github.repository == 'corbet-labs/ccvl' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request') && (github.event_name == 'workflow_dispatch') }}
+      ${{ (github.repository == 'corbet-libs/ccvl' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request') && (github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

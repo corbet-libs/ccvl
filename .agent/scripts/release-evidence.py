@@ -55,8 +55,8 @@ def command(*args):
 
 def source():
     repository = os.environ.get('CI_REPO') or os.environ.get('GITHUB_REPOSITORY')
-    if repository != 'corbet-labs/ccvl':
-        fail('Release work requires the public corbet-labs/ccvl repository.')
+    if repository != 'corbet-libs/ccvl':
+        fail('Release work requires the public corbet-libs/ccvl repository.')
     commit = os.environ.get('CI_COMMIT_SHA') or os.environ.get('GITHUB_SHA')
     if not commit or not re.fullmatch('[0-9a-f]{40}', commit):
         fail('An exact CI source commit is required.')

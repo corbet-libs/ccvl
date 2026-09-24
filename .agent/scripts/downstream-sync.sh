@@ -103,7 +103,7 @@ export GIT_TERMINAL_PROMPT=0
 export GIT_SSH_COMMAND="ssh -i $key_path -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$scratch/known_hosts"
 git clone --quiet --single-branch --branch main "$DOWNSTREAM_SSH_URL" "$scratch/downstream"
 cd "$scratch/downstream"
-git remote add upstream https://github.com/corbet-labs/ccvl.git
+git remote add upstream https://github.com/corbet-libs/ccvl.git
 git fetch --quiet --no-tags "$UPSTREAM_SOURCE_BUNDLE" refs/heads/source
 test "$(git rev-parse FETCH_HEAD)" = "$source_commit"
 git update-ref refs/remotes/upstream/main "$source_commit"

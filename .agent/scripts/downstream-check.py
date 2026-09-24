@@ -14,7 +14,7 @@ import tarfile
 import tempfile
 
 
-PUBLIC_REPO = 'corbet-labs/ccvl'
+PUBLIC_REPO = 'corbet-libs/ccvl'
 PUBLIC_URL = 'https://github.com/' + PUBLIC_REPO + '.git'
 ROOT = Path(__file__).resolve().parents[2]
 

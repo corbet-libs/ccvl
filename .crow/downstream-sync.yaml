@@ -29,7 +29,7 @@ steps:
     commands:
       - |
         set -euo pipefail
-        test "$CI_REPO" = "corbet-labs/ccvl"
+        test "$CI_REPO" = "corbet-libs/ccvl"
         test "$CI_COMMIT_BRANCH" = main
         test "$CI_COMMIT_BRANCH" = "$CI_REPO_DEFAULT_BRANCH"
         test -n "$SOURCE_ARCHIVE"
