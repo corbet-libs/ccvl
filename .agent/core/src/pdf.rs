@@ -113,7 +113,9 @@ fn lowercase_language_string(object: &mut Object) -> bool {
             return false;
         }
         let units = payload
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| {
                 if big_endian {
                     u16::from_be_bytes([pair[0], pair[1]])
