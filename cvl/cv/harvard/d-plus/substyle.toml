@@ -1,0 +1,31 @@
+# Optical centring with D+ spacing; wording and line breaks stay fixed.
+# These offsets are calibrated for the existing Archivo hierarchy, in points.
+[cv]
+balance_headings = true
+compact_heading_shift_pt = 0.6
+spacious_heading_shift_pt = 0.6
+first_spacious_heading_shift_pt = 0.8
+superheading_shift_pt = 1.8
+# Education headings gain the aligned offset plus 0.20 mm on each side.
+continuation_heading_extra_pt = 0.7469291338582678
+# Keep the first heading optically centred against the contact row.
+first_continuation_heading_shift_pt = 0.42
+
+superheading_outer_spacing_pt = 9.346062992125985
+spacious_heading_spacing_pt = 10.846062992125985
+justify_bullets = false
+
+# Logical content pages, independent of automatic pagination.
+# Page 1 retains the chronological opening's established entry rhythm.
+[cv.spacing_by_page_pt."2"]
+heading_after_pt = 5.619685039370078
+subheading_after_pt = 7.746850393700787
+bullet_after_pt = 8.796850393700788
+entry_spacing_pt = 11.041338582677165
+
+[cv.entry_extra_by_page_mm]
+"3" = 0.975
+"4" = 1.43
+[cv.bullet_extra_by_page_mm]
+"3" = 0.36
+"4" = 0.46

@@ -57,6 +57,18 @@ its substyles in any internal arrangement. Neither a shared renderer nor
 
 ## Wording within a style
 
+Harvard's `aligned` and `d-plus` substyles demonstrate optical title alignment.
+`d-plus` additionally uses optional `[cv.spacing_by_page_pt."2"]`,
+`[cv.entry_extra_by_page_mm]` and `[cv.bullet_extra_by_page_mm]` tables. The
+renderer advances a logical content-page counter at explicit page breaks;
+`cv-gap(name)` resolves these settings without depending on automatic physical
+pagination. Substyles without overrides retain their original spacing path.
+`cv.justify_bullets` is optional and defaults to false. The justified summary
+has its own existing paragraph settings and is unaffected by that switch.
+These are style-owned settings, not engine-wide requirements. See
+[Harvard D+](../../cvl/cv/harvard/d-plus/README.md) and the
+[unfinished cluster example](../../cvl/cv/cluster/README.md).
+
 Substyles can share wording for the same document, style, language and country.
 Each style owns its source, even when two styles happen to contain equal text.
 

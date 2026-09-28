@@ -1,0 +1,17 @@
+# CV section chrome, en-ch.
+summary = "Summary"
+experience = "Experience"
+education = "Education"
+executive_education = "Executive Education"
+professional_development = "Professional Development"
+engagement = "Engagement"
+personal = "Personal"
+projects = "Projects & Initiatives"
+projects_ongoing = "Ongoing"
+projects_delivered = "Delivered"
+capabilities = "Capabilities & AI Keywords"
+pillar_ai = "AI, Software & Data"
+pillar_strategy = "Strategy, Innovation & Transformation"
+pillar_finance = "Finance, Investments & Markets"
+
+locale = "en-ch"

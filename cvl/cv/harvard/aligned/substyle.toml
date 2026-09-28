@@ -1,0 +1,13 @@
+# Optical centring; wording, line breaks and spacing within entries stay fixed.
+# These offsets are calibrated for the existing Archivo hierarchy, in points.
+[cv]
+balance_headings = true
+compact_heading_shift_pt = 0.6
+spacious_heading_shift_pt = 0.6
+first_spacious_heading_shift_pt = 0.8
+superheading_shift_pt = 1.8
+# Four education-page headings gain 0.18 pt on each side (0.508 mm total).
+# The original opening, projects and competencies keep their existing spacing.
+continuation_heading_extra_pt = 0.18
+# Keep the first heading optically centred against the contact row.
+first_continuation_heading_shift_pt = 0.42

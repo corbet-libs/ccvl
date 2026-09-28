@@ -1,0 +1,4 @@
+# Geometry candidate; compare before selecting a final layout.
+[cluster]
+stations_per_group = [2, 3, 2]
+category_extra_before_mm = 0

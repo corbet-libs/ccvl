@@ -1,0 +1,32 @@
+schema_version = 4
+revision = 0
+
+[wording]
+source = "../../../content/en/ch/wording.toml"
+
+[options]
+language = "en-ch"
+pages = 1
+cv_style = "cluster"
+cv_substyle = "standard"
+generate_cl = false
+application_date = ""
+
+[job]
+id = "cluster-comparison-en-ch"
+title = ""
+organization = ""
+location = ""
+source = "Explicitly requested Lorem Ipsum geometry study"
+url = ""
+description = ""
+connections = ""
+company_context = ""
+notes = "Layout only; no candidate claims on the opening page."
+
+[job.cl_recipient]
+name = ""
+title = ""
+company = ""
+address_line_1 = ""
+address_line_2 = ""

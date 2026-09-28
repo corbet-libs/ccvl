@@ -1,0 +1,34 @@
+content_fields = ["summary", "groups"]
+
+[pdf]
+version = "1.7"
+tagged = true
+font_pattern = "^[A-Z]{6}\\+Archivo-(Bold|Italic|Medium|Regular)$"
+# The visible name heading is replaced by an explicit geometry-study label.
+required_profile_fields = ["email", "phone_label"]
+minimum_text_chars = 100
+
+[[metric_rules]]
+kind = "cv-summary"
+minimum = 5
+maximum = 5
+
+[[metric_rules]]
+kind = "cluster-category"
+minimum = 3
+maximum = 3
+
+[[metric_rules]]
+kind = "cluster-station"
+minimum = 6
+maximum = 7
+
+[[metric_rules]]
+kind = "cluster-role"
+minimum = 6
+maximum = 7
+
+[[metric_rules]]
+kind = "cluster-bullet"
+minimum = 18
+maximum = 21

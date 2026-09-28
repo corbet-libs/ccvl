@@ -8,7 +8,7 @@ documents = ["cv"]
 supports_locales = ["de-ch", "en-ch"]
 pages = [2, 3, 4]
 default_substyle = "standard"
-substyles = ["standard", "compact"]
+substyles = ["standard", "compact", "aligned", "d-plus"]
 default_pages = 4
 defaults = "../../shared/harvard/defaults.toml"
 

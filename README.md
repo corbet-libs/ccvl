@@ -41,6 +41,9 @@ Included are:
 
 - Harvard German and English CVs with checked two-, three-, and four-page
   variants, a five-line Summary, and a measured target-neutral cover letter;
+- [D+ spacing for Harvard](cvl/cv/harvard/d-plus/README.md) and a
+  [clustered opening](cvl/cv/cluster/README.md), whose seven example stations
+  deliberately remain unfinished Lorem Ipsum;
 - two independent demonstration styles with four substyles, portrait and
   landscape compositions, and explicit A4 / US Letter layouts;
 - [a rendered gallery and full folder overview](cvl/README.md);
@@ -74,7 +77,7 @@ bash ./ccvl build-opportunity example-org strategy-lead
 Generated general documents are written to
 `cvl/cv/<style>/<substyle>/<language>/<region>/pdf/cv-{2,3,4}.pdf` and
 `cvl/cl/<style>/<substyle>/<language>/<region>/pdf/cl.pdf`.
-The shipped Harvard CV substyles are `standard` and `compact`; cover-letter substyles are
+The shipped Harvard CV substyles are `standard`, `compact`, `aligned` and `d-plus`; cover-letter substyles are
 `left-rule` and `frame`. Use `build-cv en-ch 4 --style harvard --substyle compact` or
 `build-cl en-ch --style harvard --substyle frame` with your platform launcher.
 Other styles own their layouts and page presets; see [.agent/docs/styles.md](.agent/docs/styles.md).

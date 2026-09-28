@@ -1,0 +1,10 @@
+# D+ geometry; the example's seven stations intentionally remain Lorem Ipsum.
+[cluster]
+stations_per_group = [2, 3, 2]
+optical_headings = true
+heading_outer_gap_mm = 3.3
+[cv]
+entry_spacing_pt = 14.01771653543307
+subheading_after_pt = 8.370472440944882
+bullet_after_pt = 9.420472440944883
+justify_bullets = false

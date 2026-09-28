@@ -23,7 +23,13 @@ cvl/
 │   │   ├── content/{de,en}/ch/wording.toml
 │   │   ├── src/                         # Harvard's internal arrangement
 │   │   ├── standard/{de,en}/ch/<leaf>
-│   │   └── compact/{de,en}/ch/<leaf>
+│   │   ├── compact/{de,en}/ch/<leaf>
+│   │   ├── aligned/{de,en}/ch/<leaf>
+│   │   └── d-plus/{de,en}/ch/<leaf>
+│   ├── cluster/
+│   │   ├── style.toml, contract.toml, scaffold.toml, layout.typ
+│   │   ├── content/{de,en}/ch/wording.toml
+│   │   └── {standard,middle-three,middle-three-spaced,d-plus}/{de,en}/ch/<leaf>
 │   ├── test-style-1/
 │   │   ├── style.toml, contract.toml, scaffold.toml
 │   │   ├── content/en/{ch,us}/wording.toml
@@ -85,11 +91,14 @@ for the exact source and override rules.
 
 | Style | CV substyles | CL substyles | Font | Locale / paper | CV pages | CL pages |
 | --- | --- | --- | --- | --- | --- | --- |
-| Harvard | standard, compact | left-rule, frame | Archivo | de-ch / en-ch, portrait A4 | 2, 3, 4 | 1 |
+| Harvard | standard, compact, aligned, d-plus | left-rule, frame | Archivo | de-ch / en-ch, portrait A4 | 2, 3, 4 | 1 |
+| Cluster | standard, middle-three, middle-three-spaced, d-plus | — | Archivo | de-ch / en-ch, portrait A4 | 1 | — |
 | Test style 1 | sidebar, topbar | sidebar, topbar | IBM Plex Serif | en-ch A4 / en-us Letter, portrait | 1 | 1 |
 | Test style 2 | cards, timeline | cards, timeline | EB Garamond | en-ch A4 / en-us Letter, landscape | 1, 2 (default) | 2 |
 
-This produces **36 PDFs / 68 pages**. The default remains Harvard standard for
+This produces **56 registered PDFs / 112 pages**, plus two five-page D+
+comparisons. The [cluster example](cv/cluster/README.md) is a typesetting
+milestone with unfinished Lorem Ipsum content. The default remains Harvard standard for
 CV and Harvard left-rule for CL. All styles declare their page presets;
 Harvard's station and five-line-summary contracts apply only to Harvard.
 
@@ -102,6 +111,8 @@ for full-resolution pages. A4 and Letter links below exercise both geometries.
 | --- | --- | --- |
 | harvard / standard + left-rule | [![CV preview](cv/harvard/standard/en/ch/preview/cv-4-1.png)](cv/harvard/standard/en/ch/pdf/cv-4.pdf) | [![Letter preview](cl/harvard/left-rule/en/ch/preview/cl-1.png)](cl/harvard/left-rule/en/ch/pdf/cl.pdf) |
 | harvard / compact + frame | [![CV preview](cv/harvard/compact/en/ch/preview/cv-4-1.png)](cv/harvard/compact/en/ch/pdf/cv-4.pdf) | [![Letter preview](cl/harvard/frame/en/ch/preview/cl-1.png)](cl/harvard/frame/en/ch/pdf/cl.pdf) |
+| harvard / d-plus | [![D+ preview](cv/harvard/d-plus/en/ch/preview/cv-4-1.png)](cv/harvard/d-plus/en/ch/pdf/cv-4.pdf) | — |
+| cluster / d-plus (unfinished example) | [![Cluster preview](cv/cluster/d-plus/en/ch/preview/cv-1-1.png)](cv/cluster/d-plus/en/ch/pdf/comparison-5.pdf) | — |
 | test-style-1 / sidebar | [![CV preview](cv/test-style-1/sidebar/en/ch/preview/cv-1-1.png)](cv/test-style-1/sidebar/en/ch/pdf/cv-1.pdf) | [![Letter preview](cl/test-style-1/sidebar/en/ch/preview/cl-1.png)](cl/test-style-1/sidebar/en/ch/pdf/cl.pdf) |
 | test-style-1 / topbar | [![CV preview](cv/test-style-1/topbar/en/ch/preview/cv-1-1.png)](cv/test-style-1/topbar/en/ch/pdf/cv-1.pdf) | [![Letter preview](cl/test-style-1/topbar/en/ch/preview/cl-1.png)](cl/test-style-1/topbar/en/ch/pdf/cl.pdf) |
 | test-style-2 / cards | [![CV preview](cv/test-style-2/cards/en/ch/preview/cv-2-1.png)](cv/test-style-2/cards/en/ch/pdf/cv-2.pdf) | [![Letter preview](cl/test-style-2/cards/en/ch/preview/cl-1.png)](cl/test-style-2/cards/en/ch/pdf/cl.pdf) |

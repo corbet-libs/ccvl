@@ -1,0 +1,17 @@
+# CV section chrome, de-ch. Only what cletter doesn't cover.
+summary = "Summary"
+experience = "Erfahrung"
+education = "Bildung"
+executive_education = "Executive Education"
+professional_development = "Professional Development"
+engagement = "Engagement"
+personal = "Persönliches"
+projects = "Projekte & Initiativen"
+projects_ongoing = "Laufend"
+projects_delivered = "Realisiert"
+capabilities = "Kompetenzen & KI Keywords"
+pillar_ai = "AI, Software & Data"
+pillar_strategy = "Strategie, Innovation & Transformation"
+pillar_finance = "Finanzen, Investments & Märkte"
+
+locale = "de-ch"
