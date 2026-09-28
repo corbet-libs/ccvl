@@ -66,7 +66,7 @@ fn cluster_bundle_renders_resolved_content_with_an_explicit_summary_allowance() 
         let profile = workspace.read_toml_value("cvl/profile.toml").unwrap();
         let project = bundle.with_record(record, profile).unwrap();
         let renderer = StyleRenderer::new(&project.bundle).unwrap();
-        let compiled = renderer.compile(&project).unwrap();
+        let portable_document = renderer.compile(&project).unwrap();
         let selection =
             styles::selection(&workspace, "cv", Some("cluster"), Some("d-plus")).unwrap();
         let leaf = styles::leaf(&workspace, "cv", &locale, &selection).unwrap();
@@ -84,7 +84,7 @@ fn cluster_bundle_renders_resolved_content_with_an_explicit_summary_allowance() 
         let direct = compiler.compile(&workspace, &spec).unwrap();
         compiler.export(&spec, &direct).unwrap();
         assert_eq!(
-            renderer.pdf(&compiled).unwrap(),
+            renderer.pdf(&portable_document).unwrap(),
             fs::read(&spec.output).unwrap(),
             "portable cluster parity: {locale}"
         );
