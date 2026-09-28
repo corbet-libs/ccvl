@@ -724,12 +724,12 @@ fn reject_punctuation_tics(text: &str, location: &str) -> Result<()> {
         // then a lowercase continuation ("GenAI- und RAG-Systeme"). A real
         // German compound form, so judgment call, not punctuation.
         if mark.ch == '-'
-            && left.is_some_and(|ch| ch.is_alphabetic())
-            && right.is_some_and(|ch| ch.is_whitespace())
+            && left.is_some_and(char::is_alphabetic)
+            && right.is_some_and(char::is_whitespace)
             && text[mark.offset + mark.ch.len_utf8()..]
                 .chars()
                 .find(|ch| !ch.is_whitespace())
-                .is_some_and(|ch| ch.is_lowercase())
+                .is_some_and(char::is_lowercase)
         {
             continue;
         }
@@ -930,8 +930,7 @@ fn surrounding_word(text: &str, offset: usize) -> &str {
         .map_or(0, |(index, ch)| index + ch.len_utf8());
     let end = text[offset..]
         .find(char::is_whitespace)
-        .map(|index| offset + index)
-        .unwrap_or(text.len());
+        .map_or(text.len(), |index| offset + index);
     &text[start..end]
 }
 

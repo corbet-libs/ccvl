@@ -476,7 +476,7 @@ fn opportunity_filename(
     workspace: &Workspace,
     organisation: &str,
     position: &str,
-    kind: &DocumentKind,
+    kind: DocumentKind,
 ) -> Result<String> {
     let stem = opportunity_file_stem(workspace, organisation, position)?;
     let prefix = match kind {
@@ -493,7 +493,7 @@ fn previous_kind_first_filename(
     workspace: &Workspace,
     organisation: &str,
     position: &str,
-    kind: &DocumentKind,
+    kind: DocumentKind,
 ) -> Result<String> {
     let profile = workspace.read_toml_value("cvl/profile.toml")?;
     let name = profile
@@ -543,7 +543,7 @@ pub fn opportunity_specs(
         .context("application record has no parent")?;
     let pdfs = parent.join("pdfs");
     let profile = workspace.path("cvl/profile.toml");
-    let cv_name = opportunity_filename(workspace, organisation, position, &DocumentKind::Cv)?;
+    let cv_name = opportunity_filename(workspace, organisation, position, DocumentKind::Cv)?;
     let mut specs = vec![cv_spec(
         workspace,
         &locale,
@@ -570,12 +570,7 @@ pub fn opportunity_specs(
             &profile,
             &pdfs.join(format!(
                 "{}.pdf",
-                opportunity_filename(
-                    workspace,
-                    organisation,
-                    position,
-                    &DocumentKind::CoverLetter
-                )?
+                opportunity_filename(workspace, organisation, position, DocumentKind::CoverLetter)?
             )),
             &letter_selection,
         )?;
@@ -628,7 +623,7 @@ pub fn render_opportunity(
             } else {
                 DocumentKind::CoverLetter
             };
-            previous_kind_first_filename(workspace, organisation, position, &kind)
+            previous_kind_first_filename(workspace, organisation, position, kind)
         })
         .collect::<Result<Vec<_>>>()?;
     guard_opportunity_output_paths(workspace, &parent, &stem, &previous)?;
