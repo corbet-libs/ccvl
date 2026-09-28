@@ -1,6 +1,53 @@
 use super::*;
 
 #[test]
+fn saved_review_passes_repository_hygiene_without_changing_hashes() {
+    let mut fixture = Fixture::new();
+    let run_dir = fixture
+        .workspace
+        .path("opportunities/example/role/review/run");
+    fs::create_dir_all(run_dir.parent().unwrap()).unwrap();
+    fs::rename(&fixture.run, &run_dir).unwrap();
+    fixture.run = run_dir;
+    storage::write_new(&fixture.run.join("request.json"), &Fixture::spec()).unwrap();
+    let result_path = fixture.run.parent().unwrap().join("result-0.json");
+    storage::write_new(&result_path, &fixture.result()).unwrap();
+    let submitted = run(
+        &fixture.workspace,
+        Command::Submit {
+            run_dir: fixture.run.clone(),
+            result: result_path,
+        },
+    )
+    .unwrap();
+    assert_eq!(submitted.state, "ready");
+    let paths = crate::public::public_files(&fixture.workspace).unwrap();
+    let before = paths
+        .iter()
+        .map(|path| fs::read(path).unwrap())
+        .collect::<Vec<_>>();
+    crate::public::validate_repository(&fixture.workspace).unwrap();
+    for (path, bytes) in paths.iter().zip(before) {
+        assert_eq!(fs::read(path).unwrap(), bytes);
+    }
+    let verified = status(&fixture.workspace, &fixture.run).unwrap();
+    assert_eq!(verified.state, "ready");
+    assert_eq!(verified.manifest_sha256, submitted.manifest_sha256);
+
+    // Even an otherwise harmless newline must still invalidate a hashed record.
+    let manifest = revision_path(&fixture.run, 0).join("manifest.json");
+    let mut bytes = fs::read(&manifest).unwrap();
+    bytes.push(b'\n');
+    fs::write(manifest, bytes).unwrap();
+    assert!(
+        status(&fixture.workspace, &fixture.run)
+            .unwrap_err()
+            .to_string()
+            .contains("review manifest changed")
+    );
+}
+
+#[test]
 fn json_citations_use_decoded_quotes_backslashes_and_newlines() {
     let fixture = Fixture::new();
     let (mut state, mut manifest) = load(&fixture.run).unwrap();

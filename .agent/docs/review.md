@@ -75,6 +75,16 @@ settings, actual check outcomes, changed artifacts and limitations. Objects are
 content-addressed snapshots. Neither snapshots nor generated PDFs are a second
 authoritative wording source.
 
+Preserve saved review JSON byte-for-byte, including specifications and external
+results that may themselves be frozen as evidence. The review writer serializes
+JSON without a final newline; manifests, accepted results and revision ancestry
+bind those exact bytes. Repository text hygiene accepts valid JSON with or without
+that newline under `opportunities/<organisation>/<position>/review/`, while still
+checking UTF-8, CR line endings, trailing whitespace and merge markers. Ordinary
+source files retain their final-newline requirement. This encoding exception
+neither validates a review's readiness nor permits publishing private reviews;
+use `review status` for the current packet's integrity and readiness checks.
+
 ## Run a fresh critic
 
 Give the critic the run directory, the `ccvl-review` skill and the requested

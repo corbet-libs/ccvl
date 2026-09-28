@@ -273,6 +273,16 @@ fn validate_markdown_links(workspace: &Workspace) -> Result<()> {
     Ok(())
 }
 
+fn is_review_json(path: &Path) -> bool {
+    let parts = path.components().collect::<Vec<_>>();
+    parts.len() >= 5
+        && parts[0].as_os_str() == "opportunities"
+        && parts[3].as_os_str() == "review"
+        && path
+            .extension()
+            .is_some_and(|extension| extension == "json")
+}
+
 fn validate_text_files(workspace: &Workspace) -> Result<()> {
     let suffixes = [
         "cmd", "csv", "json", "lock", "md", "ps1", "rs", "sh", "toml", "typ", "yaml", "yml",
@@ -299,7 +309,17 @@ fn validate_text_files(workspace: &Workspace) -> Result<()> {
             errors.push(format!("{}: not valid UTF-8", relative.display()));
             continue;
         };
-        if !text.is_empty() && !text.ends_with('\n') {
+        // Review packets use exact serialized bytes for hashes and recovery.
+        // Saved specifications/results can also be frozen as source evidence.
+        // Their JSON encoding need not end in LF; never normalize these bytes.
+        let review_json = is_review_json(&relative);
+        if review_json && let Err(error) = serde_json::from_str::<serde_json::Value>(&text) {
+            errors.push(format!(
+                "{}: invalid review JSON: {error}",
+                relative.display()
+            ));
+        }
+        if !review_json && !text.is_empty() && !text.ends_with('\n') {
             errors.push(format!("{}: missing final newline", relative.display()));
         }
         if text.contains('\r') {
@@ -323,6 +343,73 @@ mod tests {
     use tempfile::tempdir;
 
     use super::*;
+
+    #[test]
+    fn review_json_newline_policy_keeps_other_hygiene_checks() {
+        let directory = tempdir().unwrap();
+        fs::write(directory.path().join("ccvl.json"), "{}\n").unwrap();
+        let workspace = Workspace::at(directory.path()).unwrap();
+        let relative = "opportunities/example/role/review/run/revision-0/manifest.json";
+        let path = workspace.path(relative);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        for text in ["{}", "{}\n"] {
+            fs::write(&path, text).unwrap();
+            validate_text_files(&workspace).unwrap();
+            assert_eq!(fs::read_to_string(&path).unwrap(), text);
+        }
+        for (text, message) in [
+            ("{", "invalid review JSON"),
+            ("{\n", "invalid review JSON"),
+            ("", "invalid review JSON"),
+            ("{}\r\n", "contains CR line endings"),
+            ("{} \n", "trailing whitespace"),
+            ("<<<<<<< conflict\n{}", "unresolved merge marker"),
+        ] {
+            fs::write(&path, text).unwrap();
+            let error = validate_text_files(&workspace).unwrap_err().to_string();
+            assert!(error.contains(message), "{error}");
+        }
+        fs::write(&path, b"\xff").unwrap();
+        assert!(
+            validate_text_files(&workspace)
+                .unwrap_err()
+                .to_string()
+                .contains("not valid UTF-8")
+        );
+        fs::remove_file(&path).unwrap();
+
+        for relative in [
+            "config.json",
+            "cvl/review/result.json",
+            "opportunities/example/role/content.json",
+            "opportunities/example/role/reviews/result.json",
+            "opportunities/example/review/result.json",
+            "opportunities/example/role/review/notes.md",
+        ] {
+            let path = workspace.path(relative);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, "{}").unwrap();
+            let error = validate_text_files(&workspace).unwrap_err().to_string();
+            assert!(error.contains("missing final newline"), "{error}");
+            fs::remove_file(path).unwrap();
+        }
+    }
+
+    #[test]
+    fn review_json_still_cannot_be_published() {
+        let directory = tempdir().unwrap();
+        fs::write(directory.path().join("ccvl.json"), "{}\n").unwrap();
+        let workspace = Workspace::at(directory.path()).unwrap();
+        let path = workspace.path("opportunities/example/role/review/result.json");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, "{}").unwrap();
+        validate_repository(&workspace).unwrap();
+        let error = validate_boundary(&workspace).unwrap_err().to_string();
+        assert!(
+            error.contains("private interview or opportunity data"),
+            "{error}"
+        );
+    }
 
     #[test]
     fn python_source_and_toolchain_metadata_are_forbidden() {

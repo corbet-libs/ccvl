@@ -31,7 +31,7 @@ impl Fixture {
             "rust-toolchain.toml",
             ".agent/build.rs",
         ] {
-            fs::write(root.join(path), "{}").unwrap();
+            fs::write(root.join(path), "{}\n").unwrap();
         }
         fs::create_dir_all(root.join("cvl/cv/demo/en/ch")).unwrap();
         fs::write(
