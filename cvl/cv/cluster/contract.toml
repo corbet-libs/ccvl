@@ -1,4 +1,4 @@
-content_fields = ["summary", "groups"]
+content_fields = ["summary", "groups", "allow_thin"]
 
 [pdf]
 version = "1.7"

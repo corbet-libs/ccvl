@@ -547,12 +547,16 @@ fn style_leaves_cover_every_substyle_and_locale() {
         .into_iter()
         .filter(|leaf| leaf.style == "harvard")
         .collect::<Vec<_>>();
-    assert_eq!(cv.len(), 4);
+    assert_eq!(cv.len(), 8);
     for (substyle, locale) in [
         ("standard", "de-ch"),
         ("standard", "en-ch"),
         ("compact", "de-ch"),
         ("compact", "en-ch"),
+        ("aligned", "de-ch"),
+        ("aligned", "en-ch"),
+        ("d-plus", "de-ch"),
+        ("d-plus", "en-ch"),
     ] {
         let leaf = cv
             .iter()
@@ -562,6 +566,24 @@ fn style_leaves_cover_every_substyle_and_locale() {
         assert!(leaf.strings().is_file());
         assert!(leaf.adapter().is_file());
         assert!(leaf.substyle_file().is_file());
+    }
+    let cluster = cv_leaves(&workspace)
+        .unwrap()
+        .into_iter()
+        .filter(|leaf| leaf.style == "cluster")
+        .collect::<Vec<_>>();
+    assert_eq!(cluster.len(), 8);
+    for substyle in ["standard", "middle-three", "middle-three-spaced", "d-plus"] {
+        for locale in ["de-ch", "en-ch"] {
+            let leaf = cluster
+                .iter()
+                .find(|leaf| leaf.substyle == substyle && leaf.locale == locale)
+                .unwrap_or_else(|| panic!("missing cluster leaf {substyle} {locale}"));
+            assert!(leaf.content().is_file());
+            assert!(leaf.strings().is_file());
+            assert!(leaf.adapter().is_file());
+            assert!(leaf.substyle_file().is_file());
+        }
     }
     let cl = cl_leaves(&workspace)
         .unwrap()

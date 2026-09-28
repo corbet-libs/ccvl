@@ -114,7 +114,7 @@ fn paper_precedence_names_and_selected_document_scope_are_explicit() {
             .output
             .ends_with("pdf/cl-a4.pdf")
     );
-    assert_eq!(render::cvl_specs(&workspace).unwrap().len(), 36);
+    assert_eq!(render::cvl_specs(&workspace).unwrap().len(), 56);
 }
 
 fn leaf_for_letter(workspace: &Workspace) -> styles::StyleLeaf {
