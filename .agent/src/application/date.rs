@@ -30,10 +30,9 @@ mod tests {
 
     #[test]
     fn application_date_vectors() {
-        let cases: serde_json::Value = serde_json::from_str(include_str!(
-            "../../tests/fixtures/application-dates.json"
-        ))
-        .unwrap();
+        let cases: serde_json::Value =
+            serde_json::from_str(include_str!("../../tests/fixtures/application-dates.json"))
+                .unwrap();
         for case in cases.as_array().unwrap() {
             let locale = case["locale"].as_str().unwrap();
             let input = case["input"].as_str().unwrap();

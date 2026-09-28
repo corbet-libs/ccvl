@@ -261,7 +261,12 @@ fn document_prose_rejects_grouped_thousands() {
             "unexpected rejection: {text}"
         );
     }
-    for text in ["1.000 Gespräche", "2.000 Mitarbeitende", "1,000 calls", "CHF 100,000 Umsatz"] {
+    for text in [
+        "1.000 Gespräche",
+        "2.000 Mitarbeitende",
+        "1,000 calls",
+        "CHF 100,000 Umsatz",
+    ] {
         let error = reject_number_grouping(text, "here")
             .unwrap_err()
             .to_string();
@@ -285,9 +290,7 @@ fn document_prose_rejects_comma_ch_grades() {
         );
     }
     for text in ["Bestnote 6,0 (CH)", "Note 5,6 (CH)"] {
-        let error = reject_comma_ch_grade(text, "here")
-            .unwrap_err()
-            .to_string();
+        let error = reject_comma_ch_grade(text, "here").unwrap_err().to_string();
         assert!(
             error.contains("Swiss grades use dot display"),
             "unexpected pass: {text} ({error})"
@@ -364,7 +367,9 @@ fn summary_rejects_formula_openings() {
         "I am applying as Intern in the Lufthansa Group Digital Hangar.",
         "\"Bewerbung als Training System Engineer bei Rheinmetall.\"",
     ] {
-        let error = reject_formula_opening(text, "here").unwrap_err().to_string();
+        let error = reject_formula_opening(text, "here")
+            .unwrap_err()
+            .to_string();
         assert!(
             error.contains("must not open with a formula application phrase"),
             "unexpected pass: {text} ({error})"
@@ -404,7 +409,8 @@ fn opportunity_walk_collects_hyphen_advisories() {
 }
 
 #[test]
-fn unknown_fields_are_rejected() {    let mut draft = application(&[3, 5, 5, 5, 5, 3]);
+fn unknown_fields_are_rejected() {
+    let mut draft = application(&[3, 5, 5, 5, 5, 3]);
     draft["job"]["smuggled"] = json!("nope");
     let error = validate_record(&workspace(), &draft, "fixture", true)
         .unwrap_err()

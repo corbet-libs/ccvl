@@ -66,7 +66,7 @@ const PROFILE_TOP: &[&str] = &[
 /// The renderer uses the same upstream facade's pinned Typst sources.
 pub use cletter::{
     honorific_warning, recipient_salutation_warning, salutation, salutation_honorific,
-    salutation_last_name, salutation_surname, salutation_supported, salutation_titles,
+    salutation_last_name, salutation_supported, salutation_surname, salutation_titles,
 };
 
 mod date;
@@ -879,7 +879,12 @@ fn reject_comma_ch_grade(text: &str, location: &str) -> Result<()> {
 /// grade instead (`Bestnote 6.0 (CH) / 1,0 (DE)`, see summary.md).
 fn reject_german_bestnote(text: &str, location: &str) -> Result<()> {
     let lowered = text.to_lowercase();
-    for marker in ["bestnote 1,0", "bestnote 1.0", "bestnote: 1,0", "bestnote: 1.0"] {
+    for marker in [
+        "bestnote 1,0",
+        "bestnote 1.0",
+        "bestnote: 1,0",
+        "bestnote: 1.0",
+    ] {
         if let Some(index) = lowered.find(marker) {
             let rest = lowered[index + marker.len()..].trim_start();
             if !rest.starts_with("(de)") {

@@ -113,12 +113,7 @@ fn cleanup_removes_only_exact_generated_opportunity_outputs() {
         pdfs.join("CL_Other_Acme_Lead.pdf"),
         typst.join("CL_notes.typ"),
     ];
-    for path in legacy
-        .iter()
-        .chain(&interim)
-        .chain(&letter)
-        .chain(&keep)
-    {
+    for path in legacy.iter().chain(&interim).chain(&letter).chain(&keep) {
         fs::write(path, b"preserved bytes").unwrap();
     }
     remove_stale_opportunity_outputs(&pdfs, &typst, stem, true, &interim_names).unwrap();

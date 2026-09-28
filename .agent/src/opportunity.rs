@@ -79,10 +79,7 @@ pub fn blank_record(workspace: &Workspace) -> Result<toml::Value> {
 /// position reference. The record keeps only the role identity plus the
 /// document build.
 pub fn strip_position_prose(document: &mut toml::Value) {
-    if let Some(job) = document
-        .get_mut("job")
-        .and_then(toml::Value::as_table_mut)
-    {
+    if let Some(job) = document.get_mut("job").and_then(toml::Value::as_table_mut) {
         for field in [
             "source",
             "url",
@@ -201,8 +198,7 @@ mod tests {
         assert!(document["job"].get("notes").is_none());
         assert_eq!(document["options"]["generate_cl"].as_bool(), Some(true));
         assert!(document.get("cl").is_some());
-        let skeleton =
-            fs::read_to_string(record.parent().unwrap().join("posting.md")).unwrap();
+        let skeleton = fs::read_to_string(record.parent().unwrap().join("posting.md")).unwrap();
         assert!(
             skeleton.starts_with("# Posting reference — example_org/strategy-lead"),
             "unexpected skeleton: {skeleton}"
