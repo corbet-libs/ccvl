@@ -10,8 +10,12 @@ pub(crate) fn independent_styles() -> (TempDir, Workspace) {
     let source = Path::new(env!("CARGO_MANIFEST_DIR"));
     let directory = tempfile::tempdir().unwrap();
     let root = directory.path();
-    fs::copy(source.join("ccvl.json"), root.join("ccvl.json")).unwrap();
-    for relative in [".agent/typst", "cvl"] {
+    for relative in ["ccvl.json", "REUSE.toml", "interview/stations.toml"] {
+        let target = root.join(relative);
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::copy(source.join(relative), target).unwrap();
+    }
+    for relative in [".agent/typst", "cvl", "LICENSES"] {
         copy_sources(&source.join(relative), &root.join(relative));
     }
     copy_sources(
