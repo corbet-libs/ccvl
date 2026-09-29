@@ -32,7 +32,7 @@ value cannot hide behind a later override. Style-owned extension tables stay
 unrestricted. Native Typst still checks its own paper names, scripts, font
 metrics and rendering constraints.
 
-`bash ./ccvl explain-style cv en-us --style test-style-1 --substyle sidebar`
+`bash ./ccvl explain-style cv en-ch --style cluster --substyle d-plus`
 reports the merged inputs and source path for each effective value, without
 rendering. It covers the declared adapter merge, not component-level Typst
 show/set rules. For example, `page.paper` comes from the chosen paper preset, while
@@ -44,10 +44,10 @@ page binding accepts `left` or `right`; CJK–Latin spacing accepts `auto` or
 weights are restricted to 100–900, avoiding Typst's silent clamping. Custom
 paper requires both dimensions; named paper rejects unused custom dimensions.
 
-**Language does not determine paper.** The examples explicitly choose A4 for
-`en-ch` and US Letter for `en-us`; these are style choices, not an engine
-country-to-paper rule. A US English A4 document is valid too: select `--paper a4`
-with either test style. A command-line paper overrides the record's optional
+**Language does not determine paper.** Harvard and Cluster explicitly choose A4
+for their supported locales. Isolated test fixtures exercise US Letter and A4
+in either `en-ch` or `en-us`; the engine has no country-to-paper rule.
+A command-line paper overrides the record's optional
 `cv_paper` or `cl_paper`, which overrides the style's locale default.
 The short `en` CLI alias means `en-ch` and
 never implies US Letter. Orientation is a separate `flipped` setting.
@@ -73,23 +73,23 @@ The explicit values below are checked-in choices. See the official
 | Setting | Typst 0.15.1 default | Shipped choice / location |
 | --- | --- | --- |
 | Paper | A4 | Named style presets, explicit locale defaults and optional document selection |
-| Orientation / columns | Portrait / 1 | Harvard and style 1 portrait; style 2 landscape; 1 page column, renderer grids compose content |
+| Orientation / columns | Portrait / 1 | Harvard and Cluster portrait; 1 page column, renderer grids compose content |
 | Margins | `auto`, scaled from the shorter edge (25 mm on A4) | Explicit 12 mm top/bottom, 15 mm left/right |
 | Bleed / binding | 0 / auto from direction | 0 / left for these left-to-right documents |
-| Page fill | `auto` | Harvard deliberately retains auto; demos declare white |
-| Page furniture | No numbering; automatic header/footer | Adapter explicitly clears numbering, header/footer and background/foreground; demos draw their footer in flow |
+| Page fill | `auto` | Harvard and Cluster deliberately retain auto |
+| Page furniture | No numbering; automatic header/footer | Adapter explicitly clears numbering, header/footer and background/foreground |
 | Header/footer positioning | 30% ascent/descent | Explicit 30%; inactive while those fields are empty |
-| Font / size | Libertinus Serif / 11 pt | Harvard Archivo 10.5 pt; style 1 IBM Plex Serif 11.5 pt; style 2 EB Garamond 13 pt |
-| Fallback fonts | Enabled | Harvard retains enabled, but its PDF font contract rejects unexpected families; demos disable fallback |
+| Font / size | Libertinus Serif / 11 pt | Harvard and Cluster use Archivo 10.5 pt as their base |
+| Fallback fonts | Enabled | Enabled; PDF font contracts reject unexpected families |
 | Weight / style / stretch | 400 / normal / 100% | Explicit same baseline; components opt into bold and different sizes |
 | Text paint | Black fill, no stroke | Explicit black / none; components specify accent or white |
-| Language / region / direction | English / none / auto | Leaf declares language, CH or US region, and `ltr` |
+| Language / region / direction | English / none / auto | Leaf declares language, CH region, and `ltr` |
 | Script | Auto from characters | Deliberate `auto`; language/direction are separately explicit |
 | Tracking / word spacing / baseline | 0 / 100% / 0 | Explicit same baseline; labels deliberately add tracking |
 | CJK–Latin spacing | Auto | Deliberate auto; not a claim of CJK support or suitable fonts |
 | Top/bottom edges | Cap height / baseline | Explicit same values; heading and box geometry depends on them |
-| Punctuation overhang | Enabled | Harvard retains true; demos choose false |
-| Hyphenation | Auto, follows justification | Harvard retains auto with existing local overrides; demos explicitly disable it |
+| Punctuation overhang | Enabled | Harvard and Cluster retain true |
+| Hyphenation | Auto, follows justification | Auto with explicit local overrides |
 | Kerning / ordinary ligatures | Enabled | Explicit true |
 | Alternates / discretionary and historical ligatures | Disabled | Explicit false; no stylistic set |
 | Numeral form / width | Auto from font | Deliberate auto, so each selected font's own numerals apply |
@@ -100,7 +100,7 @@ The explicit values below are checked-in choices. See the official
 
 A defect found during the audit: Harvard's TOML declared paper and font, but
 its renderer still used literal A4 and Archivo. Its renderer now consumes the
-merged settings. All 16 Harvard PDFs retain their previously reviewed bytes.
+merged settings. That change preserved the 16 Harvard PDFs available at the time.
 Typography defaults must reach the renderer; a declarative
 file that nothing reads cannot configure a document.
 
@@ -108,8 +108,8 @@ file that nothing reads cannot configure a document.
 
 Typst's baseline paragraph leading is 0.65 em, spacing 1.2 em, justification
 false and line breaking auto. The latter chooses the optimized algorithm for
-justified paragraphs. The styles declare leading (Harvard 0.7 em,
-style 1 0.7 em, style 2 0.6 em), zero paragraph spacing and
+justified paragraphs. Harvard and Cluster declare base leading of 0.7 em,
+zero paragraph spacing and
 no baseline justification. Intentional Harvard regions still opt into their
 established justification/spacing. All retain `linebreaks = "auto"` as an
 explicit algorithm choice. [Paragraph reference](https://typst.app/docs/reference/model/par/).
@@ -123,8 +123,7 @@ Justification limits explicitly retain word spacing between two-thirds and
 1.5 times normal, with no additional tracking. Paragraph line numbering is
 explicitly absent. Base block alignment is left, above/below spacing zero,
 breakability true, and inset/outset/radius zero, with no paint/stroke/clip or
-sticky behavior. The demos explicitly override card and identity-panel insets,
-paint, radius and breakability. Grids declare their columns, gutters and
+sticky behavior. Grids declare their columns, gutters and
 alignment. These component dimensions belong to each renderer, not to the
 engine's interface.
 

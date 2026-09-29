@@ -67,6 +67,8 @@ path = [
   "cvl/cv/harvard/src/entries-*.typ",
   "cvl/assets/signature.png",
   "interview/stations.toml",
+  ".agent/tests/fixtures/independent-styles/cvl/*/*/*/*/*/content.toml",
+  ".agent/tests/fixtures/independent-styles/cvl/*/*/content/*/*/wording.toml",
 ]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Julian Y. Richard Corbet"

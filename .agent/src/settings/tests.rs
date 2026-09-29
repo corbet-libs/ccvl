@@ -1,9 +1,9 @@
 use super::*;
 use crate::styles;
-use std::{fs, path::Path};
+use std::fs;
 
-fn repository() -> Workspace {
-    Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap()
+fn repository() -> (tempfile::TempDir, Workspace) {
+    crate::test_support::independent_styles()
 }
 
 fn selected(workspace: &Workspace, style: &str, substyle: &str, locale: &str) -> StyleLeaf {
@@ -13,7 +13,7 @@ fn selected(workspace: &Workspace, style: &str, substyle: &str, locale: &str) ->
 
 #[test]
 fn explanation_preserves_precedence_and_reports_each_winning_source() {
-    let workspace = repository();
+    let (_fixtures, workspace) = repository();
     let compact = resolve(
         &workspace,
         &selected(&workspace, "harvard", "compact", "en-ch"),
@@ -59,7 +59,7 @@ fn explanation_preserves_precedence_and_reports_each_winning_source() {
 
 #[test]
 fn rust_and_direct_typst_reject_the_same_invalid_adapter_settings() {
-    let workspace = repository();
+    let (_fixtures, workspace) = repository();
     let schema = workspace.read_json(SCHEMA).unwrap();
     let settings = resolve(
         &workspace,
@@ -131,7 +131,7 @@ fn rust_and_direct_typst_reject_the_same_invalid_adapter_settings() {
 
 #[test]
 fn custom_dimensions_unused_fields_missing_values_and_reversed_bounds_fail() {
-    let workspace = repository();
+    let (_fixtures, workspace) = repository();
     let schema = workspace.read_json(SCHEMA).unwrap();
     let settings = resolve(
         &workspace,
@@ -160,7 +160,7 @@ fn custom_dimensions_unused_fields_missing_values_and_reversed_bounds_fail() {
 
 #[test]
 fn invalid_overridden_input_still_names_its_source_file() {
-    let original = repository();
+    let (_fixtures, original) = repository();
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path();
     fs::write(root.join("ccvl.json"), "{}").unwrap();

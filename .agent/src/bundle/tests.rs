@@ -7,8 +7,9 @@ fn source() -> Workspace {
 
 #[test]
 fn bundles_exclude_showcase_records_and_unsupported_inputs() {
+    let (_fixtures, workspace) = crate::test_support::independent_styles();
     let bundle = export(
-        &source(),
+        &workspace,
         "cl",
         "en-ch",
         Some("test-style-1"),
@@ -93,7 +94,7 @@ fn cluster_bundle_renders_resolved_content_with_an_explicit_summary_allowance() 
 
 #[test]
 fn upstream_and_portable_renderers_produce_the_same_document() {
-    let workspace = source();
+    let (_fixtures, workspace) = crate::test_support::independent_styles();
     fs::create_dir_all(workspace.path(".agent/cache")).unwrap();
     let scratch = tempfile::tempdir_in(workspace.path(".agent/cache")).unwrap();
     let record_path = scratch.path().join("application.toml");

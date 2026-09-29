@@ -2,8 +2,8 @@ use super::*;
 use crate::{Workspace, content, render, settings, styles};
 use std::{fs, path::Path};
 
-fn repository() -> Workspace {
-    Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap()
+fn repository() -> (tempfile::TempDir, Workspace) {
+    crate::test_support::independent_styles()
 }
 fn leaf(workspace: &Workspace, document: &'static str, locale: &str) -> styles::StyleLeaf {
     let selected =
@@ -39,7 +39,7 @@ fn registry_requires_explicit_complete_defaults_and_safe_preset_names() {
 
 #[test]
 fn paper_precedence_names_and_selected_document_scope_are_explicit() {
-    let workspace = repository();
+    let (_fixtures, workspace) = repository();
     let leaf = leaf(&workspace, "cv", "en-ch");
     assert_eq!(leaf.locale, "en-ch");
     let original = render::cvl_spec(&workspace, &leaf, 1).unwrap();
@@ -123,7 +123,7 @@ fn leaf_for_letter(workspace: &Workspace) -> styles::StyleLeaf {
 
 #[test]
 fn explanation_reports_selected_preset_and_validates_before_merging() {
-    let workspace = repository();
+    let (_fixtures, workspace) = repository();
     let mut leaf = leaf(&workspace, "cv", "en-ch");
     let explained = settings::resolve_with_paper(&workspace, &leaf, Some("us-letter")).unwrap();
     assert_eq!(explained["paper"]["id"], "us-letter");
@@ -152,7 +152,7 @@ fn write(root: &Path, relative: &str, text: &str) {
 
 #[test]
 fn independent_renderer_owns_custom_paper_geometry_and_settings() {
-    let original = repository();
+    let (_fixtures, original) = repository();
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path();
     write(
@@ -241,7 +241,7 @@ height = 140
 
 #[test]
 fn showcase_record_selection_matches_explanation_listing_and_build() {
-    let original = repository();
+    let (_fixtures, original) = repository();
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path();
     let mut manifest = original.read_json("ccvl.json").unwrap();

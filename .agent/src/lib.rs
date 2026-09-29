@@ -27,3 +27,6 @@ pub mod workspace;
 pub use workspace::Workspace;
 
 mod watch;
+
+#[cfg(test)]
+mod test_support;

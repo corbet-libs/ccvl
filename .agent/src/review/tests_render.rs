@@ -39,10 +39,10 @@ fn actual_prepare_exports_readable_pdf_text_and_every_page_image() {
             document: "cv".into(),
             locale: "en-ch".into(),
             pages: 1,
-            application: "cvl/cv/test-style-1/topbar/en/ch/content.toml".into(),
+            application: "cvl/cv/cluster/d-plus/en/ch/content.toml".into(),
             profile: "cvl/profile.toml".into(),
-            style: Some("test-style-1".into()),
-            substyle: Some("topbar".into()),
+            style: Some("cluster".into()),
+            substyle: Some("d-plus".into()),
             paper: None,
         }],
         sources: vec![Source {

@@ -16,11 +16,13 @@ On Windows, run `.\ccvl.cmd check` instead.
 
 It verifies the workspace manifest, schemas, application/profile data, declared
 skills and evaluation cases, local Markdown links, Typst formatting, Git
-whitespace, and bundled font integrity. It discovers **36 tracked PDF variants /
-68 pages** from the style definitions, including both A4 and US Letter demos.
+whitespace, and bundled font integrity. It discovers **36 registered PDF variants /
+84 pages** from the Harvard and Cluster style definitions.
 Each leaf record selects its showcase paper; checks also render its other
 supported paper selections for validation, without requiring another set of
-tracked showcase PDFs.
+tracked showcase PDFs. Isolated Rust fixtures retain A4/US Letter and
+portrait/landscape coverage; those test styles are not registered in the shipped
+workspace.
 
 For every style it checks the requested page count, valid PDF geometry,
 usable text, embedded Unicode-mapped fonts, repeat-render reproducibility and

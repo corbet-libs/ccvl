@@ -44,8 +44,6 @@ Included are:
 - [D+ spacing for Harvard](cvl/cv/harvard/d-plus/README.md) and a
   [clustered opening](cvl/cv/cluster/README.md), whose seven example stations
   deliberately remain unfinished Lorem Ipsum;
-- two independent demonstration styles with four substyles, portrait and
-  landscape compositions, and explicit A4 / US Letter layouts;
 - [a rendered gallery and full folder overview](cvl/README.md);
 - one validated `application.toml` per concrete opportunity;
 - a shared Rust and Typst engine with bundled fonts and reproducible PDF

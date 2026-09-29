@@ -148,15 +148,15 @@ Unsupported selections fail explicitly. ccvl never shrinks text or changes the
 requested page count to fit another size. The style's locale-default paper
 keeps existing output names; alternatives use a paper suffix such as
 `cv-1-us-letter.pdf` or `cl-a4.pdf` in the same output folder. Document discovery
-follows each leaf record's effective selection, preserving the existing 36
-showcase entries while those records retain their defaults. Full checks compare
+follows each leaf record's effective selection, preserving its output name
+while the record retains its default paper. Full checks compare
 those selected outputs with tracked PDFs and render the other declared papers
 into temporary validation outputs.
 
 ```sh
-bash ./ccvl build-cv en-us --style test-style-1 --substyle sidebar --paper a4
-bash ./ccvl build-cl en-ch --style test-style-2 --substyle timeline --paper us-letter
-bash ./ccvl explain-style cv en-us --style test-style-1 --paper a4
+bash ./ccvl build-cv en-ch 4 --style harvard --substyle d-plus --paper a4
+bash ./ccvl build-cv en-ch 1 --style cluster --substyle d-plus --paper a4
+bash ./ccvl explain-style cv en-ch --style cluster --paper a4
 ```
 
 ## Rendering interface
@@ -211,7 +211,7 @@ document enumeration continue to inspect the complete workspace.
 Inspect the merged adapter inputs without compiling or creating outputs:
 
 ```sh
-bash ./ccvl explain-style cv en-us --style test-style-1 --substyle sidebar
+bash ./ccvl explain-style cv en-ch --style cluster --substyle d-plus
 bash ./ccvl explain-style cl en-ch --style harvard --substyle frame
 ```
 
@@ -227,25 +227,20 @@ clear unsupported-adapter error instead of a guessed explanation.
 Keep reusable style changes upstream in ccvl, then merge them into personal
 applications repositories. Private content stays downstream.
 
-## Shipped demonstrations
+## Shipped styles
 
-`test-style-1` uses a root `layout.typ`, with `sidebar` and `topbar` portrait
-compositions. `test-style-2` uses `parts/composition.typ`, with `cards` and
-`timeline` landscape compositions. Both ship CV and CL entry points for
-default `en-ch` A4 and `en-us` US Letter, with either paper selectable in either
-locale. Harvard currently declares A4 only. Neither demo imports Harvard. They share only the
-optional neutral settings adapter, the profile, and the engine interface.
-
-See [the gallery](../../cvl/README.md) for PDFs and visible comparisons,
+Harvard supplies chronological CVs and cover letters. Cluster supplies a grouped
+CV opening with the D+ comparison workflow. Both support German and English
+Swiss locales on portrait A4. See [the gallery](../../cvl/README.md) for PDFs,
 [the defaults audit](typst-defaults.md) for settings and deliberate `auto`
 choices, and [ccvl-style](../skills/ccvl-style/SKILL.md) for style creation.
 
-```sh
-bash ./ccvl build-cv en-us --style test-style-1 --substyle sidebar
-bash ./ccvl build-cv en-us 2 --style test-style-2 --substyle cards
-bash ./ccvl build-cl en-ch --style test-style-2 --substyle timeline
-```
-
+Independent portrait/landscape and A4/US Letter compositions remain under
+[test fixtures](../tests/fixtures/independent-styles/README.md). Tests install
+those sources into isolated temporary workspaces; they are absent from normal
+style discovery, document builds and the rendered gallery. This preserves
+multi-paper, locale and portable-renderer coverage without offering test designs
+as user-facing styles.
 
 ## AIDA structure and shared conventions
 
@@ -268,7 +263,7 @@ including general documents without a vacancy.
 
 ## Portable consumer bundles
 
-`ccvl export-style cl en-ch --style test-style-1 --substyle sidebar --paper a4
+`ccvl export-style cv en-ch --style cluster --substyle d-plus --paper a4
 --output style.json` exports an exact variant, including template sources,
 contracts, fonts and license notices. A bundle contains no profile, application,
 wording records or rendered showcase output. Styles with embedded candidate

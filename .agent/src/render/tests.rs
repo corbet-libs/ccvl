@@ -602,7 +602,7 @@ fn selection(substyle: &str) -> Selection {
 
 #[test]
 fn alternate_papers_have_real_dimensions_labels_and_standalone_parity() {
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let (_fixtures, workspace) = crate::test_support::independent_styles();
     let compiler = Compiler::new(&workspace).unwrap();
     let temporary = tempfile::tempdir().unwrap();
     for (document, style, substyle, locale, paper, label) in [
