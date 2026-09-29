@@ -1,7 +1,0 @@
-content_fields = ["title", "intro", "sections"]
-[pdf]
-version = "1.7"
-tagged = true
-font_pattern = "^[A-Z]{6}\\+EBGaramond-"
-minimum_text_chars = 100
-required_profile_fields = ["name", "email"]

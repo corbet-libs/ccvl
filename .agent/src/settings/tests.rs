@@ -2,8 +2,8 @@ use super::*;
 use crate::styles;
 use std::fs;
 
-fn repository() -> (tempfile::TempDir, Workspace) {
-    crate::test_support::independent_styles()
+fn repository() -> Workspace {
+    Workspace::at(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap()
 }
 
 fn selected(workspace: &Workspace, style: &str, substyle: &str, locale: &str) -> StyleLeaf {
@@ -13,7 +13,7 @@ fn selected(workspace: &Workspace, style: &str, substyle: &str, locale: &str) ->
 
 #[test]
 fn explanation_preserves_precedence_and_reports_each_winning_source() {
-    let (_fixtures, workspace) = repository();
+    let workspace = repository();
     let compact = resolve(
         &workspace,
         &selected(&workspace, "harvard", "compact", "en-ch"),
@@ -35,19 +35,19 @@ fn explanation_preserves_precedence_and_reports_each_winning_source() {
         "cvl/cv/harvard/style.toml#paper.sizes.a4.settings"
     );
     assert_eq!(compact["sources"].as_array().unwrap().len(), 4);
-    let letter = resolve(
+    let standard = resolve(
         &workspace,
-        &selected(&workspace, "test-style-1", "sidebar", "en-us"),
+        &selected(&workspace, "harvard", "standard", "en-ch"),
     )
     .unwrap();
-    assert_eq!(letter["settings"]["page"]["paper"], "us-letter");
-    assert_eq!(letter["settings"]["text"]["font"], "IBM Plex Serif");
+    assert_eq!(standard["settings"]["page"]["paper"], "a4");
+    assert_eq!(standard["settings"]["text"]["font"], "Archivo");
     assert_eq!(
-        letter["origins"]["/page/paper"],
-        "cvl/cv/test-style-1/style.toml#paper.sizes.us-letter.settings"
+        standard["origins"]["/page/paper"],
+        "cvl/cv/harvard/style.toml#paper.sizes.a4.settings"
     );
     // An independent renderer is never assigned this schema or a guessed merge.
-    let mut custom = selected(&workspace, "test-style-1", "sidebar", "en-us");
+    let mut custom = selected(&workspace, "harvard", "standard", "en-ch");
     custom.settings_adapter = None;
     assert!(
         resolve(&workspace, &custom)
@@ -59,11 +59,11 @@ fn explanation_preserves_precedence_and_reports_each_winning_source() {
 
 #[test]
 fn rust_and_direct_typst_reject_the_same_invalid_adapter_settings() {
-    let (_fixtures, workspace) = repository();
+    let workspace = repository();
     let schema = workspace.read_json(SCHEMA).unwrap();
     let settings = resolve(
         &workspace,
-        &selected(&workspace, "test-style-1", "sidebar", "en-us"),
+        &selected(&workspace, "harvard", "standard", "en-ch"),
     )
     .unwrap()["settings"]
         .clone();
@@ -131,11 +131,11 @@ fn rust_and_direct_typst_reject_the_same_invalid_adapter_settings() {
 
 #[test]
 fn custom_dimensions_unused_fields_missing_values_and_reversed_bounds_fail() {
-    let (_fixtures, workspace) = repository();
+    let workspace = repository();
     let schema = workspace.read_json(SCHEMA).unwrap();
     let settings = resolve(
         &workspace,
-        &selected(&workspace, "test-style-1", "sidebar", "en-us"),
+        &selected(&workspace, "harvard", "standard", "en-ch"),
     )
     .unwrap()["settings"]
         .clone();
@@ -160,17 +160,17 @@ fn custom_dimensions_unused_fields_missing_values_and_reversed_bounds_fail() {
 
 #[test]
 fn invalid_overridden_input_still_names_its_source_file() {
-    let (_fixtures, original) = repository();
+    let original = repository();
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path();
     fs::write(root.join("ccvl.json"), "{}").unwrap();
-    let mut leaf = selected(&original, "test-style-1", "sidebar", "en-us");
+    let mut leaf = selected(&original, "harvard", "standard", "en-ch");
     let relative = original.relative(&leaf.dir).unwrap();
     leaf.dir = root.join(relative);
     fs::create_dir_all(&leaf.dir).unwrap();
     leaf.defaults = Some(root.join("defaults.toml"));
     fs::copy(
-        original.path("cvl/shared/test-style-1/defaults.toml"),
+        original.path("cvl/shared/harvard/defaults.toml"),
         root.join("defaults.toml"),
     )
     .unwrap();
@@ -179,7 +179,7 @@ fn invalid_overridden_input_still_names_its_source_file() {
     fs::write(leaf.substyle_file(), "[block]\nalign = \"typo\"\n").unwrap();
     fs::write(
         leaf.dir.join("layout.toml"),
-        "[block]\nalign = \"left\"\n[text]\nlang = \"en\"\nregion = \"US\"\n",
+        "[block]\nalign = \"left\"\n[text]\nlang = \"en\"\nregion = \"CH\"\n",
     )
     .unwrap();
     let workspace = Workspace::at(root).unwrap();

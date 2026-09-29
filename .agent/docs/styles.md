@@ -235,13 +235,6 @@ Swiss locales on portrait A4. See [the gallery](../../cvl/README.md) for PDFs,
 [the defaults audit](typst-defaults.md) for settings and deliberate `auto`
 choices, and [ccvl-style](../skills/ccvl-style/SKILL.md) for style creation.
 
-Independent portrait/landscape and A4/US Letter compositions remain under
-[test fixtures](../tests/fixtures/independent-styles/README.md). Tests install
-those sources into isolated temporary workspaces; they are absent from normal
-style discovery, document builds and the rendered gallery. This preserves
-multi-paper, locale and portable-renderer coverage without offering test designs
-as user-facing styles.
-
 ## AIDA structure and shared conventions
 
 Visual styles own content fields, paragraph/line geometry, fonts, page counts

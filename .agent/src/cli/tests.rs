@@ -39,17 +39,17 @@ fn explain_style_accepts_document_locale_and_scoped_selection() {
         "ccvl",
         "explain-style",
         "cl",
-        "en-us",
+        "en-ch",
         "--style",
-        "test-style-2",
+        "harvard",
         "--substyle",
-        "cards",
+        "frame",
     ])
     .unwrap();
     assert!(
-        matches!(args.command, Command::ExplainStyle { document, locale, style: Some(style), substyle: Some(substyle), .. } if document == "cl" && locale == "en-us" && style == "test-style-2" && substyle == "cards")
+        matches!(args.command, Command::ExplainStyle { document, locale, style: Some(style), substyle: Some(substyle), .. } if document == "cl" && locale == "en-ch" && style == "harvard" && substyle == "frame")
     );
-    assert!(Args::try_parse_from(["ccvl", "explain-style", "resume", "en-us"]).is_err());
+    assert!(Args::try_parse_from(["ccvl", "explain-style", "resume", "en-ch"]).is_err());
 }
 
 #[test]

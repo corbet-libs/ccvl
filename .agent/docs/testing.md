@@ -20,9 +20,10 @@ whitespace, and bundled font integrity. It discovers **36 registered PDF variant
 84 pages** from the Harvard and Cluster style definitions.
 Each leaf record selects its showcase paper; checks also render its other
 supported paper selections for validation, without requiring another set of
-tracked showcase PDFs. Isolated Rust fixtures retain A4/US Letter and
-portrait/landscape coverage; those test styles are not registered in the shipped
-workspace.
+tracked showcase PDFs. A text-only Rust probe verifies A4/US Letter and
+portrait/landscape selection in a temporary workspace. Settings tests use
+Harvard; portable bundle tests render all four Cluster substyles in both locales.
+The retired demonstration designs are deleted, including their fixture sources.
 
 For every style it checks the requested page count, valid PDF geometry,
 usable text, embedded Unicode-mapped fonts, repeat-render reproducibility and
@@ -181,10 +182,13 @@ weakening supported work. These apply to any candidate, independently of the
 showcase author. They run through the existing `skill-eval` interface. They test
 routing and choices; they do not prove an agent wrote or inspected real output.
 
-The separate artifact corpus is
+The separate synthetic review corpus is
 [review-evaluation/cases.json](../tests/review-evaluation/cases.json), with
 [evaluator-only expectations](../tests/review-evaluation/answer-key.json).
-It supplies eleven paired synthetic clean/seeded-defect cases plus general,
+Its content-only contracts are independent of the shipped style catalogue;
+no demonstration renderer is bundled. Artifact-specific evaluations must supply
+a renderer and actual outputs satisfying the declared contract before assessing
+rendering. It supplies eleven paired synthetic clean/seeded-defect cases plus general,
 missing-image, provider-failure and actual-paper-mismatch cases. All career,
 employer and source details are deliberately fictional evaluation data; never
 use them as a real profile or copy private inputs into these fixtures.

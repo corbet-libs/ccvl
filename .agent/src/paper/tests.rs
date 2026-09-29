@@ -3,11 +3,10 @@ use crate::{Workspace, content, render, settings, styles};
 use std::{fs, path::Path};
 
 fn repository() -> (tempfile::TempDir, Workspace) {
-    crate::test_support::independent_styles()
+    crate::test_support::paper_workspace()
 }
 fn leaf(workspace: &Workspace, document: &'static str, locale: &str) -> styles::StyleLeaf {
-    let selected =
-        styles::selection(workspace, document, Some("test-style-1"), Some("sidebar")).unwrap();
+    let selected = styles::selection(workspace, document, Some("probe"), Some("plain")).unwrap();
     styles::leaf(workspace, document, locale, &selected).unwrap()
 }
 
@@ -107,18 +106,15 @@ fn paper_precedence_names_and_selected_document_scope_are_explicit() {
         )
         .is_err()
     );
-    let letter = leaf_for_letter(&workspace);
+    let selected = styles::selection(&workspace, "cl", Some("probe"), Some("plain")).unwrap();
+    let american = styles::leaf(&workspace, "cl", "en-us", &selected).unwrap();
     assert!(
-        render::cvl_spec_with_paper(&workspace, &letter, 1, Some("a4"))
+        render::cvl_spec_with_paper(&workspace, &american, 1, Some("a4"))
             .unwrap()
             .output
             .ends_with("pdf/cl-a4.pdf")
     );
-    assert_eq!(render::cvl_specs(&workspace).unwrap().len(), 56);
-}
-
-fn leaf_for_letter(workspace: &Workspace) -> styles::StyleLeaf {
-    leaf(workspace, "cl", "en-us")
+    assert_eq!(render::cvl_specs(&workspace).unwrap().len(), 4);
 }
 
 #[test]
@@ -130,7 +126,7 @@ fn explanation_reports_selected_preset_and_validates_before_merging() {
     assert_eq!(explained["settings"]["page"]["paper"], "us-letter");
     assert_eq!(
         explained["origins"]["/page/paper"],
-        "cvl/cv/test-style-1/style.toml#paper.sizes.us-letter.settings"
+        "cvl/cv/probe/style.toml#paper.sizes.us-letter.settings"
     );
     leaf.paper
         .as_mut()
@@ -202,7 +198,7 @@ height = 140
 "#,
     );
     let mut record =
-        content::read_record(&original, "cvl/cv/test-style-1/sidebar/en/us/content.toml").unwrap();
+        content::read_record(&original, "cvl/cv/probe/plain/en/us/content.toml").unwrap();
     record["options"]["cv_style"] = "orbit".into();
     record["options"]["cv_substyle"] = "plain".into();
     record["options"]["generate_cl"] = false.into();
@@ -241,40 +237,7 @@ height = 140
 
 #[test]
 fn showcase_record_selection_matches_explanation_listing_and_build() {
-    let (_fixtures, original) = repository();
-    let temporary = tempfile::tempdir().unwrap();
-    let root = temporary.path();
-    let mut manifest = original.read_json("ccvl.json").unwrap();
-    manifest["documents"]["cv"]["default_style"] = "test-style-1".into();
-    manifest["documents"]["cover_letter"]["default_style"] = "test-style-1".into();
-    write(root, "ccvl.json", &manifest.to_string());
-    for relative in [
-        ".agent/typst",
-        "cvl/shared/test-style-1",
-        "cvl/cv/test-style-1",
-        "cvl/cl/test-style-1",
-    ] {
-        for entry in walkdir::WalkDir::new(original.path(relative)) {
-            let entry = entry.unwrap();
-            if entry.file_type().is_file()
-                && !entry
-                    .path()
-                    .components()
-                    .any(|part| part.as_os_str() == "pdf" || part.as_os_str() == "preview")
-            {
-                let relative = original.relative(entry.path()).unwrap();
-                let target = root.join(relative);
-                fs::create_dir_all(target.parent().unwrap()).unwrap();
-                fs::copy(entry.path(), target).unwrap();
-            }
-        }
-    }
-    write(
-        root,
-        "cvl/profile.toml",
-        &fs::read_to_string(original.path("cvl/profile.toml")).unwrap(),
-    );
-    let workspace = Workspace::at(root).unwrap();
+    let (_fixtures, workspace) = repository();
     let leaf = leaf(&workspace, "cv", "en-ch");
     let mut record: toml::Value =
         toml::from_str(&fs::read_to_string(leaf.content()).unwrap()).unwrap();
@@ -289,7 +252,7 @@ fn showcase_record_selection_matches_explanation_listing_and_build() {
     assert_eq!(explained["paper"]["id"], spec.inputs["paper"]);
     assert_eq!(
         explained["paper"]["selection_source"],
-        "cvl/cv/test-style-1/sidebar/en/ch/content.toml#options.cv_paper"
+        "cvl/cv/probe/plain/en/ch/content.toml#options.cv_paper"
     );
     let listed = render::list_documents(&workspace).unwrap();
     let entry = listed
@@ -297,9 +260,7 @@ fn showcase_record_selection_matches_explanation_listing_and_build() {
         .unwrap()
         .iter()
         .find(|entry| {
-            entry["document"] == "cv"
-                && entry["substyle"] == "sidebar"
-                && entry["locale"] == "en-ch"
+            entry["document"] == "cv" && entry["substyle"] == "plain" && entry["locale"] == "en-ch"
         })
         .unwrap();
     assert_eq!(entry["paper"], spec.inputs["paper"]);

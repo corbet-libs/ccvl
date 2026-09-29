@@ -602,36 +602,22 @@ fn selection(substyle: &str) -> Selection {
 
 #[test]
 fn alternate_papers_have_real_dimensions_labels_and_standalone_parity() {
-    let (_fixtures, workspace) = crate::test_support::independent_styles();
+    let (_fixtures, workspace) = crate::test_support::paper_workspace();
     let compiler = Compiler::new(&workspace).unwrap();
     let temporary = tempfile::tempdir().unwrap();
-    for (document, style, substyle, locale, paper, label) in [
-        (
-            "cv",
-            "test-style-1",
-            "sidebar",
-            "en-ch",
-            "us-letter",
-            "US-LETTER",
-        ),
-        ("cl", "test-style-1", "topbar", "en-us", "a4", "A4"),
-        ("cv", "test-style-2", "cards", "en-us", "a4", "A4"),
-        (
-            "cl",
-            "test-style-2",
-            "timeline",
-            "en-ch",
-            "us-letter",
-            "US-LETTER",
-        ),
+    for (document, locale, paper, label) in [
+        ("cv", "en-ch", "us-letter", "US-LETTER"),
+        ("cl", "en-us", "a4", "A4"),
+        ("cv", "en-ch", "landscape", "Landscape A4"),
+        ("cl", "en-us", "landscape", "Landscape A4"),
     ] {
         let selected =
-            styles::selection(&workspace, document, Some(style), Some(substyle)).unwrap();
+            styles::selection(&workspace, document, Some("probe"), Some("plain")).unwrap();
         let leaf = styles::leaf(&workspace, document, locale, &selected).unwrap();
         let mut spec =
             cvl_spec_with_paper(&workspace, &leaf, leaf.default_pages, Some(paper)).unwrap();
         let original = compiler.compile(&workspace, &spec).unwrap();
-        spec.output = temporary.path().join(format!("{document}-{style}.pdf"));
+        spec.output = temporary.path().join(format!("{locale}-{paper}.pdf"));
         compiler.export(&spec, &original).unwrap();
         crate::pdf::verify(
             &spec.output,

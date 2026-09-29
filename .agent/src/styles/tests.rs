@@ -451,8 +451,8 @@ fn malformed_style_contracts_fail_instead_of_disabling_checks() {
 
 #[test]
 fn pdf_geometry_is_selected_per_locale_and_missing_locale_fails() {
-    let (_fixtures, workspace) = crate::test_support::independent_styles();
-    let selected = selection(&workspace, "cv", Some("test-style-1"), Some("sidebar")).unwrap();
+    let (_fixtures, workspace) = crate::test_support::paper_workspace();
+    let selected = selection(&workspace, "cv", Some("probe"), Some("plain")).unwrap();
     let swiss = leaf(&workspace, "cv", "en-ch", &selected).unwrap();
     let american = leaf(&workspace, "cv", "en-us", &selected).unwrap();
     assert_eq!(
@@ -484,7 +484,7 @@ fn pdf_geometry_is_selected_per_locale_and_missing_locale_fails() {
 #[test]
 fn layout_input_changes_exported_paper_and_font_and_pdf_policy_is_enforced() {
     let (_temporary, workspace) = independent_workspace();
-    let (_fixtures, original) = crate::test_support::independent_styles();
+    let original = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
     for (source, destination) in [
         (".agent/typst/document.typ", ".agent/typst/document.typ"),
         (
@@ -495,7 +495,7 @@ fn layout_input_changes_exported_paper_and_font_and_pdf_policy_is_enforced() {
             ".agent/typst/document-settings.json",
             ".agent/typst/document-settings.json",
         ),
-        ("cvl/shared/test-style-1/defaults.toml", "defaults.toml"),
+        ("cvl/shared/harvard/defaults.toml", "defaults.toml"),
     ] {
         write(
             workspace.root(),

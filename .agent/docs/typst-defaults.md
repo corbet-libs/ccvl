@@ -45,7 +45,7 @@ weights are restricted to 100–900, avoiding Typst's silent clamping. Custom
 paper requires both dimensions; named paper rejects unused custom dimensions.
 
 **Language does not determine paper.** Harvard and Cluster explicitly choose A4
-for their supported locales. Isolated test fixtures exercise US Letter and A4
+for their supported locales. A text-only Rust probe exercises US Letter and A4
 in either `en-ch` or `en-us`; the engine has no country-to-paper rule.
 A command-line paper overrides the record's optional
 `cv_paper` or `cl_paper`, which overrides the style's locale default.

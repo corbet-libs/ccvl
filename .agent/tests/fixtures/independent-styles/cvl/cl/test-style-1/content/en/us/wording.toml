@@ -1,8 +1,0 @@
-# Shared CL wording for test-style-1, en-us.
-# Reused only by substyles of this style.
-
-[cl]
-subject = "An independent cover-letter composition"
-opening = "This is demonstration text for comparing styles and substyles."
-body = ["The letter uses the same approved profile and common record envelope as the CV. Its content fields and arrangement belong to the selected letter style.", "The layout file explicitly chooses paper size, orientation, language and region. Font, spacing and text-shaping choices are recorded in the style settings.", "Switch the substyle to compare the arrangement while keeping the content constant. A style may use any geometry its renderer and declared page presets support."]
-closing = "Demonstration complete. This document is not a job application."
