@@ -6,7 +6,7 @@
 #import "/cvl/shared/harvard/application.typ": load-cover-letter-contract, validate-application
 #import "/.agent/typst/line-contract.typ": line-contract-mode, measured-content-line, measured-paragraph
 #import "/.agent/typst/profile.typ": load-profile
-#import "/.agent/typst/letter/letter.typ": closing as farewell-closing, salutation, signature-image
+#import "/.agent/typst/letter/letter.typ": closing as farewell-closing, opening, salutation, signature-image
 
 #let cover-letter-contract = load-cover-letter-contract()
 
@@ -89,7 +89,16 @@
   } else {
     [#cl-strings.subject_application_for #job.title]
   }
-  let salutation = [#salutation(doc-locale, recipient.name)]
+  // An explicit salutation_override wins verbatim over the locale-correct
+  // last-token renderer (e.g. a spaced double surname). It must already
+  // carry the locale-correct punctuation (de-ch: no comma).
+  let recipient-override = recipient.at("salutation_override", default: none)
+  let override-text = if recipient-override == none { none } else if recipient-override.trim() == "" { none } else {
+    recipient-override.trim()
+  }
+  let salutation = if override-text == none { [#salutation(doc-locale, recipient.name)] } else {
+    [#opening(doc-locale, override: override-text)]
+  }
   let closing = [#farewell-closing(doc-locale)]
 
   let paragraph(index) = block(width: 100%, breakable: false)[

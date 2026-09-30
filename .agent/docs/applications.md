@@ -32,7 +32,9 @@ contains:
 - `job`: vacancy, organisation, source, description, context, notes, and
   recipient (`job.cl_recipient.name` holds the full address form such as
   `"Frau Dr. Müller"` for the locale-correct salutation; empty falls back
-  to the generic greeting with a warning, see
+  to the generic greeting with a warning; optional
+  `job.cl_recipient.salutation_override` holds a complete explicitly
+  requested salutation line as printed, see
   `.agent/docs/cover-letter.md`);
 - Harvard `cv.summary`: one flowing paragraph that must typeset to exactly five
   lines;

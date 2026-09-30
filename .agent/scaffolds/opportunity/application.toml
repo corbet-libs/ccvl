@@ -30,8 +30,13 @@ notes = ""
 # Full address form for the locale-correct salutation, e.g. "Frau Dr. Müller"
 # or "Herr Müller" (see .agent/docs/cover-letter.md). Empty uses the generic
 # salutation and warns; the address itself is recorded but never printed.
+# Optional: salutation_override holds a complete explicitly requested
+# salutation line as printed (e.g. a spaced double surname the last-token
+# renderer would shorten). Empty or absent falls back to the name-derived
+# salutation. It must already carry the locale-correct punctuation.
 name = ""
 title = ""
 company = ""
 address_line_1 = ""
 address_line_2 = ""
+# salutation_override = ""

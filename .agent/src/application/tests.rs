@@ -452,6 +452,37 @@ fn missing_recipient_name_warns_without_failing_validation() {
 }
 
 #[test]
+fn salutation_override_is_optional_but_must_be_a_single_line() {
+    // Absent or empty falls back to the name-derived salutation.
+    let draft = application(&[3, 5, 5, 5, 5, 3]);
+    validate_record(&workspace(), &draft, "fixture", true).unwrap();
+
+    let mut explicit = draft.clone();
+    explicit["job"]["cl_recipient"]["salutation_override"] =
+        json!("Sehr geehrte Frau Bressanelli Bernal");
+    validate_record(&workspace(), &explicit, "fixture", true).unwrap();
+
+    let mut empty = draft.clone();
+    empty["job"]["cl_recipient"]["salutation_override"] = json!("");
+    validate_record(&workspace(), &empty, "fixture", true).unwrap();
+
+    let mut typed = draft.clone();
+    typed["job"]["cl_recipient"]["salutation_override"] = json!(42);
+    let error = validate_record(&workspace(), &typed, "fixture", true)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("salutation_override must be a string"));
+
+    let mut multiline = draft.clone();
+    multiline["job"]["cl_recipient"]["salutation_override"] =
+        json!("Sehr geehrte Frau Bernal\nSehr geehrte Frau Bressanelli");
+    let error = validate_record(&workspace(), &multiline, "fixture", true)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("must be a single line"));
+}
+
+#[test]
 fn substyles_default_to_standard_and_left_rule() {
     // The fixture carries no selection keys, like records written before
     // per-document selection existed: validation accepts it and

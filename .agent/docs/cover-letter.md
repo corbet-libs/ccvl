@@ -196,6 +196,18 @@ the supported generic fallback and produces a non-blocking diagnostic; it is
 valid for a general/open showcase. Obtain a real address form when available
 for a targeted letter, without inventing one.
 
+The uniform renderer addresses the recipient by the last name token
+(`salutation-surname`); a spaced double surname therefore shortens to its
+final part (e.g. `Bressanelli Bernal` renders as `Frau Bernal`). When the user
+explicitly requests the full double name, set the optional
+`job.cl_recipient.salutation_override` to the complete salutation line as
+printed, e.g. `"Sehr geehrte Frau Bressanelli Bernal"`. The Harvard style
+passes it verbatim through the public `opening(override:)` helper; it must
+already carry the locale-correct punctuation (`de-ch`: no comma). Empty or
+absent falls back to the name-derived salutation. Compound-surname inference
+itself remains cletter/cnice behavior upstream; ccvl only passes the explicit
+user choice through without duplicating locale tables.
+
 Reusable locale resolution/canonicalization, spelling, salutations, closings
 and dates belong to cletter and its family. ccvl consumes their public helpers
 and passes explicit user/style choices. Missing shared behavior belongs upstream,
