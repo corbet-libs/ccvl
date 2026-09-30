@@ -261,7 +261,12 @@ fn document_prose_rejects_grouped_thousands() {
             "unexpected rejection: {text}"
         );
     }
-    for text in ["1.000 Gespräche", "2.000 Mitarbeitende", "1,000 calls", "CHF 100,000 Umsatz"] {
+    for text in [
+        "1.000 Gespräche",
+        "2.000 Mitarbeitende",
+        "1,000 calls",
+        "CHF 100,000 Umsatz",
+    ] {
         let error = reject_number_grouping(text, "here")
             .unwrap_err()
             .to_string();
@@ -285,9 +290,7 @@ fn document_prose_rejects_comma_ch_grades() {
         );
     }
     for text in ["Bestnote 6,0 (CH)", "Note 5,6 (CH)"] {
-        let error = reject_comma_ch_grade(text, "here")
-            .unwrap_err()
-            .to_string();
+        let error = reject_comma_ch_grade(text, "here").unwrap_err().to_string();
         assert!(
             error.contains("Swiss grades use dot display"),
             "unexpected pass: {text} ({error})"
@@ -364,7 +367,9 @@ fn summary_rejects_formula_openings() {
         "I am applying as Intern in the Lufthansa Group Digital Hangar.",
         "\"Bewerbung als Training System Engineer bei Rheinmetall.\"",
     ] {
-        let error = reject_formula_opening(text, "here").unwrap_err().to_string();
+        let error = reject_formula_opening(text, "here")
+            .unwrap_err()
+            .to_string();
         assert!(
             error.contains("must not open with a formula application phrase"),
             "unexpected pass: {text} ({error})"
@@ -404,7 +409,8 @@ fn opportunity_walk_collects_hyphen_advisories() {
 }
 
 #[test]
-fn unknown_fields_are_rejected() {    let mut draft = application(&[3, 5, 5, 5, 5, 3]);
+fn unknown_fields_are_rejected() {
+    let mut draft = application(&[3, 5, 5, 5, 5, 3]);
     draft["job"]["smuggled"] = json!("nope");
     let error = validate_record(&workspace(), &draft, "fixture", true)
         .unwrap_err()
@@ -443,6 +449,37 @@ fn missing_recipient_name_warns_without_failing_validation() {
     assert!(warning.contains("formal salutation"));
     assert!(recipient_salutation_warning("fixture", "Dr. Jane Doe").is_none());
     assert!(recipient_salutation_warning("fixture", "   ").is_some());
+}
+
+#[test]
+fn salutation_override_is_optional_but_must_be_a_single_line() {
+    // Absent or empty falls back to the name-derived salutation.
+    let draft = application(&[3, 5, 5, 5, 5, 3]);
+    validate_record(&workspace(), &draft, "fixture", true).unwrap();
+
+    let mut explicit = draft.clone();
+    explicit["job"]["cl_recipient"]["salutation_override"] =
+        json!("Sehr geehrte Frau Bressanelli Bernal");
+    validate_record(&workspace(), &explicit, "fixture", true).unwrap();
+
+    let mut empty = draft.clone();
+    empty["job"]["cl_recipient"]["salutation_override"] = json!("");
+    validate_record(&workspace(), &empty, "fixture", true).unwrap();
+
+    let mut typed = draft.clone();
+    typed["job"]["cl_recipient"]["salutation_override"] = json!(42);
+    let error = validate_record(&workspace(), &typed, "fixture", true)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("salutation_override must be a string"));
+
+    let mut multiline = draft.clone();
+    multiline["job"]["cl_recipient"]["salutation_override"] =
+        json!("Sehr geehrte Frau Bernal\nSehr geehrte Frau Bressanelli");
+    let error = validate_record(&workspace(), &multiline, "fixture", true)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("must be a single line"));
 }
 
 #[test]

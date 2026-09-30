@@ -38,6 +38,12 @@ const RECIPIENT_FIELDS: &[&str] = &[
     "address_line_2",
 ];
 
+/// Optional recipient fields. `salutation_override` holds a complete,
+/// explicitly requested salutation line as printed (e.g. a spaced double
+/// surname the last-token renderer would shorten). Empty or absent falls
+/// back to the locale-correct salutation derived from `name`.
+const OPTIONAL_RECIPIENT_FIELDS: &[&str] = &["salutation_override"];
+
 const PROFILE_FIELDS: &[&str] = &[
     "name",
     "email",
@@ -362,12 +368,25 @@ fn validate_record_scope(
         .get("cl_recipient")
         .and_then(Value::as_object)
         .context("job.cl_recipient is missing")?;
-    ensure_no_unknown(recipient, RECIPIENT_FIELDS, location)?;
+    ensure_no_unknown(
+        recipient,
+        &[RECIPIENT_FIELDS, OPTIONAL_RECIPIENT_FIELDS].concat(),
+        location,
+    )?;
     for field in RECIPIENT_FIELDS {
         recipient
             .get(*field)
             .and_then(Value::as_str)
             .with_context(|| format!("{location}.job.cl_recipient.{field} is missing"))?;
+    }
+    if let Some(override_value) = recipient.get("salutation_override") {
+        let text = override_value.as_str().with_context(|| {
+            format!("{location}.job.cl_recipient.salutation_override must be a string")
+        })?;
+        ensure!(
+            !text.contains('\n') && !text.contains('\r'),
+            "{location}.job.cl_recipient.salutation_override must be a single line"
+        );
     }
     if opportunity {
         let posting = Path::new(&normalized)

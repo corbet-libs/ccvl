@@ -230,7 +230,8 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
         })
     {
         let entry = entry?;
-        if !entry.file_type().is_file() || entry.file_name().to_string_lossy() != "application.toml" {
+        if !entry.file_type().is_file() || entry.file_name().to_string_lossy() != "application.toml"
+        {
             continue;
         }
         let relative = workspace

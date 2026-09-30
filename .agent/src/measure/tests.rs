@@ -480,7 +480,7 @@ fn typst_salutation_helper_keeps_only_the_last_token() {
         .fonts(ctypst::fonts::documents())
         .build()
         .unwrap();
-    let source = "#import \"/.agent/typst/letter/letter.typ\": salutation-last-name, salutation\n\
+    let source = "#import \"/.agent/typst/letter/letter.typ\": salutation-last-name, salutation, opening\n\
             #assert(salutation-last-name(\"Dr. Jane Doe\") == \"Doe\", message: \"title prefix\")\n\
             #assert(salutation-last-name(\"Ms Test Person\") == \"Person\", message: \"multi-token\")\n\
             #assert(salutation-last-name(\"Madonna\") == \"Madonna\", message: \"single token\")\n\
@@ -498,6 +498,11 @@ fn typst_salutation_helper_keeps_only_the_last_token() {
             #assert(salutation(\"de\", \"\") == \"Sehr geehrte Damen und Herren,\", message: \"de generic\")\n\
             #assert(salutation(\"de-ch\", \"Jane Doe\") == \"Sehr geehrte Damen und Herren\", message: \"no honorific\")\n\
             #assert(salutation(\"de-ch\", \"Hr. Müller\") == \"Sehr geehrte Damen und Herren\", message: \"abbreviation rejected\")\n\
+            #assert(salutation(\"de-ch\", \"Frau Annamaria Bressanelli Bernal\") == \"Sehr geehrte Frau Bernal\", message: \"spaced double surname shortens\")\n\
+            #assert(opening(\"de-ch\", override: \"Sehr geehrte Frau Bressanelli Bernal\") == \"Sehr geehrte Frau Bressanelli Bernal\", message: \"explicit override wins verbatim\")\n\
+            #assert(opening(\"de-ch\", override: \"\") == \"\", message: \"empty override stays empty\")\n\
+            #assert(opening(\"de-ch\", name: \"Frau Müller\") == \"Sehr geehrte Frau Müller\", message: \"opening falls back to name\")\n\
+            #assert(opening(\"de-ch\") == \"Sehr geehrte Damen und Herren\", message: \"opening falls back to formal\")\n\
             #assert(salutation(\"fr\", \"Madame Dupont\") == \"Madame Dupont,\", message: \"french\")\n\
             #assert(salutation(\"it\", \"Sig. Rossi\") == \"Gentile Sig. Rossi,\", message: \"italian\")\n\
             #assert(salutation(\"rm\", \"signur Schmid\") == \"Stimà signur Schmid,\", message: \"romansh\")\n\
