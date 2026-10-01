@@ -34,6 +34,12 @@ fn copy_tree(source: &Path, target: &Path, skip: &dyn Fn(&Path) -> bool) {
     }
 }
 
+/// A read-only view of the checked-in fixture for tests that neither write
+/// nor render; it lacks the engine inputs that `fixture_workspace` copies.
+pub(crate) fn fixture_view() -> Workspace {
+    Workspace::at(&fixture_root()).unwrap()
+}
+
 /// Copy one engine-owned repository file or directory into a test workspace.
 pub(crate) fn copy_repository(root: &Path, relative: &str) {
     let source = repository().join(relative);

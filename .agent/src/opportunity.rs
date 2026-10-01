@@ -148,33 +148,15 @@ pub fn create_record(
 
 #[cfg(test)]
 mod tests {
-    use tempfile::tempdir;
-
     use super::*;
 
     fn temporary_workspace() -> (tempfile::TempDir, Workspace) {
-        let directory = tempdir().unwrap();
-        let original = Workspace::at(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-        for relative in [
-            "ccvl.json",
-            ".agent/scaffolds/opportunity/application.toml",
-            "cvl/cv/harvard/style.toml",
-            "cvl/cl/harvard/style.toml",
-            "cvl/cv/harvard/scaffold.toml",
-            "cvl/cl/harvard/scaffold.toml",
-            "cvl/shared/harvard/defaults.toml",
-        ] {
-            let target = directory.path().join(relative);
-            fs::create_dir_all(target.parent().unwrap()).unwrap();
-            fs::copy(original.path(relative), target).unwrap();
-        }
-        let workspace = Workspace::at(directory.path()).unwrap();
-        (directory, workspace)
+        crate::test_support::fixture_workspace()
     }
 
     #[test]
     fn path_keys_cannot_escape() {
-        let workspace = Workspace::at(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        let workspace = crate::test_support::fixture_view();
         assert_eq!(
             record_path(&workspace, "acme", "strategy-lead", false).unwrap(),
             workspace.path("opportunities/acme/strategy-lead/application.toml")
