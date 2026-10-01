@@ -6,7 +6,7 @@ and checks the style; the renderer prints only the approved profile header.
 
 | Path | State |
 | --- | --- |
-| `style.toml` | `de-ch` / `en-ch`, portrait A4, one page, substyles `standard` (default) and `timeline` |
+| `style.toml` | `de-ch` / `en-ch`, portrait A4, one page, substyles `standard` (default) and `timeline`; `slot-3` to `slot-5` are empty slots |
 | `contract.toml`, `scaffold.toml` | No content fields yet |
 | `content/<language>/ch/wording.toml` | Empty `[cv]` table |
 | `<substyle>/substyle.toml` | No settings yet |

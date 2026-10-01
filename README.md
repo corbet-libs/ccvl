@@ -75,8 +75,9 @@ bash ./ccvl build-opportunity example-org strategy-lead
 Generated general documents are written to
 `cvl/cv/<style>/<substyle>/<language>/<region>/pdf/cv-{2,3,4}.pdf` and
 `cvl/cl/<style>/<substyle>/<language>/<region>/pdf/cl.pdf`.
-The shipped Harvard CV substyles are `standard`, `compact`, `aligned` and `d-plus`; cover-letter substyles are
-`left-rule` and `frame`. Use `build-cv en-ch 4 --style harvard --substyle compact` or
+The shipped Harvard CV substyles are `d-plus` (the default), `standard`, `compact` and `aligned`;
+cover-letter substyles are `left-rule` (the default) and `frame`. `bash ./ccvl list-styles` shows every
+style, substyle and empty slot. Use `build-cv en-ch 4 --style harvard --substyle compact` or
 `build-cl en-ch --style harvard --substyle frame` with your platform launcher.
 Other styles own their layouts and page presets; see [.agent/docs/styles.md](.agent/docs/styles.md).
 Opportunity-specific documents are written beside their job record under

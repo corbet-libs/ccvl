@@ -28,6 +28,6 @@ bash .agent/scripts/build-cluster-comparison.sh
 
 Earlier geometry samples remain available: `standard` has 2–2–2 stations,
 `middle-three` has 2–3–2, and `middle-three-spaced` balances the category gaps.
-D+ is the cluster default. The workspace's default CV remains Harvard standard.
+D+ is the cluster default. The workspace's default CV is Harvard D+.
 Fonts, wording and line counts affect visible gaps: remeasure after changing
 them rather than treating these calibrated values as universal constants.

@@ -2,8 +2,7 @@
 
 This substyle balances visible whitespace around headings while retaining the
 standard CV's wording, line breaks and spacing within entries. It supports the
-same German and English 2-, 3- and 4-page presets. Harvard standard remains the
-default.
+same German and English 2-, 3- and 4-page presets. Harvard D+ is the default.
 
 Titles move together with their rules inside their allocated layout slots.
 The education page adds 0.18 pt on each side of its four headings, or 0.508 mm
