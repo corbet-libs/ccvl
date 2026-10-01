@@ -1,0 +1,32 @@
+schema_version = 4
+revision = 0
+
+[wording]
+source = "../../../content/en/ch/wording.toml"
+
+[options]
+language = "en-ch"
+pages = 1
+cv_style = "modern"
+cv_substyle = "timeline"
+generate_cl = false
+application_date = ""
+
+[job]
+id = "modern-timeline-en-ch"
+title = ""
+organization = ""
+location = ""
+source = ""
+url = ""
+description = ""
+connections = ""
+company_context = ""
+notes = "Empty scaffold; no content."
+
+[job.cl_recipient]
+name = ""
+title = ""
+company = ""
+address_line_1 = ""
+address_line_2 = ""

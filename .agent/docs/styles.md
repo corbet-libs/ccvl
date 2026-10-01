@@ -230,8 +230,9 @@ applications repositories. Private content stays downstream.
 ## Shipped styles
 
 Harvard supplies chronological CVs and cover letters. Cluster supplies a grouped
-CV opening with the D+ comparison workflow. Both support German and English
-Swiss locales on portrait A4. See [the gallery](../../cvl/README.md) for PDFs,
+CV opening with the D+ comparison workflow. Modern is a scaffold with `standard`
+and `timeline` substyles whose design is not yet defined. All support German and
+English Swiss locales on portrait A4. See [the gallery](../../cvl/README.md) for PDFs,
 [the defaults audit](typst-defaults.md) for settings and deliberate `auto`
 choices, and [ccvl-style](../skills/ccvl-style/SKILL.md) for style creation.
 
