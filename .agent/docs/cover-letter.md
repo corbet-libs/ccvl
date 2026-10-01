@@ -198,10 +198,10 @@ for a targeted letter, without inventing one.
 
 The uniform renderer addresses the recipient by the last name token
 (`salutation-surname`); a spaced double surname therefore shortens to its
-final part (e.g. `Bressanelli Bernal` renders as `Frau Bernal`). When the user
+final part (e.g. `Schmidt Meyer` renders as `Frau Meyer`). When the user
 explicitly requests the full double name, set the optional
 `job.cl_recipient.salutation_override` to the complete salutation line as
-printed, e.g. `"Sehr geehrte Frau Bressanelli Bernal"`. The Harvard style
+printed, e.g. `"Sehr geehrte Frau Schmidt Meyer"`. The Harvard style
 passes it verbatim through the public `opening(override:)` helper; it must
 already carry the locale-correct punctuation (`de-ch`: no comma). Empty or
 absent falls back to the name-derived salutation. Compound-surname inference
