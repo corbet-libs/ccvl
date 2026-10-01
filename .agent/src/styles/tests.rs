@@ -221,15 +221,13 @@ fn independent_styles_render_without_harvard_geometry_content_or_sources() {
     for spec in specs {
         let document = compiler.compile(&workspace, &spec).unwrap();
         let metrics = measure::document_metrics(&workspace, &spec, &document).unwrap();
-        assert!(
-            measure::summary_failures(&workspace, &spec, &metrics)
-                .unwrap()
-                .is_empty()
+        assert_eq!(
+            measure::summary_failures(&workspace, &spec, &metrics).unwrap(),
+            Vec::<String>::new()
         );
-        assert!(
-            measure::preference_warnings(&workspace, &spec, &metrics)
-                .unwrap()
-                .is_empty()
+        assert_eq!(
+            measure::preference_warnings(&workspace, &spec, &metrics).unwrap(),
+            Vec::<String>::new()
         );
         let output = compiler.export(&spec, &document).unwrap();
         pdf::verify(
