@@ -531,10 +531,9 @@ fn compact_substyles_pass_the_same_measurement_gates() {
         .insert("line-contracts".to_owned(), "report".to_owned());
     let document = compiler.compile(&workspace, &cv).unwrap();
     let metrics = document_metrics(&workspace, &cv, &document).unwrap();
-    assert!(
-        summary_failures(&workspace, &cv, &metrics)
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        summary_failures(&workspace, &cv, &metrics).unwrap(),
+        Vec::<String>::new()
     );
     for (index, metric) in metrics.iter().enumerate() {
         assert!(

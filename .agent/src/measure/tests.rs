@@ -285,10 +285,9 @@ fn cover_letter_metric_set_requires_structure_and_layout_metrics() {
     let spec = cover_letter_spec();
     let complete = metric_set(&[3, 5, 5, 5, 5, 3]);
     validate_metric_set(&workspace, &spec, &complete).unwrap();
-    assert!(
-        preference_warnings(&workspace, &spec, &complete)
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        preference_warnings(&workspace, &spec, &complete).unwrap(),
+        Vec::<String>::new()
     );
 
     // The strict 3|5|5|5|5|3 framework has no dispreferred-but-valid
@@ -332,10 +331,9 @@ fn summary_counsel_fails_thin_and_intolerable_spill() {
     let failures = summary_failures(&workspace, &spec, &[summary_metric(9.2)]).unwrap();
     assert_eq!(failures.len(), 1);
     assert!(failures[0].contains("allow_thin"));
-    assert!(
-        summary_failures(&workspace, &spec, &[summary_metric(100.8)])
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        summary_failures(&workspace, &spec, &[summary_metric(100.8)]).unwrap(),
+        Vec::<String>::new()
     );
     let failures = summary_failures(&workspace, &spec, &[summary_metric(102.1)]).unwrap();
     assert_eq!(failures.len(), 1);
@@ -373,7 +371,7 @@ fn summary_counsel_notes_allowed_thin_and_tolerated_spill() {
     assert!(warnings[0].contains("past the block edge"));
     let warnings =
         preference_warnings(&workspace, &repo_cv_spec(), &[summary_metric(82.0)]).unwrap();
-    assert!(warnings.is_empty());
+    assert_eq!(warnings, Vec::<String>::new());
 }
 
 fn cover_letter_spec_with_application(application: &str) -> DocumentSpec {
@@ -458,16 +456,14 @@ fn empty_recipient_name_warns_but_stays_valid() {
     }
     // Fixtures without an application input stay silent so metric-set
     // tests keep asserting exact warning counts.
-    assert!(
-        recipient_warnings(&workspace, &cover_letter_spec())
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        recipient_warnings(&workspace, &cover_letter_spec()).unwrap(),
+        Vec::<String>::new()
     );
     // CV specs never carry the salutation counsel.
-    assert!(
-        recipient_warnings(&workspace, &repo_cv_spec())
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        recipient_warnings(&workspace, &repo_cv_spec()).unwrap(),
+        Vec::<String>::new()
     );
 }
 
