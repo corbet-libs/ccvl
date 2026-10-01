@@ -2,10 +2,11 @@
 //! This module knows the workspace protocol, never a particular page design.
 
 use std::collections::BTreeSet;
+use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -35,6 +36,15 @@ pub struct Definition {
     pub paper: Option<crate::paper::Registry>,
     #[serde(default)]
     pub fonts: Vec<String>,
+}
+
+impl Definition {
+    /// Substyles that own render leaves, one per supported locale. Callers
+    /// derive document inventories from this instead of a hard-coded list.
+    #[must_use]
+    pub fn rendered_substyles(&self) -> &[String] {
+        &self.substyles
+    }
 }
 
 /// A document/style/substyle/language/country render entry point.
@@ -391,13 +401,93 @@ pub fn leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<Style
     let mut leaves = Vec::new();
     for definition in definitions(workspace, document)? {
         let style = ResolvedStyle::new(workspace, document, definition)?;
-        for substyle in &style.definition.substyles {
+        for substyle in style.definition.rendered_substyles() {
             for locale in &style.definition.supports_locales {
                 leaves.push(style.leaf(workspace, substyle, locale)?);
             }
         }
     }
     Ok(leaves)
+}
+
+/// Repeatable `<doc>/<style>` selections that limit which styles' documents
+/// are enumerated for rendering and measurement. An empty filter selects every
+/// style. Workspace-wide validation never consults this filter.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct StyleFilter {
+    selected: BTreeSet<(&'static str, String)>,
+}
+
+impl StyleFilter {
+    #[must_use]
+    pub fn all() -> Self {
+        Self::default()
+    }
+
+    /// Parse `<doc>/<style>` values; each must name an existing style.
+    pub fn parse<S: AsRef<str>>(workspace: &Workspace, values: &[S]) -> Result<Self> {
+        let mut selected = BTreeSet::new();
+        for value in values {
+            let value = value.as_ref();
+            let Some((document, style)) = value.split_once('/') else {
+                bail!("--style {value:?}: expected <cv|cl>/<style>, for example cv/harvard");
+            };
+            let document = match document {
+                "cv" => "cv",
+                "cl" => "cl",
+                _ => bail!(
+                    "--style {value:?}: unknown document {document:?}; expected cv or cl before the slash"
+                ),
+            };
+            definition(workspace, document, style)
+                .with_context(|| format!("--style {value:?} does not name an existing style"))?;
+            selected.insert((document, style.to_owned()));
+        }
+        Ok(Self { selected })
+    }
+
+    #[must_use]
+    pub fn is_all(&self) -> bool {
+        self.selected.is_empty()
+    }
+
+    #[must_use]
+    pub fn includes(&self, document: &str, style: &str) -> bool {
+        self.is_all()
+            || self
+                .selected
+                .iter()
+                .any(|(selected, name)| *selected == document && name == style)
+    }
+
+    /// The selected styles' leaves for one document, in discovery order.
+    pub fn leaves(&self, workspace: &Workspace, document: &'static str) -> Result<Vec<StyleLeaf>> {
+        Ok(leaves(workspace, document)?
+            .into_iter()
+            .filter(|leaf| self.includes(document, &leaf.style))
+            .collect())
+    }
+
+    /// The selected CV leaves followed by the selected cover-letter leaves.
+    pub fn document_leaves(&self, workspace: &Workspace) -> Result<Vec<StyleLeaf>> {
+        let mut leaves = self.leaves(workspace, "cv")?;
+        leaves.extend(self.leaves(workspace, "cl")?);
+        Ok(leaves)
+    }
+}
+
+impl fmt::Display for StyleFilter {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_all() {
+            return formatter.write_str("every style");
+        }
+        let names = self
+            .selected
+            .iter()
+            .map(|(document, style)| format!("{document}/{style}"))
+            .collect::<Vec<_>>();
+        formatter.write_str(&names.join(", "))
+    }
 }
 
 pub fn leaf(

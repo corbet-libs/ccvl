@@ -78,3 +78,31 @@ fn paper_arguments_do_not_add_a_locale_or_hierarchy_level() {
         matches!(args.command, Command::ExplainStyle { paper: Some(paper), .. } if paper == "us-letter")
     );
 }
+
+#[test]
+fn document_checks_accept_repeatable_style_filters() {
+    for command in ["check", "public-check", "measure"] {
+        let args = Args::try_parse_from([
+            "ccvl",
+            command,
+            "--style",
+            "cv/modern",
+            "--style",
+            "cl/harvard",
+        ])
+        .unwrap();
+        let styles = match args.command {
+            Command::Check { styles }
+            | Command::PublicCheck { styles, .. }
+            | Command::Measure { styles, .. } => styles,
+            other => panic!("unexpected command {other:?}"),
+        };
+        assert_eq!(styles, ["cv/modern", "cl/harvard"]);
+        let args = Args::try_parse_from(["ccvl", command]).unwrap();
+        assert!(matches!(
+            args.command,
+            Command::Check { styles } | Command::PublicCheck { styles, .. } | Command::Measure { styles, .. }
+                if styles.is_empty()
+        ));
+    }
+}

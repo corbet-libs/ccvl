@@ -8,11 +8,16 @@ use ctypst::Document;
 use serde_json::Value;
 
 pub fn cvl_specs(workspace: &Workspace) -> Result<Vec<DocumentSpec>> {
+    cvl_specs_for(workspace, &crate::styles::StyleFilter::all())
+}
+
+/// Largest-preset measurement specs for the styles selected by `styles`.
+pub fn cvl_specs_for(
+    workspace: &Workspace,
+    styles: &crate::styles::StyleFilter,
+) -> Result<Vec<DocumentSpec>> {
     let mut specs = Vec::new();
-    for leaf in crate::styles::leaves(workspace, "cv")?
-        .into_iter()
-        .chain(crate::styles::leaves(workspace, "cl")?)
-    {
+    for leaf in styles.document_leaves(workspace)? {
         let pages = *leaf
             .pages
             .iter()

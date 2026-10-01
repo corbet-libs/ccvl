@@ -721,3 +721,88 @@ fn extra_fonts_are_loaded_only_for_the_selected_style_even_with_a_shared_compile
     .unwrap();
     assert!(selection(&workspace, "cv", Some("orbit"), None).is_err());
 }
+
+#[test]
+fn style_filter_limits_document_enumeration_to_selected_styles() {
+    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let all = StyleFilter::all();
+    assert!(all.is_all());
+    assert_eq!(all.to_string(), "every style");
+    assert_eq!(StyleFilter::parse::<&str>(&workspace, &[]).unwrap(), all);
+    let every = all.document_leaves(&workspace).unwrap();
+    assert_eq!(
+        every.len(),
+        leaves(&workspace, "cv").unwrap().len() + leaves(&workspace, "cl").unwrap().len()
+    );
+    let dirs = |leaves: &[StyleLeaf]| {
+        leaves
+            .iter()
+            .map(|leaf| leaf.dir.clone())
+            .collect::<Vec<_>>()
+    };
+    for document in ["cv", "cl"] {
+        let names = definitions(&workspace, document)
+            .unwrap()
+            .iter()
+            .map(|definition| definition.id.clone())
+            .collect::<Vec<_>>();
+        for name in &names {
+            let selection = format!("{document}/{name}");
+            // Repeating a selection is harmless.
+            let filter =
+                StyleFilter::parse(&workspace, &[selection.as_str(), selection.as_str()]).unwrap();
+            assert!(!filter.is_all());
+            assert_eq!(filter.to_string(), selection);
+            assert!(filter.includes(document, name));
+            let other = if document == "cv" { "cl" } else { "cv" };
+            assert!(!filter.includes(other, name));
+            let expected = every
+                .iter()
+                .filter(|leaf| leaf.document == document && &leaf.style == name)
+                .cloned()
+                .collect::<Vec<_>>();
+            let selected = filter.document_leaves(&workspace).unwrap();
+            assert_eq!(dirs(&selected), dirs(&expected), "{selection}");
+            assert!(filter.leaves(&workspace, other).unwrap().is_empty());
+            let specs = measure::cvl_specs_for(&workspace, &filter).unwrap();
+            assert_eq!(specs.len(), expected.len(), "{selection}");
+        }
+        // Selecting every style of one document is that document's inventory.
+        let selections = names
+            .iter()
+            .map(|name| format!("{document}/{name}"))
+            .collect::<Vec<_>>();
+        let filter = StyleFilter::parse(&workspace, &selections).unwrap();
+        assert_eq!(
+            dirs(&filter.document_leaves(&workspace).unwrap()),
+            dirs(&leaves(&workspace, document).unwrap())
+        );
+    }
+}
+
+#[test]
+fn style_filter_rejects_malformed_and_unknown_selections() {
+    let (_temporary, workspace) = independent_workspace();
+    let filter = StyleFilter::parse(&workspace, &["cl/postcard", "cv/orbit"]).unwrap();
+    assert_eq!(filter.to_string(), "cv/orbit, cl/postcard");
+    assert_eq!(filter.document_leaves(&workspace).unwrap().len(), 2);
+    for (value, expected) in [
+        ("orbit", "expected <cv|cl>/<style>"),
+        ("resume/orbit", "unknown document \"resume\""),
+        ("CV/orbit", "unknown document \"CV\""),
+        ("cv/postcard", "unknown cv style \"postcard\""),
+        ("cl/orbit", "unknown cl style \"orbit\""),
+        ("cv/missing", "unknown cv style \"missing\""),
+        ("cv/", "style: expected a lowercase name"),
+        ("cv/Orbit", "style: expected a lowercase name"),
+        ("cv/../cl/postcard", "style: expected a lowercase name"),
+        ("cv/orbit/standard", "style: expected a lowercase name"),
+    ] {
+        let error = format!(
+            "{:#}",
+            StyleFilter::parse(&workspace, &["cv/orbit", value]).unwrap_err()
+        );
+        assert!(error.contains(expected), "{value}: {error}");
+        assert!(error.contains(&format!("{value:?}")), "{value}: {error}");
+    }
+}
