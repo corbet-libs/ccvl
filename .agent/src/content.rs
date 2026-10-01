@@ -111,7 +111,7 @@ fn validate_owner(workspace: &Workspace, path: &Path, document: &str) -> Result<
     };
     let definition = styles::definition(workspace, document, style)?;
     ensure!(
-        definition.substyles.iter().any(|name| name == substyle),
+        definition.designed_substyles().any(|name| name == substyle),
         "wording references require a registered substyle leaf"
     );
     let locale = format!("{language}-{country}");

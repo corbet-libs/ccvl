@@ -30,10 +30,12 @@ pub(super) fn resolve(
     let record = content::read_record(workspace, &request.application)?;
     let recorded =
         styles::record_selection(workspace, &request.document, &record, "review document")?;
-    let selection = styles::Selection {
-        style: request.style.clone().unwrap_or(recorded.style),
-        substyle: request.substyle.clone().unwrap_or(recorded.substyle),
-    };
+    let selection = styles::selection(
+        workspace,
+        &request.document,
+        Some(request.style.as_deref().unwrap_or(&recorded.style)),
+        Some(request.substyle.as_deref().unwrap_or(&recorded.substyle)),
+    )?;
     let leaf = styles::leaf(
         workspace,
         if request.document == "cv" { "cv" } else { "cl" },

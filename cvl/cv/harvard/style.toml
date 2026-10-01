@@ -1,14 +1,14 @@
 # Harvard CV family: the default. Registry for the CV substyle axis:
-# substyles lists every cvl/cv/harvard/<name>/substyle.toml, default_substyle renders
-# when a record selects nothing.
+# substyles lists every position in order and the first renders when a record
+# selects nothing. empty_substyles are slots without a design.
 id = "harvard"
 api = 1
 settings_adapter = "document-v1"
 documents = ["cv"]
 supports_locales = ["de-ch", "en-ch"]
 pages = [2, 3, 4]
-default_substyle = "standard"
-substyles = ["standard", "compact", "aligned", "d-plus"]
+substyles = ["d-plus", "standard", "compact", "aligned", "slot-5"]
+empty_substyles = ["slot-5"]
 default_pages = 4
 defaults = "../../shared/harvard/defaults.toml"
 

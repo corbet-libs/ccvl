@@ -7,7 +7,8 @@ description: Create or revise ccvl document styles, substyles, locale layouts an
 
 Read `.agent/docs/styles.md` for the interface and
 `.agent/docs/typst-defaults.md` before choosing presentation settings.
-Inspect the actual selected style and current `list-documents` output.
+Inspect the actual selected style and current `list-styles` and
+`list-documents` output.
 
 A style owns composition, not candidate facts or universal writing policy.
 Read [editorial guidance](../../docs/editorial.md) when the design exposes
@@ -44,13 +45,23 @@ fields. A substyle is a variation within that style. Create
 beside its parent style. Independent styles need not import Harvard or use
 `src/`. Share code only where it actually belongs to the same design.
 
+Each document has a fixed grid of style and substyle positions, declared as
+`slots` in `ccvl.json`. A new design fills an empty slot instead of adding a
+position. For a substyle, rename its `slot-N` entry in `substyles` to the real
+name, remove it from `empty_substyles` and add its directory and leaves. For a
+style, replace the lowest-numbered `cvl/<cv|cl>/slot-N/` directory with the
+new style; list its undesigned positions as `slot-N` by position in both
+`substyles` and `empty_substyles`. Never name a style or substyle `default`;
+that name selects the workspace default.
+
 ## Implement the interface
 
 - Author locale identifiers entirely in lowercase, preserving proper names,
   exact quotations and original evidence when changing metadata.
-- Declare the style ID, document, locales, page presets/default and
-  substyles/default in `style.toml`. Preserve existing workspace defaults
-  unless the user asks to change them.
+- Declare the style ID, document, locales, page presets/default and ordered
+  substyles in `style.toml`; the first substyle is the default. Preserve
+  existing workspace defaults and substyle order unless the user asks to
+  change them.
 - Provide each leaf's `content.toml`, `strings.toml`, `layout.toml` and
   `typst/<cv|cl>.typ`, plus each substyle's configuration. Keep chrome in
   strings and language/region/direction in layout. Keep named paper presets and

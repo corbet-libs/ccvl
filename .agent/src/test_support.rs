@@ -43,7 +43,7 @@ pub(crate) fn paper_workspace() -> (tempfile::TempDir, Workspace) {
             "id": "probe", "api": 1, "settings_adapter": "document-v1",
             "documents": [document], "supports_locales": ["en-ch", "en-us"],
             "pages": [1], "default_pages": 1,
-            "substyles": ["plain"], "default_substyle": "plain",
+            "substyles": ["plain"],
             "defaults": "../../shared/harvard/defaults.toml",
             "paper": {
                 "defaults": {"en-ch": "a4", "en-us": "us-letter"},

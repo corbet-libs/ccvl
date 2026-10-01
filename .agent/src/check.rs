@@ -253,11 +253,12 @@ fn validate_manifest(workspace: &Workspace) -> Result<()> {
 }
 
 /// Validate the style registries below the cv/cl discovery roots: family
-/// identity, supported locales, page presets, and one knob delta per listed
-/// substyle with the configured default among them.
+/// identity, supported locales, page presets, one knob delta per designed
+/// substyle, and the manifest's style and substyle slot counts.
 fn validate_styles(workspace: &Workspace) -> Result<()> {
     for document in ["cv", "cl"] {
         styles::leaves(workspace, document)?;
+        styles::validate_slots(workspace, document)?;
     }
     Ok(())
 }

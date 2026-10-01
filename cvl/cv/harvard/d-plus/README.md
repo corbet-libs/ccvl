@@ -2,8 +2,9 @@
 
 D+ transfers the cluster study's spacing improvements to the original
 chronological CV. Its wording, page order, line breaks, type sizes and five-line
-justified summary are retained. Bullets use natural word spacing. Harvard
-standard remains the default; this substyle is an explicit choice.
+justified summary are retained. Bullets use natural word spacing. D+ is the
+default Harvard substyle and the workspace's default CV; `standard` remains
+available as an explicit choice.
 
 The chronological opening retains its established entry rhythm. On education,
 projects and competencies, headings have more consistent visible outer gaps;

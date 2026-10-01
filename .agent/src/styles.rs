@@ -20,21 +20,63 @@ pub struct Selection {
     pub substyle: String,
 }
 
+/// The reserved selection name for the manifest default style or the
+/// selected style's first substyle. No real style or substyle may use it.
+const DEFAULT: &str = "default";
+
+/// The only keys of an empty style slot's `style.toml`.
+const EMPTY_STYLE_KEYS: [&str; 5] = ["id", "api", "documents", "empty", "substyles"];
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct Definition {
     pub id: String,
     api: u64,
     documents: Vec<String>,
+    #[serde(default)]
     pub supports_locales: Vec<String>,
+    #[serde(default)]
     pub pages: Vec<usize>,
+    #[serde(default)]
     pub default_pages: usize,
-    pub default_substyle: String,
+    /// Ordered positions; the first is the default substyle.
     pub substyles: Vec<String>,
+    /// Positions of `substyles` without a design yet, each named `slot-<n>`.
+    #[serde(default)]
+    pub empty_substyles: Vec<String>,
+    /// An undesigned style slot: no locales, pages, leaves or assets.
+    #[serde(default)]
+    pub empty: bool,
     pub defaults: Option<String>,
     pub settings_adapter: Option<String>,
     pub paper: Option<crate::paper::Registry>,
     #[serde(default)]
     pub fonts: Vec<String>,
+}
+
+impl Definition {
+    /// The first substyle is the default; validation keeps it designed.
+    #[must_use]
+    pub fn default_substyle(&self) -> &str {
+        &self.substyles[0]
+    }
+
+    #[must_use]
+    pub fn is_empty_slot(&self, substyle: &str) -> bool {
+        self.empty || self.empty_substyles.iter().any(|name| name == substyle)
+    }
+
+    /// Substyles with leaves, in declared order.
+    pub fn designed_substyles(&self) -> impl Iterator<Item = &String> {
+        self.substyles
+            .iter()
+            .filter(|name| !self.is_empty_slot(name))
+    }
+}
+
+/// The position of a `slot-<n>` name; these names are reserved for empty slots.
+fn slot_number(name: &str) -> Option<usize> {
+    let number = name.strip_prefix("slot-")?.parse::<usize>().ok()?;
+    (number > 0 && format!("slot-{number}") == name).then_some(number)
 }
 
 /// A document/style/substyle/language/country render entry point.
@@ -165,12 +207,19 @@ pub fn default_style(workspace: &Workspace, document: &str) -> Result<String> {
         .pointer(&format!("/documents/{key}/default_style"))
         .and_then(Value::as_str)
         .context("document default_style is missing")?;
-    definition(workspace, document, name)?;
+    ensure!(
+        !definition(workspace, document, name)?.empty,
+        "document default_style {name:?} is an empty style slot"
+    );
     Ok(name.to_owned())
 }
 
 pub fn definition(workspace: &Workspace, document: &str, name: &str) -> Result<Definition> {
     atom(name, "style")?;
+    ensure!(
+        name != DEFAULT,
+        "style name {DEFAULT:?} is reserved for the workspace default style"
+    );
     let directory = root(workspace, document)?.join(name);
     let path = directory.join("style.toml");
     let text = workspace.read_text(&path).with_context(|| {
@@ -179,6 +228,13 @@ pub fn definition(workspace: &Workspace, document: &str, name: &str) -> Result<D
             path.display()
         )
     })?;
+    let keys: toml::Table =
+        toml::from_str(&text).with_context(|| format!("invalid {}", path.display()))?;
+    ensure!(
+        !keys.contains_key("default_substyle"),
+        "{}: default_substyle was removed; the first substyle is the default",
+        path.display()
+    );
     let definition: Definition =
         toml::from_str(&text).with_context(|| format!("invalid {}", path.display()))?;
     ensure!(
@@ -192,6 +248,33 @@ pub fn definition(workspace: &Workspace, document: &str, name: &str) -> Result<D
         path.display()
     );
     ensure!(
+        !definition.substyles.is_empty(),
+        "{}: substyles is empty",
+        path.display()
+    );
+    for substyle in &definition.substyles {
+        atom(substyle, "substyle")?;
+        ensure!(
+            substyle != DEFAULT,
+            "{}: substyle name {DEFAULT:?} is reserved for the first substyle",
+            path.display()
+        );
+    }
+    ensure!(
+        definition.substyles.iter().collect::<BTreeSet<_>>().len() == definition.substyles.len(),
+        "{}: duplicate substyles",
+        path.display()
+    );
+    if definition.empty {
+        validate_empty_style(&definition, &keys, &path)?;
+        return Ok(definition);
+    }
+    ensure!(
+        slot_number(name).is_none(),
+        "{}: slot-<n> names are reserved for empty style slots; set empty = true or choose a style name",
+        path.display()
+    );
+    ensure!(
         !definition.pages.is_empty()
             && definition.pages.iter().all(|p| *p > 0)
             && definition.pages.contains(&definition.default_pages),
@@ -199,13 +282,44 @@ pub fn definition(workspace: &Workspace, document: &str, name: &str) -> Result<D
         path.display()
     );
     ensure!(
-        !definition.substyles.is_empty()
-            && definition.substyles.contains(&definition.default_substyle),
-        "{}: default substyle is not listed",
+        definition
+            .empty_substyles
+            .iter()
+            .collect::<BTreeSet<_>>()
+            .len()
+            == definition.empty_substyles.len()
+            && definition
+                .empty_substyles
+                .iter()
+                .all(|slot| definition.substyles.contains(slot)),
+        "{}: empty_substyles must list distinct entries of substyles",
         path.display()
     );
-    for name in &definition.substyles {
-        atom(name, "substyle")?;
+    for (index, substyle) in definition.substyles.iter().enumerate() {
+        let slot = format!("slot-{}", index + 1);
+        if definition.is_empty_slot(substyle) {
+            ensure!(
+                index > 0,
+                "{}: the first substyle is the default and cannot be an empty slot",
+                path.display()
+            );
+            ensure!(
+                *substyle == slot,
+                "{}: empty substyle {substyle:?} must be named {slot:?} for its position",
+                path.display()
+            );
+            ensure!(
+                !directory.join(substyle).exists(),
+                "{}: empty substyle slot {substyle:?} must not have a directory",
+                path.display()
+            );
+        } else {
+            ensure!(
+                slot_number(substyle).is_none(),
+                "{}: substyle {substyle:?} uses a reserved slot name; list it in empty_substyles or rename it",
+                path.display()
+            );
+        }
     }
     ensure!(
         !definition.supports_locales.is_empty(),
@@ -220,15 +334,14 @@ pub fn definition(workspace: &Workspace, document: &str, name: &str) -> Result<D
         );
     }
     ensure!(
-        definition.substyles.iter().collect::<BTreeSet<_>>().len() == definition.substyles.len()
-            && definition
-                .supports_locales
-                .iter()
-                .collect::<BTreeSet<_>>()
-                .len()
-                == definition.supports_locales.len()
+        definition
+            .supports_locales
+            .iter()
+            .collect::<BTreeSet<_>>()
+            .len()
+            == definition.supports_locales.len()
             && definition.pages.iter().collect::<BTreeSet<_>>().len() == definition.pages.len(),
-        "{}: duplicate substyles, locales or page presets",
+        "{}: duplicate locales or page presets",
         path.display()
     );
     ensure!(
@@ -250,6 +363,32 @@ pub fn definition(workspace: &Workspace, document: &str, name: &str) -> Result<D
     Ok(definition)
 }
 
+/// An empty style slot reserves a position: its name and every substyle are
+/// `slot-<n>` by position, and it declares nothing that could render.
+fn validate_empty_style(definition: &Definition, keys: &toml::Table, path: &Path) -> Result<()> {
+    ensure!(
+        keys.keys()
+            .all(|key| EMPTY_STYLE_KEYS.contains(&key.as_str())),
+        "{}: an empty style slot contains only {}",
+        path.display(),
+        EMPTY_STYLE_KEYS.join(", ")
+    );
+    ensure!(
+        slot_number(&definition.id).is_some(),
+        "{}: an empty style slot must be named slot-<n>",
+        path.display()
+    );
+    for (index, substyle) in definition.substyles.iter().enumerate() {
+        let slot = format!("slot-{}", index + 1);
+        ensure!(
+            *substyle == slot,
+            "{}: empty style substyle {substyle:?} must be named {slot:?} for its position",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
 pub fn definitions(workspace: &Workspace, document: &str) -> Result<Vec<Definition>> {
     let mut names = Vec::new();
     for entry in fs::read_dir(root(workspace, document)?)? {
@@ -269,6 +408,108 @@ pub fn definitions(workspace: &Workspace, document: &str) -> Result<Vec<Definiti
         .iter()
         .map(|name| definition(workspace, document, name))
         .collect()
+}
+
+/// The manifest's `slots` fixes how many styles a document offers and how
+/// many substyles each style lists. Undesigned positions are empty slots, and
+/// empty style slots follow the designed styles by number.
+pub fn validate_slots(workspace: &Workspace, document: &str) -> Result<()> {
+    let manifest = workspace.read_json("ccvl.json")?;
+    let key = manifest_key(document)?;
+    let slots = manifest
+        .pointer(&format!("/documents/{key}/slots"))
+        .and_then(Value::as_object)
+        .filter(|slots| slots.len() == 2)
+        .with_context(|| {
+            format!("ccvl.json: documents.{key}.slots must declare only styles and substyles")
+        })?;
+    let count = |name: &str| {
+        slots
+            .get(name)
+            .and_then(Value::as_u64)
+            .filter(|count| *count > 0)
+            .and_then(|count| usize::try_from(count).ok())
+            .with_context(|| {
+                format!("ccvl.json: documents.{key}.slots.{name} must be a positive integer")
+            })
+    };
+    let (styles, substyles) = (count("styles")?, count("substyles")?);
+    let definitions = definitions(workspace, document)?;
+    ensure!(
+        definitions.len() == styles,
+        "{document} must offer exactly {styles} styles, designed or empty slots; found {}",
+        definitions.len()
+    );
+    let designed = definitions.iter().filter(|style| !style.empty).count();
+    for definition in &definitions {
+        ensure!(
+            definition.substyles.len() == substyles,
+            "{document} style {} must list exactly {substyles} substyles, designed or empty slots; found {}",
+            definition.id,
+            definition.substyles.len()
+        );
+        if definition.empty {
+            ensure!(
+                slot_number(&definition.id).is_some_and(|number| number > designed),
+                "{document} empty style slots must be numbered slot-{} to slot-{styles} after the designed styles; found {}",
+                designed + 1,
+                definition.id
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Describe each document's styles in slot order: the default style first,
+/// other designed styles alphabetically, then empty style slots by number.
+pub fn list_styles(workspace: &Workspace) -> Result<Value> {
+    let status = |empty: bool| if empty { "empty" } else { "designed" };
+    let mut documents = serde_json::Map::new();
+    for document in ["cv", "cl"] {
+        let default = selection(workspace, document, None, None)?;
+        let mut definitions = definitions(workspace, document)?;
+        definitions.sort_by_key(|style| {
+            (
+                style.empty,
+                style.id != default.style,
+                slot_number(&style.id),
+                style.id.clone(),
+            )
+        });
+        let styles = definitions
+            .iter()
+            .map(|style| {
+                let substyles = style
+                    .substyles
+                    .iter()
+                    .enumerate()
+                    .map(|(index, substyle)| {
+                        let mut entry = serde_json::json!({
+                            "id": substyle,
+                            "status": status(style.is_empty_slot(substyle)),
+                        });
+                        if index == 0 {
+                            entry["default"] = true.into();
+                        }
+                        entry
+                    })
+                    .collect::<Vec<_>>();
+                serde_json::json!({
+                    "id": style.id,
+                    "status": status(style.empty),
+                    "substyles": substyles,
+                })
+            })
+            .collect::<Vec<_>>();
+        documents.insert(
+            document.to_owned(),
+            serde_json::json!({
+                "default": {"style": default.style, "substyle": default.substyle},
+                "styles": styles,
+            }),
+        );
+    }
+    Ok(Value::Object(documents))
 }
 
 pub fn contract(workspace: &Workspace, document: &str, style: &str) -> Result<Value> {
@@ -334,7 +575,7 @@ impl ResolvedStyle {
     fn leaf(&self, workspace: &Workspace, substyle: &str, locale: &str) -> Result<StyleLeaf> {
         let style = &self.definition;
         ensure!(
-            style.substyles.iter().any(|name| name == substyle)
+            style.designed_substyles().any(|name| name == substyle)
                 && style.supports_locales.iter().any(|name| name == locale),
             "no {} leaf for {}/{substyle}/{locale}",
             self.document,
@@ -390,8 +631,11 @@ impl ResolvedStyle {
 pub fn leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<StyleLeaf>> {
     let mut leaves = Vec::new();
     for definition in definitions(workspace, document)? {
+        if definition.empty {
+            continue;
+        }
         let style = ResolvedStyle::new(workspace, document, definition)?;
-        for substyle in &style.definition.substyles {
+        for substyle in style.definition.designed_substyles() {
             for locale in &style.definition.supports_locales {
                 leaves.push(style.leaf(workspace, substyle, locale)?);
             }
@@ -444,15 +688,26 @@ pub fn selection(
     substyle: Option<&str>,
 ) -> Result<Selection> {
     let style = match style {
-        Some(name) => name.to_owned(),
-        None => default_style(workspace, document)?,
+        Some(name) if name != DEFAULT => name.to_owned(),
+        _ => default_style(workspace, document)?,
     };
     let definition = definition(workspace, document, &style)?;
-    let substyle = substyle.unwrap_or(&definition.default_substyle);
+    ensure!(
+        !definition.empty,
+        "{document} {style} is an empty style slot; it has no design yet"
+    );
+    let substyle = match substyle {
+        Some(name) if name != DEFAULT => name,
+        _ => definition.default_substyle(),
+    };
     ensure!(
         definition.substyles.iter().any(|name| name == substyle),
         "unknown {document} substyle {substyle:?} for style {style:?}; expected one of {}",
         definition.substyles.join(", ")
+    );
+    ensure!(
+        !definition.is_empty_slot(substyle),
+        "{document} {style}/{substyle} is an empty slot; it has no design yet"
     );
     Ok(Selection {
         style,
