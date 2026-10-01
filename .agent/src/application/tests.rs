@@ -459,7 +459,7 @@ fn salutation_override_is_optional_but_must_be_a_single_line() {
 
     let mut explicit = draft.clone();
     explicit["job"]["cl_recipient"]["salutation_override"] =
-        json!("Sehr geehrte Frau Bressanelli Bernal");
+        json!("Sehr geehrte Frau Schmidt Meyer");
     validate_record(&workspace(), &explicit, "fixture", true).unwrap();
 
     let mut empty = draft.clone();
@@ -475,7 +475,7 @@ fn salutation_override_is_optional_but_must_be_a_single_line() {
 
     let mut multiline = draft.clone();
     multiline["job"]["cl_recipient"]["salutation_override"] =
-        json!("Sehr geehrte Frau Bernal\nSehr geehrte Frau Bressanelli");
+        json!("Sehr geehrte Frau Meyer\nSehr geehrte Frau Schmidt");
     let error = validate_record(&workspace(), &multiline, "fixture", true)
         .unwrap_err()
         .to_string();
