@@ -256,6 +256,23 @@ An individual build resolves its selected style and extra fonts. A broken
 unrelated style does not prevent that build. `check`, `public-check` and full
 document enumeration continue to inspect the complete workspace.
 
+While iterating on one style, limit document work with a repeatable
+`--style <cv|cl>/<style>` filter on `check`, `public-check` and `measure`:
+
+```sh
+bash ./ccvl check --style cv/modern
+bash ./ccvl check --style cv/harvard --style cl/harvard
+```
+
+The filter limits rendering, line measurement, reproducibility, tracked-PDF
+comparison and PDF verification to the selected styles. Every workspace-wide
+check still runs, including style registries and slots, data, skills, text
+hygiene, links and fonts. An unknown or malformed selection fails before any
+work; an empty style slot is a valid selection that renders no documents. The
+success message names the limited scope. Run `check` without a filter before
+considering document work complete. Pull-request CI uses this filter for the
+styles a change touches; see [Selecting CI checks](ci.md).
+
 Inspect the merged adapter inputs without compiling or creating outputs:
 
 ```sh

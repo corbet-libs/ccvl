@@ -150,8 +150,9 @@ gates remain mandatory.
 Crow retains dependencies in dedicated, locked Cargo storage keyed by repository
 identity. On GHA, the pinned Rust cache action retains dependency downloads and
 compiled dependencies, keyed by OS, architecture, compiler, dependency
-lockfile, and build settings; only `main` saves these separate test and release
-caches. Workspace executables receive current source-bound verification on
+lockfile, and build settings; only `main` saves these separate test, document
+and release caches, and a daily scheduled `main` run refreshes the first two
+after a toolchain update. Workspace executables receive current source-bound verification on
 each run; a cache hit alone is not a passing check. Debug information is
 disabled for the CI test build to reduce cache size. Successful dependency work
 remains available when a later test fails, so fixes do not repeat a cold build.
