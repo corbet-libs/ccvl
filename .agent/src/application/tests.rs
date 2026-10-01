@@ -379,7 +379,10 @@ fn summary_rejects_formula_openings() {
 
 #[test]
 fn hyphen_marks_are_highlighted_for_author_judgment() {
-    assert!(hyphen_advisories("plain words", "here").is_empty());
+    assert_eq!(
+        hyphen_advisories("plain words", "here"),
+        Vec::<String>::new()
+    );
     let advisories = hyphen_advisories("RAG-Systeme und Cloud-Ökonomie", "here");
     assert_eq!(advisories.len(), 2, "unexpected advisories: {advisories:?}");
     assert!(advisories[0].contains("here"));

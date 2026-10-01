@@ -95,11 +95,11 @@ fn actual_prepare_exports_readable_pdf_text_and_every_page_image() {
         .iter()
         .find(|artifact| artifact.id == "cv:text:1")
         .unwrap();
-    assert!(
-        !fs::read_to_string(storage::artifact_path(run_dir.path(), text).unwrap())
+    assert_ne!(
+        fs::read_to_string(storage::artifact_path(run_dir.path(), text).unwrap())
             .unwrap()
-            .trim()
-            .is_empty()
+            .trim(),
+        ""
     );
     assert!(
         manifest
