@@ -23,26 +23,29 @@ cvl/
 │   │   ├── style.toml, contract.toml, scaffold.toml
 │   │   ├── content/{de,en}/ch/wording.toml
 │   │   ├── src/                         # Harvard's internal arrangement
+│   │   ├── d-plus/{de,en}/ch/<leaf>     # default
 │   │   ├── standard/{de,en}/ch/<leaf>
 │   │   ├── compact/{de,en}/ch/<leaf>
-│   │   ├── aligned/{de,en}/ch/<leaf>
-│   │   └── d-plus/{de,en}/ch/<leaf>
+│   │   └── aligned/{de,en}/ch/<leaf>
 │   ├── cluster/
 │   │   ├── style.toml, contract.toml, scaffold.toml, layout.typ
 │   │   ├── content/{de,en}/ch/wording.toml
-│   │   └── {standard,middle-three,middle-three-spaced,d-plus}/{de,en}/ch/<leaf>
-│   └── modern/
-│       ├── style.toml, contract.toml, scaffold.toml, layout.typ
-│       ├── content/{de,en}/ch/wording.toml
-│       └── {standard,timeline}/{de,en}/ch/<leaf>
+│   │   └── {d-plus,standard,middle-three,middle-three-spaced}/{de,en}/ch/<leaf>
+│   ├── modern/
+│   │   ├── style.toml, contract.toml, scaffold.toml, layout.typ
+│   │   ├── content/{de,en}/ch/wording.toml
+│   │   └── {standard,timeline}/{de,en}/ch/<leaf>
+│   └── slot-4/style.toml                # empty style slot
 └── cl/
-    └── harvard/
-        ├── style.toml, contract.toml, scaffold.toml, src/
-        ├── content/{de,en}/ch/wording.toml
-        ├── left-rule/{de,en}/ch/<leaf>
-        └── frame/{de,en}/ch/<leaf>
+    ├── harvard/
+    │   ├── style.toml, contract.toml, scaffold.toml, src/
+    │   ├── content/{de,en}/ch/wording.toml
+    │   ├── left-rule/{de,en}/ch/<leaf>  # default
+    │   └── frame/{de,en}/ch/<leaf>
+    └── {slot-2,slot-3,slot-4}/style.toml # empty style slots
 
-Each substyle directory also has substyle.toml.
+Each substyle directory also has substyle.toml. Empty substyle slots appear
+only in their style.toml and have no directory.
 Each <leaf> contains:
 ├── content.toml                         # wording reference, metadata, exceptions
 ├── strings.toml                         # translated labels and chrome
@@ -76,16 +79,23 @@ for the exact source and override rules.
 
 | Style | CV substyles | CL substyles | Font | Locale / paper | CV pages | CL pages |
 | --- | --- | --- | --- | --- | --- | --- |
-| Harvard | standard, compact, aligned, d-plus | left-rule, frame | Archivo | de-ch / en-ch, portrait A4 | 2, 3, 4 | 1 |
-| Cluster | standard, middle-three, middle-three-spaced, d-plus | — | Archivo | de-ch / en-ch, portrait A4 | 1 | — |
+| Harvard | d-plus, standard, compact, aligned | left-rule, frame | Archivo | de-ch / en-ch, portrait A4 | 2, 3, 4 | 1 |
+| Cluster | d-plus, standard, middle-three, middle-three-spaced | — | Archivo | de-ch / en-ch, portrait A4 | 1 | — |
 | Modern | standard, timeline | — | Archivo | de-ch / en-ch, portrait A4 | 1 | — |
 
+Substyles are listed in order; the first is each style's default.
 This produces **40 registered PDFs / 88 pages**, plus two five-page D+
 comparisons. The [cluster example](cv/cluster/README.md) is a typesetting
 milestone with unfinished Lorem Ipsum content. [Modern](cv/modern/README.md)
-is a scaffold whose design is not yet defined. The default remains Harvard standard for
+is a scaffold whose design is not yet defined. The defaults are Harvard D+ for
 CV and Harvard left-rule for CL. All styles declare their page presets;
 Harvard's station and five-line-summary contracts apply only to Harvard.
+
+Each document offers four styles with five substyles each. Like save slots
+in a game, positions without a design yet are kept as named slots
+(`slot-<n>`): they hold the grid's order and render nothing until a new
+design fills them. `bash ./ccvl list-styles` shows the grid with its designed
+styles, its slots and the defaults.
 
 ## Compare the designs
 
@@ -94,9 +104,9 @@ for full-resolution pages. All shipped styles use portrait A4.
 
 | Family / substyle | CV | Cover letter |
 | --- | --- | --- |
-| harvard / standard + left-rule | [![CV preview](cv/harvard/standard/en/ch/preview/cv-4-1.png)](cv/harvard/standard/en/ch/pdf/cv-4.pdf) | [![Letter preview](cl/harvard/left-rule/en/ch/preview/cl-1.png)](cl/harvard/left-rule/en/ch/pdf/cl.pdf) |
-| harvard / compact + frame | [![CV preview](cv/harvard/compact/en/ch/preview/cv-4-1.png)](cv/harvard/compact/en/ch/pdf/cv-4.pdf) | [![Letter preview](cl/harvard/frame/en/ch/preview/cl-1.png)](cl/harvard/frame/en/ch/pdf/cl.pdf) |
-| harvard / d-plus | [![D+ preview](cv/harvard/d-plus/en/ch/preview/cv-4-1.png)](cv/harvard/d-plus/en/ch/pdf/cv-4.pdf) | — |
+| harvard / d-plus + left-rule (defaults) | [![D+ preview](cv/harvard/d-plus/en/ch/preview/cv-4-1.png)](cv/harvard/d-plus/en/ch/pdf/cv-4.pdf) | [![Letter preview](cl/harvard/left-rule/en/ch/preview/cl-1.png)](cl/harvard/left-rule/en/ch/pdf/cl.pdf) |
+| harvard / standard + frame | [![CV preview](cv/harvard/standard/en/ch/preview/cv-4-1.png)](cv/harvard/standard/en/ch/pdf/cv-4.pdf) | [![Letter preview](cl/harvard/frame/en/ch/preview/cl-1.png)](cl/harvard/frame/en/ch/pdf/cl.pdf) |
+| harvard / compact | [![CV preview](cv/harvard/compact/en/ch/preview/cv-4-1.png)](cv/harvard/compact/en/ch/pdf/cv-4.pdf) | — |
 | cluster / d-plus (unfinished example) | [![Cluster preview](cv/cluster/d-plus/en/ch/preview/cv-1-1.png)](cv/cluster/d-plus/en/ch/pdf/comparison-5.pdf) | — |
 
 ## Selection and defaults
@@ -107,8 +117,9 @@ the selected contract. That interface is the common denominator.
 
 Records use `options.cv_style`, `options.cl_style`, `options.cv_substyle`,
 `options.cl_substyle`, `options.language`, `options.pages` and optional
-`options.cl_pages`, `options.cv_paper` and `options.cl_paper`. Missing selections
-use explicit manifest/style defaults. The shipped renderers merge
+`options.cl_pages`, `options.cv_paper` and `options.cl_paper`. A missing
+selection, or the reserved name `default`, uses the manifest's default style
+and that style's first substyle. The shipped renderers merge
 **family defaults → substyle → locale layout → selected paper preset**.
 Language and paper are separate decisions; the engine imposes no
 country-to-paper mapping.
@@ -124,6 +135,7 @@ bash ./ccvl build-cv en-ch 1 --style cluster --substyle d-plus
 bash ./ccvl build-cl en-ch --style harvard --substyle frame
 bash ./ccvl build-cv de-ch 4 --style harvard --substyle standard --paper a4
 bash ./ccvl list-documents
+bash ./ccvl list-styles
 ```
 
 Use [the style-creation skill](../.agent/skills/ccvl-style/SKILL.md),

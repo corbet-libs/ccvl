@@ -169,7 +169,7 @@ fn named_opportunity_workspace() -> (tempfile::TempDir, Workspace) {
         write(
             &format!("{base}/style.toml"),
             &format!(
-                "id = \"plain\"\napi = 1\ndocuments = [{document:?}]\nsupports_locales = [\"en-us\"]\npages = [1]\ndefault_pages = 1\nsubstyles = [\"standard\"]\ndefault_substyle = \"standard\"\n"
+                "id = \"plain\"\napi = 1\ndocuments = [{document:?}]\nsupports_locales = [\"en-us\"]\npages = [1]\ndefault_pages = 1\nsubstyles = [\"standard\"]\n"
             ),
         );
         write(&format!("{base}/standard/substyle.toml"), "");
@@ -460,11 +460,11 @@ fn cvl_specs_carry_their_leaf_paths() {
         );
         assert!(!spec.inputs.contains_key("style"));
     }
-    // No explicit substyle renders the family default.
+    // No explicit substyle renders the default style's first substyle.
     let spec = cvl_cv_spec(&workspace, "en-ch", 4, None).unwrap();
     assert_eq!(
         spec.inputs.get("substyle").map(String::as_str),
-        Some("/cvl/cv/harvard/standard/substyle.toml")
+        Some("/cvl/cv/harvard/d-plus/substyle.toml")
     );
     let spec = cvl_cl_spec(&workspace, "de-ch", None, None).unwrap();
     assert_eq!(

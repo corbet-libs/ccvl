@@ -486,16 +486,16 @@ fn salutation_override_is_optional_but_must_be_a_single_line() {
 }
 
 #[test]
-fn substyles_default_to_standard_and_left_rule() {
+fn substyles_default_to_the_first_d_plus_and_left_rule() {
     // The fixture carries no selection keys, like records written before
     // per-document selection existed: validation accepts it and
-    // resolution yields the family defaults.
+    // resolution yields each default style's first substyle.
     let workspace = workspace();
     let draft = application(&[3, 5, 5, 5, 5, 3]);
     validate_record(&workspace, &draft, "fixture", true).unwrap();
     assert_eq!(
         resolve_cv_substyle(&workspace, &draft, "fixture").unwrap(),
-        "standard"
+        "d-plus"
     );
     assert_eq!(
         resolve_cl_substyle(&workspace, &draft, "fixture").unwrap(),
@@ -508,7 +508,7 @@ fn substyles_default_to_standard_and_left_rule() {
     validate_record(&workspace, &empty, "fixture", true).unwrap();
     assert_eq!(
         resolve_cv_substyle(&workspace, &empty, "fixture").unwrap(),
-        "standard"
+        "d-plus"
     );
     assert_eq!(
         resolve_cl_substyle(&workspace, &empty, "fixture").unwrap(),
@@ -526,6 +526,40 @@ fn substyles_default_to_standard_and_left_rule() {
     assert_eq!(
         resolve_cl_substyle(&workspace, &selected, "fixture").unwrap(),
         "frame"
+    );
+
+    // The reserved name resolves inside records exactly like an omission.
+    let mut reserved = draft.clone();
+    for document in ["cv", "cl"] {
+        reserved["options"][format!("{document}_style")] = json!("default");
+        reserved["options"][format!("{document}_substyle")] = json!("default");
+    }
+    validate_record(&workspace, &reserved, "fixture", true).unwrap();
+    let cv = crate::styles::record_selection(&workspace, "cv", &reserved, "fixture").unwrap();
+    assert_eq!(
+        (cv.style.as_str(), cv.substyle.as_str()),
+        ("harvard", "d-plus")
+    );
+    let cl = crate::styles::record_selection(&workspace, "cl", &reserved, "fixture").unwrap();
+    assert_eq!(
+        (cl.style.as_str(), cl.substyle.as_str()),
+        ("harvard", "left-rule")
+    );
+    reserved["options"]["cv_style"] = json!("cluster");
+    assert_eq!(
+        resolve_cv_substyle(&workspace, &reserved, "fixture").unwrap(),
+        "d-plus"
+    );
+
+    let mut slot = draft.clone();
+    slot["options"]["cl_substyle"] = json!("slot-3");
+    let error = format!(
+        "{:#}",
+        validate_record(&workspace, &slot, "fixture", true).unwrap_err()
+    );
+    assert!(
+        error.contains("cl harvard/slot-3 is an empty slot; it has no design yet"),
+        "{error}"
     );
 }
 
@@ -586,7 +620,7 @@ fn style_leaves_cover_every_substyle_and_locale() {
         let leaves = crate::styles::leaves(&workspace, document).unwrap();
         let mut expected = std::collections::BTreeSet::new();
         for definition in crate::styles::definitions(&workspace, document).unwrap() {
-            for substyle in definition.rendered_substyles() {
+            for substyle in definition.designed_substyles() {
                 for locale in &definition.supports_locales {
                     assert!(
                         expected.insert((definition.id.clone(), substyle.clone(), locale.clone())),

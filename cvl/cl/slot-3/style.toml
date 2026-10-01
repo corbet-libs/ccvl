@@ -1,0 +1,6 @@
+# An empty style slot: a reserved position with no design yet.
+id = "slot-3"
+api = 1
+documents = ["cl"]
+empty = true
+substyles = ["slot-1", "slot-2", "slot-3", "slot-4", "slot-5"]

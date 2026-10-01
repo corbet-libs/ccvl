@@ -11,8 +11,9 @@ documents = ["cv"]
 supports_locales = ["en-us"]
 pages = [1, 2]
 default_pages = 1
-substyles = ["standard"]
-default_substyle = "standard"
+# Ordered positions; the first is the default substyle.
+substyles = ["standard", "timeline", "slot-3", "slot-4", "slot-5"]
+empty_substyles = ["slot-3", "slot-4", "slot-5"]
 # Optional paths, relative to this style directory and inside the workspace:
 # defaults = "tokens.toml"
 # fonts = ["assets/Example-Regular.ttf"]
@@ -31,7 +32,7 @@ paper = "us-letter"
 ```
 
 The workspace manifest names the document roots and their `default_style`.
-The engine discovers every style directory under each root. For every listed
+The engine discovers every style directory under each root. For every designed
 substyle and locale it expects:
 
 ```text
@@ -54,6 +55,53 @@ the selected document's style-owned `[cv]` or `[cl]` fields. The record's
 document selection must match its directory. A style may share code between
 its substyles in any internal arrangement. Neither a shared renderer nor
 `src/` is mandatory.
+
+## Slots and defaults
+
+Each document offers a fixed grid of style and substyle positions. The
+workspace manifest declares it once per document:
+
+```json
+"cv": {"root": "cvl/cv", "default_style": "harvard", "slots": {"styles": 4, "substyles": 5}}
+```
+
+`check` requires exactly that many style directories per document and exactly
+that many `substyles` entries per style. ccvl ships 4 styles × 5 substyles for
+CVs and for letters; a fork can declare another grid in the same place.
+
+A position without a design yet is an empty slot. A designed style lists its
+empty substyle slots in `empty_substyles`. Each is named `slot-<n>`, where `n`
+is its 1-based position in `substyles`, and has no directory or leaf files;
+the first substyle is never a slot. An empty style slot is a directory named
+`slot-<n>` containing only this `style.toml`:
+
+```toml
+id = "slot-4"
+api = 1
+documents = ["cv"]
+empty = true
+substyles = ["slot-1", "slot-2", "slot-3", "slot-4", "slot-5"]
+```
+
+Style slots are numbered after the designed styles, up to the declared count.
+`slot-<n>` names are reserved for slots. Slots produce no leaves, so builds,
+measurements, checks, `list-documents` and the gallery skip them. Selecting
+one fails with an explicit message such as
+`cv harvard/slot-5 is an empty slot; it has no design yet`.
+
+The first entry of `substyles` is the style's default substyle. The name
+`default` is reserved for selections: as a style it means the manifest's
+`default_style`; as a substyle it means the selected style's first substyle.
+It works for `--style`/`--substyle` on `build-cv`, `build-cl`, `watch-cv`,
+`watch-cl`, `explain-style` and `export-style`, and for the record options
+`cv_style`, `cv_substyle`, `cl_style` and `cl_substyle`. No real style or
+substyle may be named `default`. An omitted selection resolves the same way.
+
+`bash ./ccvl list-styles` prints every document's grid as JSON: the resolved
+default style and substyle, then each style with its `status` (`designed` or
+`empty`) and its substyles in order, the first marked `"default": true`. The
+default style comes first, other designed styles follow alphabetically and
+style slots follow by number.
 
 ## Wording within a style
 
@@ -229,10 +277,12 @@ applications repositories. Private content stays downstream.
 
 ## Shipped styles
 
-Harvard supplies chronological CVs and cover letters. Cluster supplies a grouped
+Harvard supplies chronological CVs and cover letters; D+ is its default CV
+substyle and left-rule its default letter substyle. Cluster supplies a grouped
 CV opening with the D+ comparison workflow. Modern is a scaffold with `standard`
-and `timeline` substyles whose design is not yet defined. All support German and
-English Swiss locales on portrait A4. See [the gallery](../../cvl/README.md) for PDFs,
+and `timeline` substyles whose design is not yet defined. The remaining style
+positions are empty slots: `cvl/cv/slot-4` and `cvl/cl/slot-2` to `slot-4`.
+All designed styles support German and English Swiss locales on portrait A4. See [the gallery](../../cvl/README.md) for PDFs,
 [the defaults audit](typst-defaults.md) for settings and deliberate `auto`
 choices, and [ccvl-style](../skills/ccvl-style/SKILL.md) for style creation.
 

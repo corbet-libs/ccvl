@@ -82,8 +82,8 @@ fn independent_workspace() -> (tempfile::TempDir, Workspace) {
     let manifest = json!({
         "format": "ccvl-workspace", "schema_version": 8,
         "documents": {
-            "cv": {"root": "cvl/cv", "default_style": "orbit"},
-            "cover_letter": {"root": "cvl/cl", "default_style": "postcard"}
+            "cv": {"root": "cvl/cv", "default_style": "orbit", "slots": {"styles": 1, "substyles": 1}},
+            "cover_letter": {"root": "cvl/cl", "default_style": "postcard", "slots": {"styles": 1, "substyles": 1}}
         }
     });
     write(root, "ccvl.json", &format!("{manifest}\n"));
@@ -146,7 +146,7 @@ fn independent_workspace() -> (tempfile::TempDir, Workspace) {
             root,
             &format!("{base}/style.toml"),
             &format!(
-                "id = {style:?}\napi = 1\ndocuments = [{document:?}]\nsupports_locales = [\"en-us\"]\npages = [{pages}]\ndefault_pages = {pages}\nsubstyles = [\"standard\"]\ndefault_substyle = \"standard\"\n"
+                "id = {style:?}\napi = 1\ndocuments = [{document:?}]\nsupports_locales = [\"en-us\"]\npages = [{pages}]\ndefault_pages = {pages}\nsubstyles = [\"standard\"]\n"
             ),
         );
         write(root, &format!("{base}/standard/substyle.toml"), "");
@@ -741,18 +741,26 @@ fn style_filter_limits_document_enumeration_to_selected_styles() {
             .collect::<Vec<_>>()
     };
     for document in ["cv", "cl"] {
-        let names = definitions(&workspace, document)
-            .unwrap()
+        let definitions = definitions(&workspace, document).unwrap();
+        let names = definitions
             .iter()
             .map(|definition| definition.id.clone())
             .collect::<Vec<_>>();
-        for name in &names {
+        for definition in &definitions {
+            let name = &definition.id;
             let selection = format!("{document}/{name}");
             // Repeating a selection is harmless.
             let filter =
                 StyleFilter::parse(&workspace, &[selection.as_str(), selection.as_str()]).unwrap();
             assert!(!filter.is_all());
-            assert_eq!(filter.to_string(), selection);
+            if definition.empty {
+                assert_eq!(
+                    filter.to_string(),
+                    format!("{selection} (empty style slot without documents)")
+                );
+            } else {
+                assert_eq!(filter.to_string(), selection);
+            }
             assert!(filter.includes(document, name));
             let other = if document == "cv" { "cl" } else { "cv" };
             assert!(!filter.includes(other, name));
@@ -763,6 +771,8 @@ fn style_filter_limits_document_enumeration_to_selected_styles() {
                 .collect::<Vec<_>>();
             let selected = filter.document_leaves(&workspace).unwrap();
             assert_eq!(dirs(&selected), dirs(&expected), "{selection}");
+            // Empty style slots are valid selections that render nothing.
+            assert_eq!(selected.is_empty(), definition.empty, "{selection}");
             assert!(filter.leaves(&workspace, other).unwrap().is_empty());
             let specs = measure::cvl_specs_for(&workspace, &filter).unwrap();
             assert_eq!(specs.len(), expected.len(), "{selection}");
@@ -784,7 +794,8 @@ fn style_filter_limits_document_enumeration_to_selected_styles() {
 fn style_filter_rejects_malformed_and_unknown_selections() {
     let (_temporary, workspace) = independent_workspace();
     let filter = StyleFilter::parse(&workspace, &["cl/postcard", "cv/orbit"]).unwrap();
-    assert_eq!(filter.to_string(), "cv/orbit, cl/postcard");
+    // Selections print sorted and deduplicated, whatever the argument order.
+    assert_eq!(filter.to_string(), "cl/postcard, cv/orbit");
     assert_eq!(filter.document_leaves(&workspace).unwrap().len(), 2);
     for (value, expected) in [
         ("orbit", "expected <cv|cl>/<style>"),
@@ -804,5 +815,312 @@ fn style_filter_rejects_malformed_and_unknown_selections() {
         );
         assert!(error.contains(expected), "{value}: {error}");
         assert!(error.contains(&format!("{value:?}")), "{value}: {error}");
+    }
+}
+
+/// Replace the orbit fixture's substyle declaration.
+fn orbit_substyles(workspace: &Workspace, declaration: &str) {
+    let path = workspace.path("cvl/cv/orbit/style.toml");
+    let text = fs::read_to_string(&path)
+        .unwrap()
+        .replace("substyles = [\"standard\"]\n", declaration);
+    fs::write(path, text).unwrap();
+}
+
+#[test]
+fn reserved_default_resolves_the_manifest_style_and_its_first_substyle() {
+    let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    for (document, style, substyle, expected) in [
+        (
+            "cv",
+            Some("default"),
+            Some("default"),
+            ("harvard", "d-plus"),
+        ),
+        ("cv", None, None, ("harvard", "d-plus")),
+        (
+            "cv",
+            Some("default"),
+            Some("compact"),
+            ("harvard", "compact"),
+        ),
+        (
+            "cv",
+            Some("cluster"),
+            Some("default"),
+            ("cluster", "d-plus"),
+        ),
+        ("cv", Some("modern"), None, ("modern", "standard")),
+        (
+            "cl",
+            Some("default"),
+            Some("default"),
+            ("harvard", "left-rule"),
+        ),
+    ] {
+        let selected = selection(&repository, document, style, substyle).unwrap();
+        assert_eq!(
+            (selected.style.as_str(), selected.substyle.as_str()),
+            expected
+        );
+    }
+    let (_temporary, workspace) = independent_workspace();
+    orbit_substyles(&workspace, "substyles = [\"second\", \"standard\"]\n");
+    assert_eq!(
+        selection(&workspace, "cv", Some("default"), Some("default"))
+            .unwrap()
+            .substyle,
+        "second"
+    );
+}
+
+#[test]
+fn real_styles_and_substyles_cannot_be_named_default() {
+    let (_temporary, workspace) = independent_workspace();
+    orbit_substyles(&workspace, "substyles = [\"standard\", \"default\"]\n");
+    let error = format!("{:#}", definition(&workspace, "cv", "orbit").unwrap_err());
+    assert!(error.contains("reserved for the first substyle"), "{error}");
+
+    let (_temporary, workspace) = independent_workspace();
+    write(
+        workspace.root(),
+        "cvl/cv/default/style.toml",
+        "id = \"default\"\napi = 1\ndocuments = [\"cv\"]\nsupports_locales = [\"en-us\"]\npages = [1]\ndefault_pages = 1\nsubstyles = [\"standard\"]\n",
+    );
+    let error = format!("{:#}", definitions(&workspace, "cv").unwrap_err());
+    assert!(
+        error.contains("reserved for the workspace default style"),
+        "{error}"
+    );
+    // Selecting `default` still resolves to the manifest's style.
+    assert_eq!(
+        selection(&workspace, "cv", Some("default"), None)
+            .unwrap()
+            .style,
+        "orbit"
+    );
+}
+
+#[test]
+fn removed_default_substyle_field_fails_with_its_replacement_rule() {
+    let (_temporary, workspace) = independent_workspace();
+    orbit_substyles(
+        &workspace,
+        "substyles = [\"standard\"]\ndefault_substyle = \"standard\"\n",
+    );
+    let error = format!("{:#}", definition(&workspace, "cv", "orbit").unwrap_err());
+    assert!(
+        error.contains("default_substyle was removed; the first substyle is the default"),
+        "{error}"
+    );
+}
+
+#[test]
+fn empty_substyle_slots_keep_their_position_and_produce_no_leaves() {
+    let (_temporary, workspace) = independent_workspace();
+    orbit_substyles(
+        &workspace,
+        "substyles = [\"standard\", \"slot-2\"]\nempty_substyles = [\"slot-2\"]\n",
+    );
+    let leaves = leaves(&workspace, "cv").unwrap();
+    assert_eq!(leaves.len(), 1);
+    assert_eq!(leaves[0].substyle, "standard");
+    assert_eq!(
+        render::list_documents(&workspace).unwrap()[0]["substyle"],
+        "standard"
+    );
+    let error = selection(&workspace, "cv", Some("orbit"), Some("slot-2"))
+        .unwrap_err()
+        .to_string();
+    assert_eq!(
+        error,
+        "cv orbit/slot-2 is an empty slot; it has no design yet"
+    );
+    let empty = Selection {
+        style: "orbit".into(),
+        substyle: "slot-2".into(),
+    };
+    assert!(leaf(&workspace, "cv", "en-us", &empty).is_err());
+
+    for (declaration, message) in [
+        (
+            "substyles = [\"slot-1\", \"standard\"]\nempty_substyles = [\"slot-1\"]\n",
+            "the first substyle is the default and cannot be an empty slot",
+        ),
+        (
+            "substyles = [\"standard\", \"slot-3\"]\nempty_substyles = [\"slot-3\"]\n",
+            "must be named \"slot-2\" for its position",
+        ),
+        (
+            "substyles = [\"standard\", \"slot-2\"]\nempty_substyles = [\"slot-3\"]\n",
+            "empty_substyles must list distinct entries of substyles",
+        ),
+        (
+            "substyles = [\"standard\", \"slot-2\"]\n",
+            "reserved slot name",
+        ),
+    ] {
+        let (_temporary, workspace) = independent_workspace();
+        orbit_substyles(&workspace, declaration);
+        let error = format!("{:#}", definition(&workspace, "cv", "orbit").unwrap_err());
+        assert!(error.contains(message), "{declaration}: {error}");
+    }
+    orbit_substyles(&workspace, "");
+    write(workspace.root(), "cvl/cv/orbit/slot-2/substyle.toml", "");
+    let error = format!("{:#}", definition(&workspace, "cv", "orbit").unwrap_err());
+    assert!(error.contains("must not have a directory"), "{error}");
+}
+
+const EMPTY_STYLE: &str = "id = \"slot-2\"\napi = 1\ndocuments = [\"cv\"]\nempty = true\nsubstyles = [\"slot-1\", \"slot-2\"]\n";
+
+#[test]
+fn empty_style_slots_have_an_exact_shape_and_cannot_be_selected() {
+    let (_temporary, workspace) = independent_workspace();
+    write(workspace.root(), "cvl/cv/slot-2/style.toml", EMPTY_STYLE);
+    assert_eq!(definitions(&workspace, "cv").unwrap().len(), 2);
+    assert_eq!(leaves(&workspace, "cv").unwrap().len(), 1);
+    assert_eq!(
+        render::list_documents(&workspace)
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    for substyle in [None, Some("slot-1")] {
+        let error = selection(&workspace, "cv", Some("slot-2"), substyle)
+            .unwrap_err()
+            .to_string();
+        assert_eq!(
+            error,
+            "cv slot-2 is an empty style slot; it has no design yet"
+        );
+    }
+    for (path, text, message) in [
+        (
+            "cvl/cv/slot-2/style.toml",
+            format!("{EMPTY_STYLE}pages = [1]\n"),
+            "an empty style slot contains only",
+        ),
+        (
+            "cvl/cv/slot-2/style.toml",
+            EMPTY_STYLE.replace("[\"slot-1\", \"slot-2\"]", "[\"slot-2\", \"slot-1\"]"),
+            "must be named \"slot-1\" for its position",
+        ),
+        (
+            "cvl/cv/spare/style.toml",
+            EMPTY_STYLE.replace("slot-2\"\napi", "spare\"\napi"),
+            "an empty style slot must be named slot-<n>",
+        ),
+        (
+            "cvl/cv/slot-2/style.toml",
+            "id = \"slot-2\"\napi = 1\ndocuments = [\"cv\"]\nsupports_locales = [\"en-us\"]\npages = [1]\ndefault_pages = 1\nsubstyles = [\"standard\"]\n".to_owned(),
+            "slot-<n> names are reserved for empty style slots",
+        ),
+    ] {
+        let (_temporary, workspace) = independent_workspace();
+        write(workspace.root(), path, &text);
+        let error = format!("{:#}", definitions(&workspace, "cv").unwrap_err());
+        assert!(error.contains(message), "{text}: {error}");
+    }
+    let (_temporary, workspace) = independent_workspace();
+    write(workspace.root(), "cvl/cv/slot-2/style.toml", EMPTY_STYLE);
+    let manifest = fs::read_to_string(workspace.path("ccvl.json"))
+        .unwrap()
+        .replace(
+            "\"default_style\":\"orbit\"",
+            "\"default_style\":\"slot-2\"",
+        );
+    write(workspace.root(), "ccvl.json", &manifest);
+    let error = format!("{:#}", selection(&workspace, "cv", None, None).unwrap_err());
+    assert!(error.contains("is an empty style slot"), "{error}");
+}
+
+#[test]
+fn manifest_slots_fix_the_style_and_substyle_counts() {
+    let (_temporary, workspace) = independent_workspace();
+    validate_slots(&workspace, "cv").unwrap();
+    validate_slots(&workspace, "cl").unwrap();
+    let mut manifest = workspace.read_json("ccvl.json").unwrap();
+    let mut configure = |styles: u64, substyles: u64| {
+        manifest["documents"]["cv"]["slots"] = json!({"styles": styles, "substyles": substyles});
+        write(workspace.root(), "ccvl.json", &format!("{manifest}\n"));
+    };
+    configure(2, 2);
+    orbit_substyles(
+        &workspace,
+        "substyles = [\"standard\", \"slot-2\"]\nempty_substyles = [\"slot-2\"]\n",
+    );
+    let error = validate_slots(&workspace, "cv").unwrap_err().to_string();
+    assert!(error.contains("exactly 2 styles"), "{error}");
+    write(workspace.root(), "cvl/cv/slot-2/style.toml", EMPTY_STYLE);
+    validate_slots(&workspace, "cv").unwrap();
+    configure(2, 3);
+    let error = validate_slots(&workspace, "cv").unwrap_err().to_string();
+    assert!(error.contains("exactly 3 substyles"), "{error}");
+    configure(2, 2);
+    fs::remove_dir_all(workspace.path("cvl/cv/slot-2")).unwrap();
+    write(
+        workspace.root(),
+        "cvl/cv/slot-1/style.toml",
+        &EMPTY_STYLE.replace("id = \"slot-2\"", "id = \"slot-1\""),
+    );
+    let error = validate_slots(&workspace, "cv").unwrap_err().to_string();
+    assert!(error.contains("numbered slot-2 to slot-2"), "{error}");
+    let mut manifest = workspace.read_json("ccvl.json").unwrap();
+    manifest["documents"]["cv"]
+        .as_object_mut()
+        .unwrap()
+        .remove("slots");
+    write(workspace.root(), "ccvl.json", &format!("{manifest}\n"));
+    assert!(validate_slots(&workspace, "cv").is_err());
+
+    let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    validate_slots(&repository, "cv").unwrap();
+    validate_slots(&repository, "cl").unwrap();
+}
+
+#[test]
+fn list_styles_orders_the_default_designed_styles_and_empty_slots() {
+    let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let listing = list_styles(&repository).unwrap();
+    let ids = |document: &str| {
+        listing[document]["styles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|style| style["id"].as_str().unwrap().to_owned())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(ids("cv"), ["harvard", "cluster", "modern", "slot-4"]);
+    assert_eq!(ids("cl"), ["harvard", "slot-2", "slot-3", "slot-4"]);
+    assert_eq!(
+        listing["cv"]["default"],
+        json!({"style": "harvard", "substyle": "d-plus"})
+    );
+    assert_eq!(
+        listing["cl"]["default"],
+        json!({"style": "harvard", "substyle": "left-rule"})
+    );
+    assert_eq!(
+        listing["cv"]["styles"][0],
+        json!({"id": "harvard", "status": "designed", "substyles": [
+            {"id": "d-plus", "status": "designed", "default": true},
+            {"id": "standard", "status": "designed"},
+            {"id": "compact", "status": "designed"},
+            {"id": "aligned", "status": "designed"},
+            {"id": "slot-5", "status": "empty"},
+        ]})
+    );
+    assert_eq!(listing["cv"]["styles"][3]["status"], "empty");
+    assert_eq!(listing["cv"]["styles"][3]["substyles"][0]["default"], true);
+    assert_eq!(listing["cv"]["styles"][3]["substyles"][4]["id"], "slot-5");
+    // Empty slots never become leaves or listed documents.
+    for leaf in leaves(&repository, "cv")
+        .unwrap()
+        .into_iter()
+        .chain(leaves(&repository, "cl").unwrap())
+    {
+        assert!(!leaf.style.starts_with("slot-") && !leaf.substyle.starts_with("slot-"));
     }
 }

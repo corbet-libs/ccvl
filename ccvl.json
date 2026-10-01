@@ -34,11 +34,19 @@
   "documents": {
     "cv": {
       "root": "cvl/cv",
-      "default_style": "harvard"
+      "default_style": "harvard",
+      "slots": {
+        "styles": 4,
+        "substyles": 5
+      }
     },
     "cover_letter": {
       "root": "cvl/cl",
-      "default_style": "harvard"
+      "default_style": "harvard",
+      "slots": {
+        "styles": 4,
+        "substyles": 5
+      }
     }
   }
 }
