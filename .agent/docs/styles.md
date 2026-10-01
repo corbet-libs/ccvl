@@ -234,13 +234,26 @@ An optional `contract.toml` can declare:
   `minimum_text_chars`, `required_profile_fields`, `require_image`, `version`
   and `tagged`. Optional `[pdf.by_locale.<locale>]` overrides these per locale;
   if supplied, it must cover every supported locale.
+- `portable_bundle = true`: every variant must export as a self-contained
+  [portable bundle](#portable-consumer-bundles); `check` renders each leaf's
+  bundle and requires the same PDF bytes. It excludes `source_files`. Cluster
+  declares it.
 
 Harvard additionally uses its summary and paragraph contracts and the
 `layout_contract` / `source_files` four-page station-marker protocol. Those
 checks apply only to a style opting into those contracts; they are not a
 requirement for independent layouts. Styles without metrics need not emit them.
+The budgets are frozen: `check` pins the CV station, Summary and compact-delta
+rules for Harvard and any CV declaring `layout_contract`, and the AIDA letter
+rules for Harvard and any letter declaring `[editorial] structure = "aida"`.
+A letter contract's `line_fill` is also what its renderer must emit: `cl-body`
+and `cl-highlight` metrics carrying other fill bounds fail.
 The engine always checks the requested page count, valid positive page geometry,
-PDF integrity, embedded fonts with Unicode maps and a usable text layer.
+PDF integrity, embedded fonts with Unicode maps and a usable text layer. For
+every leaf, `check` also requires that the build reads nothing in the other
+document's tree and that the resolved copy `build-opportunity` emits compiles
+without CLI inputs to the same PDF, so give every `sys.inputs` value a literal
+default and import with absolute paths.
 
 All 16 bundled ctypst font faces are available. A style may declare additional
 workspace font files; provide their redistribution licenses when publishing.
