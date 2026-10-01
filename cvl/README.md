@@ -16,7 +16,8 @@ cvl/
 ├── assets/                              # approved shared profile assets
 ├── shared/                              # each family's chosen sharing
 │   ├── harvard/{defaults.toml,style.typ,application.typ,style.toml}
-│   └── cluster/defaults.toml
+│   ├── cluster/defaults.toml
+│   └── modern/defaults.toml
 ├── cv/
 │   ├── harvard/
 │   │   ├── style.toml, contract.toml, scaffold.toml
@@ -26,10 +27,14 @@ cvl/
 │   │   ├── compact/{de,en}/ch/<leaf>
 │   │   ├── aligned/{de,en}/ch/<leaf>
 │   │   └── d-plus/{de,en}/ch/<leaf>
-│   └── cluster/
+│   ├── cluster/
+│   │   ├── style.toml, contract.toml, scaffold.toml, layout.typ
+│   │   ├── content/{de,en}/ch/wording.toml
+│   │   └── {standard,middle-three,middle-three-spaced,d-plus}/{de,en}/ch/<leaf>
+│   └── modern/
 │       ├── style.toml, contract.toml, scaffold.toml, layout.typ
 │       ├── content/{de,en}/ch/wording.toml
-│       └── {standard,middle-three,middle-three-spaced,d-plus}/{de,en}/ch/<leaf>
+│       └── {standard,timeline}/{de,en}/ch/<leaf>
 └── cl/
     └── harvard/
         ├── style.toml, contract.toml, scaffold.toml, src/
@@ -61,7 +66,7 @@ explicit settings; a style can use its own Typst setup instead.
 | A tailored private application | Its opportunity's `application.toml` |
 
 Every leaf names its shared source under `[wording].source`. Sharing stays
-inside the same document/style/language/country. Harvard and Cluster each own
+inside the same document/style/language/country. Harvard, Cluster and Modern each own
 independent wording; CV and letter sources are separate.
 Nested fields merge, while arrays replace whole arrays. Private opportunity
 records remain self-contained. See [the interface](../.agent/docs/styles.md)
@@ -73,17 +78,19 @@ for the exact source and override rules.
 | --- | --- | --- | --- | --- | --- | --- |
 | Harvard | standard, compact, aligned, d-plus | left-rule, frame | Archivo | de-ch / en-ch, portrait A4 | 2, 3, 4 | 1 |
 | Cluster | standard, middle-three, middle-three-spaced, d-plus | — | Archivo | de-ch / en-ch, portrait A4 | 1 | — |
+| Modern | standard, timeline | — | Archivo | de-ch / en-ch, portrait A4 | 1 | — |
 
-This produces **36 registered PDFs / 84 pages**, plus two five-page D+
+This produces **40 registered PDFs / 88 pages**, plus two five-page D+
 comparisons. The [cluster example](cv/cluster/README.md) is a typesetting
-milestone with unfinished Lorem Ipsum content. The default remains Harvard standard for
+milestone with unfinished Lorem Ipsum content. [Modern](cv/modern/README.md)
+is a scaffold whose design is not yet defined. The default remains Harvard standard for
 CV and Harvard left-rule for CL. All styles declare their page presets;
 Harvard's station and five-line-summary contracts apply only to Harvard.
 
 ## Compare the designs
 
 These thumbnails are actual first pages of the English Swiss PDFs. Open a PDF
-for full-resolution pages. Both shipped styles use portrait A4.
+for full-resolution pages. All shipped styles use portrait A4.
 
 | Family / substyle | CV | Cover letter |
 | --- | --- | --- |
@@ -106,7 +113,7 @@ use explicit manifest/style defaults. The shipped renderers merge
 Language and paper are separate decisions; the engine imposes no
 country-to-paper mapping.
 
-Harvard and Cluster currently support A4. `--paper` selects a supported paper
+Harvard, Cluster and Modern currently support A4. `--paper` selects a supported paper
 without changing folders;
 nondefault papers add their name to the PDF filename, preserving the default
 showcase. Unsupported choices fail instead of shrinking text or adding pages.

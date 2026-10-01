@@ -1,0 +1,8 @@
+content_fields = []
+
+[pdf]
+version = "1.7"
+tagged = true
+font_pattern = "^[A-Z]{6}\\+Archivo-(Bold|Italic|Medium|Regular)$"
+required_profile_fields = ["email", "phone_label"]
+minimum_text_chars = 20
