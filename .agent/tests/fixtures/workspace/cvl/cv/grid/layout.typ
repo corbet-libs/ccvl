@@ -35,14 +35,14 @@
       #record.cv.summary
       #for (index, item) in record.cv.items.enumerate() {
         [#metadata((
-            kind: "grid-item",
-            id: "grid.item." + str(index + 1),
-            text: item,
-            actual_fill: 80,
-            min_fill: 60,
-            target_fill: 80,
-            max_fill: 100,
-          )) <ccvl-line>]
+          kind: "grid-item",
+          id: "grid.item." + str(index + 1),
+          text: item,
+          actual_fill: 80,
+          min_fill: 60,
+          target_fill: 80,
+          max_fill: 100,
+        )) <ccvl-line>]
         parbreak()
         item
       }

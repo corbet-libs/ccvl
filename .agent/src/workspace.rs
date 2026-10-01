@@ -175,8 +175,10 @@ fn find_root(start: &Path) -> Option<PathBuf> {
 mod tests {
     use super::*;
 
+    /// The repository's own data roots, manifest and CI files; never `cvl/`
+    /// style content, whose outputs `check` verifies.
     fn repository() -> Workspace {
-        Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap()
+        Workspace::at(crate::test_support::repository()).unwrap()
     }
 
     #[test]
@@ -224,30 +226,6 @@ mod tests {
         assert_eq!(groups["opportunities"]["record"], "application.toml");
         assert_eq!(groups["opportunities"]["pdfs"], "pdfs");
         assert_eq!(groups["opportunities"]["typst"], "typst");
-    }
-
-    #[test]
-    fn cv_outputs_use_numeric_page_names() {
-        let workspace = repository();
-        for (document, substyle, lang, name) in [
-            ("cv", "standard", "de", "cv-2.pdf"),
-            ("cv", "standard", "de", "cv-3.pdf"),
-            ("cv", "standard", "de", "cv-4.pdf"),
-            ("cv", "compact", "en", "cv-2.pdf"),
-            ("cv", "compact", "en", "cv-3.pdf"),
-            ("cv", "compact", "en", "cv-4.pdf"),
-            ("cl", "left-rule", "de", "cl.pdf"),
-            ("cl", "frame", "en", "cl.pdf"),
-        ] {
-            assert!(
-                workspace
-                    .path(format!(
-                        "cvl/{document}/harvard/{substyle}/{lang}/ch/pdf/{name}"
-                    ))
-                    .is_file(),
-                "missing cvl/{document}/harvard/{substyle}/{lang}/ch/pdf/{name}"
-            );
-        }
     }
 
     #[test]

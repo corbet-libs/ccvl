@@ -421,6 +421,14 @@ fn emitted_copies_compile_without_cli_inputs() {
         }
         for spec in specs {
             let original = compiler.compile(&workspace, &spec).unwrap();
+            let standalone = compiler.standalone_pdf(&workspace, &spec).unwrap();
+            assert_eq!(
+                compiler.pdf_bytes(&spec, &original).unwrap(),
+                standalone,
+                "standalone copy differs: {}",
+                spec.name,
+            );
+            // The emitted copy carries its provenance and no CLI inputs.
             let template = fs::read_to_string(&spec.source).unwrap();
             let text = resolved_typ_text(&template, &spec, "fixture", "acme", "lead");
             let standalone = compiler
@@ -504,41 +512,6 @@ fn mismatched_record_selection_fails_before_compiling() {
     .to_string();
     assert!(error.contains("compact"), "unexpected error: {error}");
     assert!(error.contains("primary"), "unexpected error: {error}");
-}
-
-#[test]
-fn compact_delta_keeps_horizontal_measure_and_accents() {
-    // Horizontal measure feeds every fill percentage, so the compact
-    // delta may only tighten vertical whitespace. Pin the invariant
-    // between the shared base knobs and the delta; the gates above prove
-    // the result still passes.
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let base = workspace
-        .read_toml_value("cvl/shared/harvard/defaults.toml")
-        .unwrap();
-    let compact = workspace
-        .read_toml_value("cvl/cv/harvard/compact/substyle.toml")
-        .unwrap();
-    let delta = compact.as_object().unwrap();
-    for forbidden in ["page", "text", "accents"] {
-        assert!(
-            !delta.contains_key(forbidden),
-            "horizontal section changed by the delta: {forbidden}"
-        );
-    }
-    let cv = delta.get("cv").and_then(|value| value.as_object());
-    assert!(
-        cv.is_none_or(|table| !table.contains_key("bullet_indent_pt")),
-        "horizontal knob changed by the delta: bullet_indent_pt"
-    );
-    let fill = |style: &serde_json::Value, pointer: &str| {
-        style.pointer(pointer).and_then(serde_json::Value::as_f64)
-    };
-    assert!(
-        fill(&compact, "/cv/entry_spacing_pt") < fill(&base, "/cv/entry_spacing_pt"),
-        "compact must tighten vertical whitespace"
-    );
-    assert!(!delta.is_empty());
 }
 
 fn selection(substyle: &str) -> Selection {

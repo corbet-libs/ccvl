@@ -44,6 +44,8 @@ pub fn run_selected(
     validate_manifest(workspace)?;
     validate_correspondence(workspace)?;
     validate_styles(workspace)?;
+    validate_frozen_contracts(workspace)?;
+    validate_measurement_ownership(workspace)?;
     application::validate_profiles(workspace)?;
     application::validate_station_files(workspace)?;
     application::validate_all(workspace)?;
@@ -270,7 +272,239 @@ fn validate_styles(workspace: &Workspace) -> Result<()> {
     for document in ["cv", "cl"] {
         styles::leaves(workspace, document)?;
         styles::validate_slots(workspace, document)?;
+        for definition in styles::definitions(workspace, document)? {
+            if !definition.empty {
+                portable_bundle(&styles::contract(workspace, document, &definition.id)?)
+                    .with_context(|| format!("{document}/{} contract", definition.id))?;
+            }
+        }
     }
+    Ok(())
+}
+
+/// Whether a style's contract declares `portable_bundle = true`: every variant
+/// must then export as a self-contained bundle that renders the checked PDF.
+fn portable_bundle(contract: &Value) -> Result<bool> {
+    let Some(value) = contract.get("portable_bundle") else {
+        return Ok(false);
+    };
+    let portable = value
+        .as_bool()
+        .context("portable_bundle must be a boolean")?;
+    ensure!(
+        !portable
+            || contract
+                .get("source_files")
+                .and_then(Value::as_array)
+                .is_none_or(Vec::is_empty),
+        "a portable bundle cannot embed candidate source_files"
+    );
+    Ok(portable)
+}
+
+/// The style whose shipped contracts are frozen product guarantees even if its
+/// opt-in markers were removed. Other styles opt in through the markers.
+const FROZEN_STYLE: &str = "harvard";
+
+/// Pin the frozen measurement contracts. Every value here is a product
+/// guarantee: weakening one silently reflows measured lines. The CV rules
+/// apply to Harvard and to every CV style declaring the four-page station
+/// `layout_contract`; the letter rules apply to Harvard and to every letter
+/// declaring `[editorial] structure = "aida"`, ccvl's AIDA structure.
+fn validate_frozen_contracts(workspace: &Workspace) -> Result<()> {
+    for definition in styles::definitions(workspace, "cv")? {
+        if definition.empty {
+            continue;
+        }
+        let contract = styles::contract(workspace, "cv", &definition.id)?;
+        if definition.id == FROZEN_STYLE || contract.get("layout_contract").is_some() {
+            validate_frozen_cv_contract(&contract)
+                .with_context(|| format!("cv/{} contract", definition.id))?;
+            validate_compact_delta(workspace, &definition)
+                .with_context(|| format!("cv/{} compact substyle", definition.id))?;
+        }
+    }
+    for definition in styles::definitions(workspace, "cl")? {
+        if definition.empty {
+            continue;
+        }
+        let contract = styles::contract(workspace, "cl", &definition.id)?;
+        if definition.id == FROZEN_STYLE
+            || contract
+                .pointer("/editorial/structure")
+                .and_then(Value::as_str)
+                == Some("aida")
+        {
+            validate_frozen_letter_contract(&contract)
+                .with_context(|| format!("cl/{} contract", definition.id))?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_frozen_cv_contract(cv: &Value) -> Result<()> {
+    ensure!(
+        cv.pointer("/presets") == Some(&json!([2, 3, 4])),
+        "CV contract: presets must be [2, 3, 4]"
+    );
+    ensure!(
+        cv.pointer("/summary_lines") == Some(&Value::from(5)),
+        "CV contract: every CV Summary must render to exactly five lines"
+    );
+    ensure!(
+        cv.pointer("/summary_fill") == Some(&json!({"minimum": 95, "target": 97, "maximum": 100})),
+        "CV contract: Summary fill defaults must be 95/97/100"
+    );
+    ensure!(
+        cv.pointer("/last_line_maximum") == Some(&Value::from(102)),
+        "CV contract: closing-line maximum must be 102"
+    );
+    let layout = cv
+        .pointer("/layout_contract")
+        .context("CV contract has no layout contract")?;
+    ensure!(
+        layout.pointer("/page_1/entries")
+            == Some(&json!({"minimum": 6, "target": 7, "maximum": 8})),
+        "CV contract: page 1 contract changed"
+    );
+    ensure!(
+        layout.pointer("/page_2") == Some(&json!({"entries": 10, "bullets_per_entry": 2})),
+        "CV contract: page 2 contract changed"
+    );
+    ensure!(
+        layout.pointer("/page_3") == Some(&json!({"entries": 10, "bullets_per_entry": 2})),
+        "CV contract: page 3 contract changed"
+    );
+    ensure!(
+        layout.pointer("/page_4")
+            == Some(&json!({"groups": 3, "entries_per_group": 3, "bullets_per_entry": 3})),
+        "CV contract: page 4 contract changed"
+    );
+    ensure!(
+        layout.get("verified_only") == Some(&Value::Bool(true))
+            && layout.get("unique_fact_assignment") == Some(&Value::Bool(true)),
+        "CV contract: evidence or MECE guarantees were weakened"
+    );
+    Ok(())
+}
+
+/// Horizontal measure feeds every fill percentage, so a frozen family's
+/// compact delta may only tighten vertical whitespace: it keeps the page,
+/// text, accents and bullet indent, and tightens the entry spacing.
+fn validate_compact_delta(workspace: &Workspace, definition: &styles::Definition) -> Result<()> {
+    if !definition
+        .designed_substyles()
+        .any(|substyle| substyle == "compact")
+    {
+        return Ok(());
+    }
+    let style = styles::root(workspace, "cv")?.join(&definition.id);
+    let compact = workspace.read_toml_value(
+        workspace.relative(&workspace.existing_inside(style.join("compact/substyle.toml"))?)?,
+    )?;
+    let defaults = definition
+        .defaults
+        .as_ref()
+        .context("a frozen family needs shared defaults")?;
+    let base = workspace
+        .read_toml_value(workspace.relative(&workspace.existing_inside(style.join(defaults))?)?)?;
+    let delta = compact
+        .as_object()
+        .context("substyle settings must be a table")?;
+    for forbidden in ["page", "text", "accents"] {
+        ensure!(
+            !delta.contains_key(forbidden),
+            "horizontal section changed by the delta: {forbidden}"
+        );
+    }
+    ensure!(
+        compact.pointer("/cv/bullet_indent_pt").is_none(),
+        "horizontal knob changed by the delta: bullet_indent_pt"
+    );
+    let spacing = |settings: &Value| {
+        settings
+            .pointer("/cv/entry_spacing_pt")
+            .and_then(Value::as_f64)
+    };
+    ensure!(
+        matches!((spacing(&compact), spacing(&base)), (Some(compact), Some(base)) if compact < base),
+        "compact must tighten vertical whitespace: cv.entry_spacing_pt must be below the family default"
+    );
+    Ok(())
+}
+
+fn validate_frozen_letter_contract(cl: &Value) -> Result<()> {
+    let paragraphs = cl
+        .get("paragraphs")
+        .and_then(Value::as_array)
+        .context("cover-letter contract has no paragraphs")?;
+    // The strict 3|5|5|5|5|3 framework: exactly six paragraphs with exact
+    // line budgets.
+    ensure!(
+        paragraphs.len() == 6,
+        "cover-letter contract: paragraph framework changed"
+    );
+    for (paragraph, (minimum, maximum)) in
+        paragraphs
+            .iter()
+            .zip([(3, 3), (5, 5), (5, 5), (5, 5), (5, 5), (3, 3)])
+    {
+        ensure!(
+            paragraph.pointer("/lines/minimum") == Some(&Value::from(minimum))
+                && paragraph.pointer("/lines/maximum") == Some(&Value::from(maximum)),
+            "cover-letter contract: paragraph line framework changed"
+        );
+    }
+    ensure!(
+        cl.pointer("/body_lines") == Some(&json!({"minimum": 26, "target": 26, "maximum": 26})),
+        "cover-letter contract: body contract changed"
+    );
+    ensure!(
+        cl.pointer("/highlights/count") == Some(&Value::from(5)),
+        "cover letter needs exactly five highlights"
+    );
+    ensure!(
+        cl.pointer("/line_fill/body")
+            == Some(&json!({
+                "minimum": 75,
+                "non_final_minimum": 95,
+                "target": 97,
+                "maximum": 100
+            })),
+        "cover-letter contract: body fill must stay 75/95/97/100; the higher \
+         non-final floor is the density gate and may not be weakened"
+    );
+    ensure!(
+        cl.pointer("/line_fill/highlight")
+            == Some(&json!({"minimum": 70, "target": 82, "maximum": 100})),
+        "cover-letter contract: highlight fill must stay 70/82/100"
+    );
+    ensure!(
+        cl.pointer("/vertical_rhythm/gap_pt")
+            == Some(&json!({"minimum": 12, "target": 20, "maximum": 30})),
+        "cover-letter contract: vertical rhythm changed"
+    );
+    ensure!(
+        cl.pointer("/vertical_rhythm/highlight_center_percent")
+            == Some(&json!({"minimum": 50, "target": 56, "maximum": 60})),
+        "cover-letter contract: highlight position changed"
+    );
+    ensure!(
+        cl.pointer("/widow_or_orphan_lines") == Some(&Value::from(0)),
+        "cover-letter contract: widow/orphan rule changed"
+    );
+    Ok(())
+}
+
+/// Document styles never vendor the measurement program or reintroduce local
+/// measurement builders; `ctypst` owns those semantics.
+fn validate_measurement_ownership(workspace: &Workspace) -> Result<()> {
+    let violations = crate::ownership::violations(&workspace.path("cvl"))?;
+    ensure!(
+        violations.is_empty(),
+        "reintroduced measurement code: {}",
+        violations.join("; ")
+    );
     Ok(())
 }
 
@@ -357,7 +591,9 @@ fn render_and_verify(
                 .transpose()?
                 .unwrap_or_default();
             for pages in &leaf.pages {
-                let spec = crate::render::cvl_spec_with_paper(workspace, &leaf, *pages, paper)?;
+                // Observe every read of the spec and both builds.
+                let observed = workspace.tracked();
+                let spec = crate::render::cvl_spec_with_paper(&observed, &leaf, *pages, paper)?;
                 let label = format!(
                     "{}-{}-{}-{}-{pages}",
                     leaf.document, leaf.style, leaf.substyle, leaf.locale
@@ -368,7 +604,7 @@ fn render_and_verify(
                     format!("{label}-{}", paper.unwrap())
                 };
                 let first = render_pair(
-                    workspace,
+                    &observed,
                     &compiler,
                     &spec,
                     &temporary.path().join(format!("{label}-first.pdf")),
@@ -376,12 +612,16 @@ fn render_and_verify(
                     &format!("{} is not byte-reproducible", spec.name),
                     true,
                 )?;
+                require_document_isolation(workspace, &observed, &leaf)?;
                 if is_default {
                     require_semantic_pdf_match(
                         &first,
                         &spec.output,
                         &format!("{} output", spec.name),
                     )?;
+                    if *pages == leaf.default_pages {
+                        require_portable_copies(workspace, &compiler, &leaf, &spec, &first)?;
+                    }
                 }
                 verified.push((*pages, pdf::verify(&first, *pages, &contacts, &policy)?));
                 checked_pdfs.push((first, format!("{label}.pdf")));
@@ -421,6 +661,85 @@ fn render_and_verify(
             fs::copy(source, destination.join(name))?;
         }
     }
+    Ok(())
+}
+
+/// A document renders from its own tree: a CV build never reads the letter
+/// styles and a letter build never reads the CV styles, so a broken, missing
+/// or private opposite document cannot change it.
+fn require_document_isolation(
+    workspace: &Workspace,
+    observed: &Workspace,
+    leaf: &styles::StyleLeaf,
+) -> Result<()> {
+    let opposite = if leaf.document == "cv" { "cl" } else { "cv" };
+    let root = styles::root(workspace, opposite)?;
+    let reads = observed
+        .observed_inputs()
+        .into_iter()
+        .filter(|path| path.starts_with(&root))
+        .map(|path| {
+            workspace.relative(&path).map_or_else(
+                |_| path.display().to_string(),
+                |path| path.display().to_string(),
+            )
+        })
+        .collect::<Vec<_>>();
+    ensure!(
+        reads.is_empty(),
+        "{} {}/{}/{} reads the {opposite} document tree: {}",
+        leaf.document,
+        leaf.style,
+        leaf.substyle,
+        leaf.locale,
+        reads.join(", ")
+    );
+    Ok(())
+}
+
+/// Documents leave the workspace in two ways, and both must reproduce the
+/// checked build: the resolved customization copy that `build-opportunity`
+/// emits compiles without CLI inputs, and the bundle of a style declaring
+/// `portable_bundle = true` renders the same PDF from its exported files.
+fn require_portable_copies(
+    workspace: &Workspace,
+    compiler: &Compiler,
+    leaf: &styles::StyleLeaf,
+    spec: &DocumentSpec,
+    pdf: &Path,
+) -> Result<()> {
+    let expected = fs::read(pdf)?;
+    ensure!(
+        compiler.standalone_pdf(workspace, spec)? == expected,
+        "{}: the resolved customization copy does not reproduce the build; give every sys.inputs value a literal default",
+        spec.name
+    );
+    if !portable_bundle(&leaf.contract)? {
+        return Ok(());
+    }
+    let bundle = crate::bundle::export(
+        workspace,
+        leaf.document,
+        &leaf.locale,
+        Some(&leaf.style),
+        Some(&leaf.substyle),
+        Some(spec.expected_pages),
+        spec.inputs.get("paper").map(String::as_str),
+    )
+    .with_context(|| format!("cannot export the portable bundle of {}", spec.name))?;
+    let project = bundle.with_record(
+        crate::content::read_record(workspace, leaf.content())?,
+        workspace.read_toml_value("cvl/profile.toml")?,
+    )?;
+    let renderer = ccvl_core::render::StyleRenderer::new(&project.bundle)?;
+    let portable = renderer
+        .compile(&project)
+        .with_context(|| format!("the portable bundle of {} does not compile", spec.name))?;
+    ensure!(
+        renderer.pdf(&portable)? == expected,
+        "{}: the portable style bundle renders a different PDF; keep every renderer input inside the exported style",
+        spec.name
+    );
     Ok(())
 }
 

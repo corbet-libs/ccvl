@@ -301,6 +301,7 @@ fn validate_metric_set(
             );
         }
     }
+    validate_declared_fill(spec, metrics)?;
     if let Some(paragraphs) = spec.contract.get("paragraphs").and_then(Value::as_array) {
         let counts = paragraph_counts(spec, metrics)?;
         for (index, (actual, declared)) in counts.iter().zip(paragraphs).enumerate() {
@@ -321,6 +322,83 @@ fn validate_metric_set(
                 "{}: paragraph {} must use {minimum}–{maximum} lines, found {actual}",
                 spec.name,
                 index + 1
+            );
+        }
+    }
+    Ok(())
+}
+
+/// A letter contract's declared fill bounds are what its renderer must
+/// measure against: every `cl-body` line uses the body target and maximum and
+/// the non-final minimum, except a paragraph's closing line, which uses the
+/// body minimum; every `cl-highlight` line uses the highlight bounds. A
+/// renderer emitting looser bounds than its contract fails here even though
+/// each line passes its own emitted bounds.
+fn validate_declared_fill(spec: &DocumentSpec, metrics: &[Value]) -> Result<()> {
+    let bounds = |pointer: &str, minimum: &str| -> Result<Option<[f64; 3]>> {
+        let Some(fill) = spec.contract.pointer(pointer) else {
+            return Ok(None);
+        };
+        let field = |name: &str| {
+            fill.get(name)
+                .and_then(Value::as_f64)
+                .with_context(|| format!("{}: contract {pointer}.{name} is missing", spec.name))
+        };
+        // Without a separate non-final floor every line uses the minimum.
+        let floor = if fill.get(minimum).is_some() {
+            minimum
+        } else {
+            "minimum"
+        };
+        Ok(Some([field(floor)?, field("target")?, field("maximum")?]))
+    };
+    let body = bounds("/line_fill/body", "non_final_minimum")?;
+    let closing = bounds("/line_fill/body", "minimum")?;
+    let highlight = bounds("/line_fill/highlight", "minimum")?;
+    let pattern = paragraph_pattern();
+    let mut closing_lines = HashMap::<usize, usize>::new();
+    for metric in metrics {
+        if metric.get("kind").and_then(Value::as_str) == Some("cl-body")
+            && let Some(captures) = pattern.captures(string_field(metric, "id")?)
+        {
+            let line = captures[2].parse::<usize>()?;
+            let last = closing_lines.entry(captures[1].parse()?).or_default();
+            *last = (*last).max(line);
+        }
+    }
+    for metric in metrics {
+        let expected = match metric.get("kind").and_then(Value::as_str) {
+            Some("cl-body") => {
+                let Some(captures) = pattern.captures(string_field(metric, "id")?) else {
+                    continue;
+                };
+                let paragraph = captures[1].parse::<usize>()?;
+                if closing_lines.get(&paragraph) == Some(&captures[2].parse()?) {
+                    closing
+                } else {
+                    body
+                }
+            }
+            Some("cl-highlight") => highlight,
+            _ => None,
+        };
+        if let Some([minimum, target, maximum]) = expected {
+            let emitted = [
+                number_field(metric, "min_fill")?,
+                number_field(metric, "target_fill")?,
+                number_field(metric, "max_fill")?,
+            ];
+            ensure!(
+                emitted
+                    .iter()
+                    .zip([minimum, target, maximum])
+                    .all(|(emitted, declared)| (emitted - declared).abs() < 1e-9),
+                "{}: {} measures against {}/{}/{} instead of its contract's {minimum}/{target}/{maximum}",
+                spec.name,
+                string_field(metric, "id")?,
+                emitted[0],
+                emitted[1],
+                emitted[2]
             );
         }
     }

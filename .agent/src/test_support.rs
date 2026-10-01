@@ -84,7 +84,8 @@ pub(crate) fn fixture_workspace() -> (tempfile::TempDir, Workspace) {
 }
 
 /// The fixture workspace plus the platform files a full `check` validates:
-/// skills, skill cases and bundled fonts. Guides that skills link to are
+/// skills, skill cases, bundled fonts and the license files style bundles
+/// carry. Guides that skills link to are
 /// stubs, so the fixture never imports showcase documentation.
 pub(crate) fn checkable_fixture_workspace() -> (tempfile::TempDir, Workspace) {
     let (directory, workspace) = fixture_workspace();
@@ -97,6 +98,8 @@ pub(crate) fn checkable_fixture_workspace() -> (tempfile::TempDir, Workspace) {
         ".agent/skills",
         ".agent/typst/fonts",
         ".agent/tests/skill-cases.json",
+        "REUSE.toml",
+        "LICENSES",
     ] {
         copy_repository(root, relative);
     }
@@ -106,6 +109,7 @@ pub(crate) fn checkable_fixture_workspace() -> (tempfile::TempDir, Workspace) {
         "review",
         "cover-letter",
         "styles",
+        "typst-defaults",
     ] {
         let path = root.join(format!(".agent/docs/{guide}.md"));
         fs::create_dir_all(path.parent().unwrap()).unwrap();

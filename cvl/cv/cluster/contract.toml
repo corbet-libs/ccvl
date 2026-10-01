@@ -1,4 +1,7 @@
 content_fields = ["summary", "groups", "allow_thin"]
+# Every variant exports as a self-contained bundle; check requires the
+# bundle to render the same PDF as the workspace build.
+portable_bundle = true
 
 [pdf]
 version = "1.7"

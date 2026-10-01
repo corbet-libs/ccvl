@@ -338,6 +338,9 @@ fn full_workspace_check_accepts_independent_styles() {
     ] {
         write(workspace.root(), relative, "# Independent fixture\n");
     }
+    // Portable bundles of these exportable styles carry the license files.
+    crate::test_support::copy_repository(workspace.root(), "REUSE.toml");
+    crate::test_support::copy_repository(workspace.root(), "LICENSES");
     for directory in [".agent/skills", ".agent/typst/fonts", ".agent/typst/letter"] {
         for entry in walkdir::WalkDir::new(original.path(directory)) {
             let entry = entry.unwrap();

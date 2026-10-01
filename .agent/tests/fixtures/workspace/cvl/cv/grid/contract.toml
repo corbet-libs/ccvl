@@ -1,5 +1,6 @@
 # Synthetic independent CV contract.
 content_fields = ["summary", "items", "allow_thin"]
+portable_bundle = true
 
 [pdf]
 version = "1.7"

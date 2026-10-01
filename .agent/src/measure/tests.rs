@@ -65,17 +65,45 @@ fn metric(kind: &str, identifier: &str) -> Value {
     json!({"kind": kind, "id": identifier})
 }
 
+fn filled(kind: &str, identifier: &str, bounds: [u32; 3]) -> Value {
+    json!({
+        "kind": kind,
+        "id": identifier,
+        "min_fill": bounds[0],
+        "target_fill": bounds[1],
+        "max_fill": bounds[2],
+    })
+}
+
+/// A complete letter metric set with the fixture contract's fill bounds:
+/// 95/97/100 for running body lines, 75/97/100 for paragraph closings and
+/// 70/82/100 for highlights.
 fn metric_set(paragraph_lengths: &[usize]) -> Vec<Value> {
     let mut metrics = paragraph_lengths
         .iter()
         .enumerate()
         .flat_map(|(paragraph, length)| {
             (1..=*length).map(move |line| {
-                metric("cl-body", &format!("cl.paragraph.{}.{line}", paragraph + 1))
+                let bounds = if line == *length {
+                    [75, 97, 100]
+                } else {
+                    [95, 97, 100]
+                };
+                filled(
+                    "cl-body",
+                    &format!("cl.paragraph.{}.{line}", paragraph + 1),
+                    bounds,
+                )
             })
         })
         .collect::<Vec<_>>();
-    metrics.extend((1..=5).map(|index| metric("cl-highlight", &format!("cl.highlight.{index}"))));
+    metrics.extend((1..=5).map(|index| {
+        filled(
+            "cl-highlight",
+            &format!("cl.highlight.{index}"),
+            [70, 82, 100],
+        )
+    }));
     metrics.push(metric("cl-vertical-gap", "cl.vertical-gap"));
     metrics.push(metric("cl-highlight-center", "cl.highlight-center"));
     metrics
@@ -323,6 +351,62 @@ fn cover_letter_metric_set_requires_structure_and_layout_metrics() {
             .to_string();
         assert!(error.contains(missing_kind), "{error}");
     }
+}
+
+#[test]
+fn letter_metrics_must_measure_against_the_contract_fill() {
+    let workspace = workspace();
+    let spec = cover_letter_spec();
+    for (identifier, bounds, message) in [
+        // A running line may not use the closing floor.
+        (
+            "cl.paragraph.2.1",
+            [75, 97, 100],
+            "cl.paragraph.2.1 measures against 75/97/100",
+        ),
+        // The CV's 102% closing grace must not leak into letters.
+        (
+            "cl.paragraph.2.5",
+            [75, 97, 102],
+            "instead of its contract's 75/97/100",
+        ),
+        (
+            "cl.paragraph.6.3",
+            [95, 97, 100],
+            "instead of its contract's 75/97/100",
+        ),
+        (
+            "cl.highlight.1",
+            [60, 82, 100],
+            "instead of its contract's 70/82/100",
+        ),
+    ] {
+        let mut metrics = metric_set(&[3, 5, 5, 5, 5, 3]);
+        let kind = if identifier.starts_with("cl.highlight") {
+            "cl-highlight"
+        } else {
+            "cl-body"
+        };
+        for metric in &mut metrics {
+            if metric["id"] == identifier {
+                *metric = filled(kind, identifier, bounds);
+            }
+        }
+        let error = validate_metric_set(&workspace, &spec, &metrics)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains(message), "{identifier}: {error}");
+    }
+    // Styles without declared letter fill own their line bounds.
+    let mut independent = spec;
+    independent
+        .contract
+        .as_object_mut()
+        .unwrap()
+        .remove("line_fill");
+    let mut metrics = metric_set(&[3, 5, 5, 5, 5, 3]);
+    metrics[0] = filled("cl-body", "cl.paragraph.1.1", [1, 50, 120]);
+    validate_metric_set(&workspace, &independent, &metrics).unwrap();
 }
 
 #[test]
