@@ -1,0 +1,41 @@
+{
+  "format": "ccvl-workspace",
+  "schema_version": 8,
+  "workspace_groups": {
+    "interview": {
+      "root": "interview",
+      "stations": "interview/stations.toml"
+    },
+    "cvl": {
+      "root": "cvl",
+      "profile": "cvl/profile.toml",
+      "cv": "cvl/cv",
+      "cl": "cvl/cl"
+    },
+    "opportunities": {
+      "root": "opportunities",
+      "path": "opportunities/<organisation-key>/<position-key>",
+      "record": "application.toml",
+      "pdfs": "pdfs",
+      "typst": "typst"
+    }
+  },
+  "documents": {
+    "cv": {
+      "root": "cvl/cv",
+      "default_style": "ledger",
+      "slots": {
+        "styles": 3,
+        "substyles": 3
+      }
+    },
+    "cover_letter": {
+      "root": "cvl/cl",
+      "default_style": "ledger",
+      "slots": {
+        "styles": 3,
+        "substyles": 3
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+# Synthetic compact substyle: tighter vertical whitespace only.
+[header]
+after_pt = 5.5
+
+[cv]
+entry_spacing_pt = 10.0

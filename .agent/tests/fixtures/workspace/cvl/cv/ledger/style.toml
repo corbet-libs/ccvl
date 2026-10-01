@@ -1,0 +1,22 @@
+# Synthetic default CV family: shared renderer, shared wording and A4 paper.
+id = "ledger"
+api = 1
+settings_adapter = "document-v1"
+documents = ["cv"]
+supports_locales = ["de-ch", "en-ch"]
+pages = [2, 3, 4]
+substyles = ["primary", "compact", "slot-3"]
+empty_substyles = ["slot-3"]
+default_pages = 4
+defaults = "../../shared/ledger/defaults.toml"
+
+[paper.defaults]
+de-ch = "a4"
+en-ch = "a4"
+
+[paper.sizes.a4]
+size_pt = [595.2756, 841.8898]
+label = "A4"
+
+[paper.sizes.a4.settings.page]
+paper = "a4"

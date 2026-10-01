@@ -1,0 +1,14 @@
+# Synthetic independent CV contract.
+content_fields = ["summary", "items", "allow_thin"]
+
+[pdf]
+version = "1.7"
+tagged = true
+font_pattern = "^[A-Z]{6}\\+Archivo-(Bold|Italic|Medium|Regular)$"
+required_profile_fields = ["email"]
+minimum_text_chars = 40
+
+[[metric_rules]]
+kind = "grid-item"
+minimum = 2
+maximum = 4

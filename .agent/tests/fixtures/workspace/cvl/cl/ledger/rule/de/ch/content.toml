@@ -1,0 +1,33 @@
+# Synthetic cl leaf record for engine tests.
+schema_version = 4
+revision = 0
+
+[wording]
+source = "../../../content/de/ch/wording.toml"
+
+[options]
+cl_style = "ledger"
+language = "de-ch"
+pages = 4
+generate_cl = true
+application_date = "2026-01"
+cl_substyle = "rule"
+
+[job]
+id = "fixture-de-ch"
+title = "Synthetic role"
+organization = ""
+location = "Example City"
+source = "ccvl fixture"
+url = ""
+description = "Synthetic record for engine tests."
+connections = ""
+company_context = ""
+notes = ""
+
+[job.cl_recipient]
+name = ""
+title = ""
+company = ""
+address_line_1 = ""
+address_line_2 = ""

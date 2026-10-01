@@ -1,0 +1,18 @@
+# Synthetic render identity for engine tests; not a real person.
+schema_version = 1
+name = "Avery Sample"
+email = "avery.sample@example.invalid"
+phone_label = "+00 00 000 00 00"
+phone_href = "tel:+000000000000"
+location = "Example City"
+languages = "English, German"
+linkedin = "https://example.invalid/avery-sample"
+website = "https://example.invalid"
+
+[localized.de-ch]
+nationality_and_permit = "Beispielstatus"
+availability = "Nach Vereinbarung"
+
+[localized.en-ch]
+nationality_and_permit = "Example status"
+availability = "By arrangement"

@@ -1,0 +1,33 @@
+# Synthetic cv leaf record for engine tests.
+schema_version = 4
+revision = 0
+
+[wording]
+source = "../../../content/en/ch/wording.toml"
+
+[options]
+cv_style = "ledger"
+language = "en-ch"
+pages = 4
+generate_cl = true
+application_date = "2026-01"
+cv_substyle = "compact"
+
+[job]
+id = "fixture-en-ch"
+title = "Synthetic role"
+organization = ""
+location = "Example City"
+source = "ccvl fixture"
+url = ""
+description = "Synthetic record for engine tests."
+connections = ""
+company_context = ""
+notes = ""
+
+[job.cl_recipient]
+name = ""
+title = ""
+company = ""
+address_line_1 = ""
+address_line_2 = ""

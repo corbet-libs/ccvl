@@ -1,0 +1,34 @@
+# Synthetic grid leaf record with inline wording.
+schema_version = 4
+revision = 0
+
+[options]
+cv_style = "grid"
+cv_substyle = "wide"
+language = "en-ch"
+pages = 1
+generate_cl = false
+application_date = "2026-01"
+
+[job]
+id = "fixture-grid"
+title = "Synthetic role"
+organization = ""
+location = "Example City"
+source = "ccvl fixture"
+url = ""
+description = "Synthetic record for engine tests."
+connections = ""
+company_context = ""
+notes = ""
+
+[job.cl_recipient]
+name = ""
+title = ""
+company = ""
+address_line_1 = ""
+address_line_2 = ""
+
+[cv]
+summary = "Synthetic grid summary for portable bundle and review tests."
+items = ["Synthetic item one", "Synthetic item two", "Synthetic item three"]
