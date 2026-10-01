@@ -609,17 +609,64 @@ fn unknown_substyle_fails_with_available_list() {
 
 #[test]
 fn style_leaves_cover_every_substyle_and_locale() {
+    // Derive the inventory from the styles on disk: every rendered substyle of
+    // every style has one complete leaf per supported locale, and every leaf
+    // renders each of its style's page presets. Adding a style or a substyle
+    // changes the expectation, never this test.
     let workspace = workspace();
-    assert_eq!(cv_leaves(&workspace).unwrap().len(), 20);
-    assert_eq!(cl_leaves(&workspace).unwrap().len(), 4);
+    let mut expected_documents = 0;
+    let mut expected_pages = 0;
+    for document in ["cv", "cl"] {
+        let leaves = crate::styles::leaves(&workspace, document).unwrap();
+        let mut expected = std::collections::BTreeSet::new();
+        for definition in crate::styles::definitions(&workspace, document).unwrap() {
+            for substyle in definition.designed_substyles() {
+                for locale in &definition.supports_locales {
+                    assert!(
+                        expected.insert((definition.id.clone(), substyle.clone(), locale.clone())),
+                        "duplicate {document} leaf {}/{substyle}/{locale}",
+                        definition.id
+                    );
+                    expected_documents += definition.pages.len();
+                    expected_pages += definition.pages.iter().sum::<usize>();
+                }
+            }
+        }
+        let actual = leaves
+            .iter()
+            .map(|leaf| {
+                (
+                    leaf.style.clone(),
+                    leaf.substyle.clone(),
+                    leaf.locale.clone(),
+                )
+            })
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(actual.len(), leaves.len(), "duplicate {document} leaves");
+        assert_eq!(
+            actual, expected,
+            "{document} leaves differ from the style definitions"
+        );
+        for leaf in &leaves {
+            assert_eq!(leaf.document, document);
+            assert!(leaf.content().is_file(), "{}", leaf.content().display());
+            assert!(leaf.strings().is_file(), "{}", leaf.strings().display());
+            assert!(leaf.adapter().is_file(), "{}", leaf.adapter().display());
+            assert!(
+                leaf.substyle_file().is_file(),
+                "{}",
+                leaf.substyle_file().display()
+            );
+        }
+    }
     let documents = crate::render::cvl_specs(&workspace).unwrap();
-    assert_eq!(documents.len(), 40);
+    assert_eq!(documents.len(), expected_documents);
     assert_eq!(
         documents
             .iter()
             .map(|spec| spec.expected_pages)
             .sum::<usize>(),
-        88
+        expected_pages
     );
     let cv = cv_leaves(&workspace)
         .unwrap()
@@ -651,7 +698,6 @@ fn style_leaves_cover_every_substyle_and_locale() {
         .into_iter()
         .filter(|leaf| leaf.style == "cluster")
         .collect::<Vec<_>>();
-    assert_eq!(cluster.len(), 8);
     for substyle in ["standard", "middle-three", "middle-three-spaced", "d-plus"] {
         for locale in ["de-ch", "en-ch"] {
             let leaf = cluster

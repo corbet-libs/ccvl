@@ -20,8 +20,10 @@ for check in "$@"; do
         export CCVL_STYLE_EVIDENCE="${CARGO_TARGET_DIR:-target}/style-parity/$CI_COMMIT_SHA"
       fi
       "${CCVL_CARGO_COMMAND[@]}" fmt --all -- --check
-      "${CCVL_CARGO_COMMAND[@]}" test --locked --workspace --all-features
+      # Clippy's metadata-only check is the quicker gate on a cold cache, so
+      # lint findings surface before the full test build and run.
       "${CCVL_CARGO_COMMAND[@]}" clippy --locked --workspace --all-targets --all-features -- -D warnings
+      "${CCVL_CARGO_COMMAND[@]}" test --locked --workspace --all-features
       ;;
     core-package)
       ccvl_select_rust_toolchain
@@ -37,6 +39,7 @@ for check in "$@"; do
       shellcheck .agent/scripts/*.sh .agent/tests/*.sh ccvl
       reuse lint
       bash .agent/tests/test_bootstrap.sh
+      bash .agent/tests/test_ci_changes.sh
       bash .agent/tests/test_ci_toolchain.sh
       bash .agent/tests/test_downstream_sync.sh
       bash .agent/tests/test_skill_eval_ci.sh
@@ -53,6 +56,23 @@ for check in "$@"; do
       binary="${CARGO_TARGET_DIR:-target}/release/ccvl"
       bash .agent/scripts/check-linux-deep.sh "$binary"
       ;;
+    styles)
+      # Scoped document checks: every workspace-wide check, plus rendering and
+      # PDF verification for the space-separated <doc>/<style> selections in
+      # CCVL_CHECK_STYLES (every style when unset). Dependencies keep the
+      # release optimization level; thin LTO and one codegen unit are dropped
+      # because they cost minutes of linking and gain seconds of checking.
+      ccvl_select_rust_toolchain
+      "${CCVL_CARGO_COMMAND[@]}" build --locked --bin ccvl \
+        --config 'profile.ci-documents.inherits="release"' \
+        --config 'profile.ci-documents.lto=false' \
+        --config 'profile.ci-documents.codegen-units=16' \
+        --profile ci-documents
+      read -r -a selected <<<"${CCVL_CHECK_STYLES:-}"
+      filters=()
+      for style in ${selected[@]+"${selected[@]}"}; do filters+=(--style "$style"); done
+      "${CARGO_TARGET_DIR:-target}/ci-documents/ccvl" public-check ${filters[@]+"${filters[@]}"}
+      ;;
     skill-eval-build)
       bash .agent/scripts/skill-eval-ci.sh build
       ;;
@@ -62,6 +82,6 @@ for check in "$@"; do
     release-*)
       bash .agent/scripts/release-ci.sh "${check#release-}"
       ;;
-    *) echo "Unknown check: $check (rust lint documents skill-eval-build skill-eval)" >&2; exit 2 ;;
+    *) echo "Unknown check: $check (rust lint documents styles skill-eval-build skill-eval)" >&2; exit 2 ;;
   esac
 done

@@ -1,8 +1,9 @@
 # Selecting CI checks
 
 GitHub Actions is preferred when available for public source checks. Pushes to
-`main` and pull requests run Rust and lint checks automatically when Actions is
-available. Release preparation and publication remain an explicit manual
+`main` and pull requests run the checks their changes require when Actions is
+available; see [Change-scoped GitHub checks](#change-scoped-github-checks).
+Release preparation and publication remain an explicit manual
 dispatch, using the platform set in `.agent/release-platforms.txt`, currently
 Linux x86_64. Crow independently provides selected checks and the complete
 release path when Actions is unavailable; do not
@@ -14,9 +15,10 @@ On a provisioned build worker, use `bash .agent/scripts/ci-check.sh <check>...`:
 
 | Check | Coverage |
 |---|---|
-| `rust` (default) | Stable Rust formatting, locked unit/document tests and Clippy |
-| `lint` | Actionlint, ShellCheck, and REUSE with preinstalled tools |
+| `rust` (default) | Stable Rust formatting, Clippy and locked unit/document tests |
+| `lint` | Actionlint, ShellCheck, REUSE and the CI script behavior tests with preinstalled tools |
 | `documents` | Locked Linux release build and independent PDF/text/layout verification |
+| `styles` | Optimized non-LTO build, then `public-check` limited to the space-separated `<doc>/<style>` list in `CCVL_CHECK_STYLES` (every style when unset) |
 | `skill-eval-build`, then `skill-eval` | Explicit trusted small-model evaluation; separate credential-free build and credential-bearing evaluation |
 
 The command uses existing tools. Crow supplies a memory-bounded parallel job
@@ -34,6 +36,57 @@ installation occurs. Lint checks likewise reuse existing tools, including
 installed Nix store packages omitted from the worker's PATH. The lightweight
 bootstrap and CI-selector behavior tests run with lint. A future advertised
 Windows binary must also pass bootstrap checks on its actual native platform.
+
+## Change-scoped GitHub checks
+
+The first `ci.yml` job, `changes`, runs `.agent/scripts/ci-changes.sh github`.
+It lists changed paths with `git diff --no-renames --name-only`: a pull request
+compares its head with the merge base of base and head (`base...head`); a push
+to `main` compares `before..after`. A missing, all-zero or unresolvable commit,
+and every other event (manual release dispatch, the daily schedule), selects
+everything. It outputs `rust`, `documents` and `styles`.
+
+| Changed path | Rust job | Document styles |
+|---|---|---|
+| `.github/workflows/ci.yml`, `.agent/scripts/ci-changes.sh` | yes | all |
+| `.agent/src/**`, `.agent/core/**`, `.agent/build.rs`, `.agent/typst/**`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `ccvl.json` | yes | all |
+| `cvl/cv/<style>/**`, `cvl/cl/<style>/**` | yes | `<doc>/<style>`; all when that style no longer exists |
+| `cvl/shared/<family>/**` | yes | same-named styles and styles whose files reference `shared/<family>/`; all when none |
+| `cvl/profile.toml`, `cvl/assets/**`, other `cvl/**` | yes | all |
+| `cvl/README.md` | yes | none |
+| `.agent/skills/**`, `.agent/scaffolds/**`, `.agent/schemas/**`, `.agent/tests/fixtures/**`, `.agent/tests/skill-cases.json`, `.agent/docs/editorial.md`, `interview/**`, `opportunities/**`, `REUSE.toml`, `LICENSES/**`, `.crow/downstream-sync.yaml`, `.agent/release-platforms.txt`, and the Rust job's `ci-check.sh`, `release-ci.sh`, `rust-toolchain.sh`, `release-evidence.py`, `downstream-sync.sh` | yes | none |
+| Other `.agent/docs/**`, root and `.github` Markdown, `.agent/AGENT.md`, the release/skill/sync workflows, shell and PowerShell tests, bootstrap/release/lint-only scripts, `.ci/**`, other `.crow/**`, dispatchers, `justfile` | no | none |
+| Anything else | yes | all |
+
+Rust tests read most of the real workspace, so the Rust rows follow the tests:
+`cvl/**` (inventory, rendering, PDFs and the ownership scan), skills, scaffolds,
+schemas, skill cases, stations, data-root READMEs, licenses bundled by style
+exports, the editorial rubric of the review smoke test and the downstream-sync
+guard. A false skip is worse than a slow run, so an unclassified path selects
+everything; extend the explicit no-op rows only after checking that no Rust
+test or document reads the path. Update `.agent/tests/test_ci_changes.sh` with
+the rule.
+
+Jobs gated on the selection fail open: when `changes` fails, the Rust and
+document jobs still run, the latter for every style. A skipped job reports
+"skipped", which satisfies required checks. Lint always runs: it takes under a
+minute in parallel, and REUSE must see every new file. Manual dispatch always
+selects the Rust job, so its `gate-rust` and `gate-lint` receipts and the
+release gates are unchanged.
+
+`Scoped document checks` runs `ci-check.sh styles` with the selected styles.
+It builds an optimized binary without thin LTO and with 16 codegen units in a
+separate `ci-documents` Cargo profile: dependencies keep release optimization
+and its own cache, while the link avoids the slow release settings. A debug
+build compiles faster but checks every document about 15 times slower. Then it
+runs `public-check --style ...`, which keeps every workspace-wide check. A pull
+request that touches only prose runs lint alone. The Rust job lists Clippy
+before tests so lint findings surface before the longer test build.
+
+Both Rust jobs restore caches saved by `main`. Pushes to `main` that change
+engine inputs refresh them, and a daily scheduled run on `main` rebuilds them
+after a new stable toolchain, so pull requests rarely start cold. The schedule
+has its own concurrency group and never runs release jobs. Rust is not pinned.
 
 The manual Crow `ccid` workflow accepts `CHECKS=rust`, `lint`, or `documents`.
 Its `.ci/ccid.toml` selectors invoke the same commands. The operator submission

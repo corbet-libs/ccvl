@@ -2,10 +2,11 @@
 //! This module knows the workspace protocol, never a particular page design.
 
 use std::collections::BTreeSet;
+use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -642,6 +643,100 @@ pub fn leaves(workspace: &Workspace, document: &'static str) -> Result<Vec<Style
         }
     }
     Ok(leaves)
+}
+
+/// Repeatable `<doc>/<style>` selections that limit which styles' documents
+/// are enumerated for rendering and measurement. An empty filter selects every
+/// style. Workspace-wide validation never consults this filter.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct StyleFilter {
+    selected: BTreeSet<(&'static str, String)>,
+    /// Selected empty style slots: valid selections without documents.
+    empty: BTreeSet<(&'static str, String)>,
+}
+
+impl StyleFilter {
+    #[must_use]
+    pub fn all() -> Self {
+        Self::default()
+    }
+
+    /// Parse `<doc>/<style>` values; each must name an existing style. An
+    /// empty style slot is a valid selection that contributes no documents.
+    pub fn parse<S: AsRef<str>>(workspace: &Workspace, values: &[S]) -> Result<Self> {
+        let mut selected = BTreeSet::new();
+        let mut empty = BTreeSet::new();
+        for value in values {
+            let value = value.as_ref();
+            let Some((document, style)) = value.split_once('/') else {
+                bail!("--style {value:?}: expected <cv|cl>/<style>, for example cv/harvard");
+            };
+            let document = match document {
+                "cv" => "cv",
+                "cl" => "cl",
+                _ => bail!(
+                    "--style {value:?}: unknown document {document:?}; expected cv or cl before the slash"
+                ),
+            };
+            let definition = definition(workspace, document, style)
+                .with_context(|| format!("--style {value:?} does not name an existing style"))?;
+            if definition.empty {
+                empty.insert((document, style.to_owned()));
+            }
+            selected.insert((document, style.to_owned()));
+        }
+        Ok(Self { selected, empty })
+    }
+
+    #[must_use]
+    pub fn is_all(&self) -> bool {
+        self.selected.is_empty()
+    }
+
+    #[must_use]
+    pub fn includes(&self, document: &str, style: &str) -> bool {
+        self.is_all()
+            || self
+                .selected
+                .iter()
+                .any(|(selected, name)| *selected == document && name == style)
+    }
+
+    /// The selected styles' leaves for one document, in discovery order.
+    pub fn leaves(&self, workspace: &Workspace, document: &'static str) -> Result<Vec<StyleLeaf>> {
+        Ok(leaves(workspace, document)?
+            .into_iter()
+            .filter(|leaf| self.includes(document, &leaf.style))
+            .collect())
+    }
+
+    /// The selected CV leaves followed by the selected cover-letter leaves.
+    pub fn document_leaves(&self, workspace: &Workspace) -> Result<Vec<StyleLeaf>> {
+        let mut leaves = self.leaves(workspace, "cv")?;
+        leaves.extend(self.leaves(workspace, "cl")?);
+        Ok(leaves)
+    }
+}
+
+impl fmt::Display for StyleFilter {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_all() {
+            return formatter.write_str("every style");
+        }
+        let names = self
+            .selected
+            .iter()
+            .map(|selection| {
+                let (document, style) = selection;
+                if self.empty.contains(selection) {
+                    format!("{document}/{style} (empty style slot without documents)")
+                } else {
+                    format!("{document}/{style}")
+                }
+            })
+            .collect::<Vec<_>>();
+        formatter.write_str(&names.join(", "))
+    }
 }
 
 pub fn leaf(

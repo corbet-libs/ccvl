@@ -71,7 +71,12 @@ enum Command {
     /// Report the embedded runtime and workspace.
     Doctor,
     /// Run every deterministic workspace and document check.
-    Check,
+    Check {
+        /// Limit document rendering and verification to one `<cv|cl>/<style>`;
+        /// repeat for several. Workspace-wide checks always run.
+        #[arg(long = "style", value_name = "DOC/STYLE")]
+        styles: Vec<String>,
+    },
     /// Check station coverage and MECE ownership.
     ProfileStatus {
         #[arg(default_value = "interview/stations.toml")]
@@ -83,6 +88,9 @@ enum Command {
     Measure {
         #[arg(long)]
         all: bool,
+        /// Limit measurement to one `<cv|cl>/<style>`; repeat for several.
+        #[arg(long = "style", value_name = "DOC/STYLE")]
+        styles: Vec<String>,
     },
     /// Measure one keyed opportunity.
     MeasureOpportunity {
@@ -96,6 +104,10 @@ enum Command {
         /// Retain freshly verified PDFs in a new directory.
         #[arg(long)]
         artifacts: Option<PathBuf>,
+        /// Limit document rendering and verification to one `<cv|cl>/<style>`;
+        /// repeat for several. Workspace-wide checks always run.
+        #[arg(long = "style", value_name = "DOC/STYLE")]
+        styles: Vec<String>,
     },
     /// Verify that a private downstream differs only in explicitly owned paths.
     DownstreamCheck {
@@ -299,10 +311,12 @@ pub fn run() -> Result<ExitCode> {
             println!("embedded: Typst 0.15.1 | Typstyle 0.15.1 | 16 font files");
         }
         Command::Doctor => doctor(&workspace)?,
-        Command::Check => {
-            check::run(&workspace)?;
+        Command::Check { styles } => {
+            let styles = crate::styles::StyleFilter::parse(&workspace, &styles)?;
+            check::run_selected(&workspace, None, &styles)?;
             println!(
-                "All data, station, source, skill, font, reproducibility, CV, and cover-letter checks passed."
+                "All data, station, source, skill, font, reproducibility, CV, and cover-letter checks passed{}.",
+                document_scope(&styles)
             );
         }
         Command::ProfileStatus {
@@ -322,9 +336,14 @@ pub fn run() -> Result<ExitCode> {
             println!("{}", stations::format_report(&workspace, &assessment)?);
             ensure!(assessment.ready(), "station plan is not ready");
         }
-        Command::Measure { all } => {
-            let failures =
-                measure::measure(&workspace, &measure::cvl_specs(&workspace)?, all, true)?;
+        Command::Measure { all, styles } => {
+            let styles = crate::styles::StyleFilter::parse(&workspace, &styles)?;
+            let failures = measure::measure(
+                &workspace,
+                &measure::cvl_specs_for(&workspace, &styles)?,
+                all,
+                true,
+            )?;
             ensure!(
                 failures.is_empty(),
                 "{} line-contract failure(s)",
@@ -344,11 +363,13 @@ pub fn run() -> Result<ExitCode> {
                 failures.len()
             );
         }
-        Command::PublicCheck { artifacts } => {
-            check::run_with_artifacts(&workspace, artifacts.as_deref())?;
+        Command::PublicCheck { artifacts, styles } => {
+            let styles = crate::styles::StyleFilter::parse(&workspace, &styles)?;
+            check::run_selected(&workspace, artifacts.as_deref(), &styles)?;
             public::validate_boundary(&workspace)?;
             println!(
-                "Public-boundary checks passed. Review .agent/docs/public-identifiers.md before publishing."
+                "Public-boundary checks passed{}. Review .agent/docs/public-identifiers.md before publishing.",
+                document_scope(&styles)
             );
         }
         Command::DownstreamCheck {
@@ -567,6 +588,15 @@ pub fn run() -> Result<ExitCode> {
         }
     }
     Ok(exit_code)
+}
+
+/// Name a limited document scope so a filtered pass never reads as complete.
+fn document_scope(styles: &crate::styles::StyleFilter) -> String {
+    if styles.is_all() {
+        String::new()
+    } else {
+        format!(" (documents limited to {styles})")
+    }
 }
 
 fn doctor(workspace: &Workspace) -> Result<()> {

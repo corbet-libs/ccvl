@@ -14,6 +14,7 @@ use crate::public;
 use crate::render::{Compiler, DocumentSpec};
 use crate::skills;
 use crate::styles;
+use crate::styles::StyleFilter;
 use crate::workspace::Workspace;
 
 pub fn run(workspace: &Workspace) -> Result<()> {
@@ -23,6 +24,16 @@ pub fn run(workspace: &Workspace) -> Result<()> {
 /// Retain the first, verified PDF for independent checks in this invocation.
 /// The destination must be new; existing files are never accepted as evidence.
 pub fn run_with_artifacts(workspace: &Workspace, artifacts: Option<&Path>) -> Result<()> {
+    run_selected(workspace, artifacts, &StyleFilter::all())
+}
+
+/// Run every workspace-wide check, but render, measure, compare and verify
+/// only the documents of the styles selected by `styles`.
+pub fn run_selected(
+    workspace: &Workspace,
+    artifacts: Option<&Path>,
+    styles: &StyleFilter,
+) -> Result<()> {
     if let Some(path) = artifacts {
         ensure!(
             !path.exists(),
@@ -40,7 +51,7 @@ pub fn run_with_artifacts(workspace: &Workspace, artifacts: Option<&Path>) -> Re
     public::validate_repository(workspace)?;
     format::format_typst(workspace, true)?;
     validate_embedded_fonts(workspace)?;
-    render_and_verify(workspace, artifacts)
+    render_and_verify(workspace, artifacts, styles)
 }
 
 fn validate_correspondence(workspace: &Workspace) -> Result<()> {
@@ -303,15 +314,16 @@ fn validate_embedded_fonts(workspace: &Workspace) -> Result<()> {
     Ok(())
 }
 
-fn render_and_verify(workspace: &Workspace, artifacts: Option<&Path>) -> Result<()> {
+fn render_and_verify(
+    workspace: &Workspace,
+    artifacts: Option<&Path>,
+    styles: &StyleFilter,
+) -> Result<()> {
     let profile = workspace.read_toml_value("cvl/profile.toml")?;
     let temporary = TempDir::new()?;
     let compiler = Compiler::new(workspace)?;
     let mut checked_pdfs = Vec::new();
-    for leaf in cv_leaves(workspace)?
-        .into_iter()
-        .chain(cl_leaves(workspace)?)
-    {
+    for leaf in styles.document_leaves(workspace)? {
         let showcase = crate::render::cvl_spec(workspace, &leaf, leaf.default_pages)?;
         let showcase_paper = showcase.inputs.get("paper").map(String::as_str);
         let choices = leaf.paper.as_ref().map_or_else(
