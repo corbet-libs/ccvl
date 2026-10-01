@@ -20,6 +20,25 @@
   if layout { [#metadata(value) <ccvl-layout>] } else { [#metadata(value) <ccvl-line>] }
 }
 
+// Assign the letter contract's fill bounds to measured lines. Only the
+// paragraph's closing line may use the lower body minimum; importing these
+// helpers reads no record and emits no content.
+#let letter-contract() = toml("/cvl/cl/ledger/contract.toml")
+#let with-body-fill(lines) = {
+  let body = letter-contract().line_fill.body
+  range(lines.len()).map(index => (
+    text: lines.at(index),
+    min_fill: if index + 1 == lines.len() { body.minimum } else { body.non_final_minimum },
+    target_fill: body.target,
+    max_fill: body.maximum,
+  ))
+}
+#let with-highlight-fill(value) = {
+  let fill = letter-contract().line_fill.highlight
+  (text: value, min_fill: fill.minimum, target_fill: fill.target, max_fill: fill.maximum)
+}
+#let bounds(line) = (minimum: line.min_fill, target: line.target_fill, maximum: line.max_fill)
+
 #let settings(document, locale, record, defaults-path, substyle-path, layout-path, paper-input) = {
   let preset = resolve-paper(
     toml("/cvl/" + document + "/ledger/style.toml"),
@@ -83,7 +102,7 @@
 ) = {
   let record = load-application(application-path)
   let strings = toml(strings-path)
-  let contract = toml("/cvl/cl/ledger/contract.toml")
+  let contract = letter-contract()
   assert(record.options.language == strings.locale, message: "ledger locale mismatch")
   let letter = record.cl
   assert(letter.paragraphs.len() == contract.paragraphs.len(), message: "ledger paragraph count")
@@ -98,31 +117,23 @@
     layout-path,
     paper-input,
   ))
-  let body = contract.line_fill.body
-  let closing = (minimum: body.minimum, target: body.target, maximum: body.maximum)
-  let running = (minimum: body.non_final_minimum, target: body.target, maximum: body.maximum)
   contact(profile)
   parbreak()
   [*#strings.subject*]
   for (paragraph, lines) in letter.paragraphs.enumerate() {
     parbreak()
-    for (index, line) in lines.enumerate() {
-      let last = index + 1 == lines.len()
-      metric(
-        "cl-body",
-        "cl.paragraph." + str(paragraph + 1) + "." + str(index + 1),
-        body.target,
-        if last { closing } else { running },
-      )
-      line
-      if not last { linebreak() }
+    for (index, line) in with-body-fill(lines).enumerate() {
+      let id = "cl.paragraph." + str(paragraph + 1) + "." + str(index + 1)
+      metric("cl-body", id, line.target_fill, bounds(line))
+      line.text
+      if index + 1 < lines.len() { linebreak() }
     }
     if paragraph == 2 {
       for (index, highlight) in letter.highlights.enumerate() {
         parbreak()
-        let fill = contract.line_fill.highlight
-        metric("cl-highlight", "cl.highlight." + str(index + 1), fill.target, fill)
-        highlight
+        let line = with-highlight-fill(highlight)
+        metric("cl-highlight", "cl.highlight." + str(index + 1), line.target_fill, bounds(line))
+        line.text
       }
     }
   }

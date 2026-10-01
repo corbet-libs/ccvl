@@ -52,6 +52,14 @@ pub(crate) fn copy_repository(root: &Path, relative: &str) {
     }
 }
 
+/// Copy the runtime sources whose fingerprint identifies the workspace
+/// runtime, for code paths that record it (review packages).
+pub(crate) fn copy_runtime_sources(root: &Path) {
+    for relative in crate::runtime_source::inputs(repository()).unwrap() {
+        copy_repository(root, &relative);
+    }
+}
+
 /// Copy the engine-owned inputs a workspace needs to render and validate:
 /// the Typst library (without the embedded fonts), scaffolds and schemas.
 pub(crate) fn copy_engine_inputs(root: &Path) {

@@ -45,11 +45,11 @@ fn fixture() -> (tempfile::TempDir, Workspace) {
             }
         }
     }
-    let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
     write(
         root,
         ".agent/typst/application.typ",
-        &fs::read_to_string(repository.path(".agent/typst/application.typ")).unwrap(),
+        &fs::read_to_string(crate::test_support::repository().join(".agent/typst/application.typ"))
+            .unwrap(),
     );
     let workspace = Workspace::at(root).unwrap();
     (temporary, workspace)
@@ -243,12 +243,7 @@ fn copy_sources(original: &Workspace, root: &Path, relative: &str) {
     }
     for entry in walkdir::WalkDir::new(source) {
         let entry = entry.unwrap();
-        if !entry.file_type().is_file()
-            || entry
-                .path()
-                .components()
-                .any(|part| part.as_os_str() == "pdf" || part.as_os_str() == "preview")
-        {
+        if !entry.file_type().is_file() {
             continue;
         }
         let relative = original.relative(entry.path()).unwrap();
@@ -259,34 +254,44 @@ fn copy_sources(original: &Workspace, root: &Path, relative: &str) {
 }
 
 #[test]
-fn real_harvard_renderers_ignore_missing_and_malformed_opposite_contracts() {
-    let original = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    for (document, substyle, opposite) in [("cv", "standard", "cl"), ("cl", "left-rule", "cv")] {
+fn shared_family_renderers_ignore_missing_and_malformed_opposite_contracts() {
+    // The fixture's CV and letter share one family renderer, as a shipped
+    // family may. A selected build must neither need nor observe the other
+    // document's tree. `check` enforces the observation rule for every real
+    // style it renders.
+    let (_fixture, original) = crate::test_support::fixture_workspace();
+    for (document, substyle, opposite) in [("cv", "primary", "cl"), ("cl", "rule", "cv")] {
         let temporary = tempfile::tempdir().unwrap();
         let root = temporary.path();
         for relative in [
             "ccvl.json",
             ".agent/typst",
-            "cvl/shared/harvard",
-            "cvl/assets",
+            "cvl/shared/ledger",
             "cvl/profile.toml",
             "interview/stations.toml",
-            &format!("cvl/{document}/harvard"),
+            &format!("cvl/{document}/ledger"),
         ] {
             copy_sources(&original, root, relative);
         }
         let workspace = Workspace::at(root).unwrap();
         let selected = styles::Selection {
-            style: "harvard".into(),
+            style: "ledger".into(),
             substyle: substyle.into(),
         };
         let original_leaf = styles::leaf(&original, document, "en-ch", &selected).unwrap();
-        let baseline = fs::read(original_leaf.output(original_leaf.default_pages)).unwrap();
+        let baseline_spec =
+            crate::render::cvl_spec(&original, &original_leaf, original_leaf.default_pages)
+                .unwrap();
+        let baseline = crate::render::Compiler::new(&original)
+            .unwrap()
+            .render(&original, &baseline_spec)
+            .unwrap();
+        let baseline = fs::read(baseline).unwrap();
         for malformed in [false, true] {
             if malformed {
                 write(
                     root,
-                    &format!("cvl/{opposite}/harvard/contract.toml"),
+                    &format!("cvl/{opposite}/ledger/contract.toml"),
                     "invalid = [",
                 );
             }

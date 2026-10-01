@@ -1,11 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use serde_json::json;
 
 use super::*;
 
+/// Contracts and records come from the synthetic fixture's ledger styles.
 fn workspace() -> Workspace {
-    Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap()
+    crate::test_support::fixture_view()
 }
 
 fn cover_letter_spec() -> DocumentSpec {
@@ -17,11 +18,11 @@ fn cover_letter_spec() -> DocumentSpec {
         inputs: std::collections::BTreeMap::new(),
         expected_pages: 1,
         selection: crate::styles::Selection {
-            style: "harvard".into(),
-            substyle: "left-rule".into(),
+            style: "ledger".into(),
+            substyle: "rule".into(),
         },
         fonts: Vec::new(),
-        contract: crate::styles::contract(&workspace(), "cl", "harvard").unwrap(),
+        contract: crate::styles::contract(&workspace(), "cl", "ledger").unwrap(),
     }
 }
 
@@ -36,11 +37,11 @@ fn cv_spec(application: &str) -> DocumentSpec {
         inputs,
         expected_pages: 4,
         selection: crate::styles::Selection {
-            style: "harvard".into(),
-            substyle: "standard".into(),
+            style: "ledger".into(),
+            substyle: "primary".into(),
         },
         fonts: Vec::new(),
-        contract: crate::styles::contract(&workspace(), "cv", "harvard").unwrap(),
+        contract: crate::styles::contract(&workspace(), "cv", "ledger").unwrap(),
     }
 }
 
@@ -57,7 +58,7 @@ fn summary_metric(actual: f64) -> Value {
 }
 
 fn repo_cv_spec() -> DocumentSpec {
-    cv_spec("cvl/cv/harvard/standard/de/ch/content.toml")
+    cv_spec("cvl/cv/ledger/primary/de/ch/content.toml")
 }
 
 fn metric(kind: &str, identifier: &str) -> Value {
@@ -82,8 +83,9 @@ fn metric_set(paragraph_lengths: &[usize]) -> Vec<Value> {
 
 #[test]
 fn cover_letter_templates_enforce_body_closing_and_highlight_bounds() {
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
     let engine = ctypst::Engine::builder()
-        .root(Path::new(env!("CARGO_MANIFEST_DIR")))
+        .root(workspace.root())
         .fonts(ctypst::fonts::documents())
         .build()
         .unwrap();
@@ -99,8 +101,8 @@ fn cover_letter_templates_enforce_body_closing_and_highlight_bounds() {
     ];
     for locale in ["de-ch", "en-ch"] {
         for (kind, fill, expected) in cases {
-            // Use the real leaf's contract assignment and a measured
-            // fixture width, independent of showcase wording. The same
+            // Use the fixture renderer's contract assignment and a measured
+            // width, independent of any wording. The same
             // 85% line must fail before a break and pass as the paragraph
             // close; the CV's 102% grace must not leak here.
             // Fill helpers are independent of application inputs; importing
@@ -117,7 +119,7 @@ fn cover_letter_templates_enforce_body_closing_and_highlight_bounds() {
                     .to_owned()
             };
             let source = format!(
-                "#import \"/cvl/cl/harvard/src/cl.typ\": with-body-fill, with-highlight-fill\n\
+                "#import \"/cvl/shared/ledger/render.typ\": with-body-fill, with-highlight-fill\n\
                      #import \"/.agent/typst/line-contract.typ\": measured-paragraph, measured-line\n\
                      #set page(width: 200pt, height: 100pt, margin: 10pt)\n\
                      #set text(font: \"Archivo\", size: 10pt, hyphenate: false)\n\
@@ -168,32 +170,33 @@ fn closing_line_spill_renders_without_wrapping() {
     // re-wrapping, which previously added a sixth summary line and
     // overflowed the page despite green metrics. Five repeated spill
     // lines fit one 60mm page exactly; with auto-width boxes they wrap
-    // to ten lines over two pages.
+    // to ten lines over two pages. The block width makes the spill
+    // explicit, independent of any style's page geometry.
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
     let engine = ctypst::Engine::builder()
-        .root(std::path::Path::new(env!("CARGO_MANIFEST_DIR")))
+        .root(workspace.root())
         .fonts(ctypst::fonts::documents())
         .build()
         .unwrap();
-    let spill = "Damit unterstütze ich Leverage Experts pragmatisch in Performance-, Portfolio- und Transformationsmandaten.";
-    let source = format!(
-        "#import \"/.agent/typst/line-contract.typ\": measured-lines\n\
-             #import \"/cvl/shared/harvard/style.typ\": document-style\n\
-             #import \"/.agent/typst/paper.typ\": resolve-paper, paper-settings\n\
-             #let preset = resolve-paper(toml(\"/cvl/cv/harvard/style.toml\"), \"de-ch\")\n\
-             #let cv-style = paper-settings((toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\"), toml(\"/cvl/cv/harvard/standard/de/ch/layout.toml\")), preset)\n\
-             #show: document-style.with(locale: \"de-ch\", style: cv-style)\n\
+    let spill = "Synthetic closing line that spills slightly past its measured block.";
+    let source = |exact: bool| {
+        format!(
+            "#import \"/.agent/typst/line-contract.typ\": measured-lines\n\
+             {FIXTURE_SETTINGS}\
              #set page(height: 60mm)\n\
              #set text(hyphenate: false)\n\
              #let spill = \"{spill}\"\n\
-             #measured-lines(\"t\", \"x\", range(5).map(i => (text: spill, min_fill: 60, target_fill: 82, max_fill: 102)), exact-width: true)"
-    );
-    let output = engine
-        .compile(
+             #context block(width: measure(text(spill)).width / 1.008)[#measured-lines(\"t\", \"x\", range(5).map(i => (text: spill, min_fill: 60, target_fill: 82, max_fill: 102)), exact-width: {exact})]"
+        )
+    };
+    let compile = |exact: bool| {
+        engine.compile(
             ctypst::CompileRequest::new("spill.typ")
-                .source_file("spill.typ", source)
+                .source_file("spill.typ", source(exact))
                 .pages(ctypst::PageConstraint::Exactly(1)),
         )
-        .unwrap();
+    };
+    let output = compile(true).unwrap();
     let metrics = ctypst::query_json(&output.document, "ccvl-line").unwrap();
     assert_eq!(metrics.len(), 5);
     for metric in &metrics {
@@ -203,36 +206,43 @@ fn closing_line_spill_renders_without_wrapping() {
             "want a real spill, got {fill}"
         );
     }
+    assert!(
+        compile(false).is_err(),
+        "auto-width boxes must re-wrap the spill onto a second page"
+    );
 }
+
+/// The fixture family's document-v1 settings: the shared adapter baseline
+/// (A4, 12/15mm margins, Archivo 10.5pt, no block spacing).
+const FIXTURE_SETTINGS: &str = "#import \"/.agent/typst/document.typ\": apply-document-settings\n\
+    #import \"/.agent/typst/paper.typ\": resolve-paper, paper-settings\n\
+    #let preset = resolve-paper(toml(\"/cvl/cv/ledger/style.toml\"), \"de-ch\")\n\
+    #show: apply-document-settings.with(paper-settings((toml(\"/cvl/shared/ledger/defaults.toml\"), toml(\"/cvl/cv/ledger/primary/substyle.toml\"), toml(\"/cvl/cv/ledger/primary/de/ch/layout.toml\")), preset))\n";
 
 #[test]
 fn paragraph_closing_spill_renders_without_wrapping() {
     // The generic paragraph helper supports callers that explicitly
-    // allow 102%; cover-letter templates now cap every line at 100%.
-    // A permitted spill with few spaces must still stay one visual
-    // line: three paragraphs with a short line plus a 102.0% closing
-    // line fit one 60mm page; with flowing text the closings re-wrap
-    // to nine lines over two pages.
+    // allow 102%; cover-letter templates cap every line at 100%.
+    // A permitted spill must still stay one visual line: three paragraphs
+    // with a short line plus a 101% closing line fit one 60mm page; with
+    // flowing text the closings re-wrap to nine lines over two pages.
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
     let engine = ctypst::Engine::builder()
-        .root(std::path::Path::new(env!("CARGO_MANIFEST_DIR")))
+        .root(workspace.root())
         .fonts(ctypst::fonts::documents())
         .build()
         .unwrap();
-    let short = "Kurz und gut geschrieben steht hier.";
-    let spill = "Donaudampfschifffahrtsgesellschaftskapitän Gioacchino Rossini encountered extraordinary circumstances daily.";
+    let short = "Short synthetic line.";
+    let spill = "Synthetic paragraph closing line that may spill a little.";
     let source = format!(
         "#import \"/.agent/typst/line-contract.typ\": measured-paragraph\n\
-             #import \"/cvl/shared/harvard/style.typ\": document-style\n\
-             #import \"/.agent/typst/paper.typ\": resolve-paper, paper-settings\n\
-             #let preset = resolve-paper(toml(\"/cvl/cv/harvard/style.toml\"), \"de-ch\")\n\
-             #let cv-style = paper-settings((toml(\"/cvl/shared/harvard/defaults.toml\"), toml(\"/cvl/cv/harvard/standard/substyle.toml\"), toml(\"/cvl/cv/harvard/standard/de/ch/layout.toml\")), preset)\n\
-             #show: document-style.with(locale: \"de-ch\", style: cv-style)\n\
+             {FIXTURE_SETTINGS}\
              #set page(height: 60mm)\n\
              #set text(hyphenate: false)\n\
              #let short = \"{short}\"\n\
              #let spill = \"{spill}\"\n\
              #for p in range(3) {{\n\
-             block(breakable: false)[#measured-paragraph(\"t.\" + str(p), \"x\", ((text: short, min_fill: 1, target_fill: 82, max_fill: 100), (text: spill, min_fill: 60, target_fill: 82, max_fill: 102)), justify: true)]\n\
+             context block(breakable: false, width: measure(text(spill)).width / 1.01)[#measured-paragraph(\"t.\" + str(p), \"x\", ((text: short, min_fill: 1, target_fill: 82, max_fill: 100), (text: spill, min_fill: 60, target_fill: 82, max_fill: 102)), justify: true)]\n\
              }}"
     );
     let output = engine
@@ -349,9 +359,9 @@ fn summary_counsel_notes_allowed_thin_and_tolerated_spill() {
         "{\"documents\":{\"cv\":{\"root\":\"cvl/cv\"},\"cover_letter\":{\"root\":\"cvl/cl\"}}}",
     )
     .unwrap();
-    std::fs::create_dir_all(directory.path().join("cvl/cv/harvard")).unwrap();
+    std::fs::create_dir_all(directory.path().join("cvl/cv/ledger")).unwrap();
     std::fs::write(
-        directory.path().join("cvl/cv/harvard/contract.toml"),
+        directory.path().join("cvl/cv/ledger/contract.toml"),
         "last_line_maximum = 102\n[summary_fill]\nminimum = 60\ntarget = 82\nmaximum = 100\n",
     )
     .unwrap();
@@ -385,11 +395,11 @@ fn cover_letter_spec_with_application(application: &str) -> DocumentSpec {
         inputs,
         expected_pages: 1,
         selection: crate::styles::Selection {
-            style: "harvard".into(),
-            substyle: "left-rule".into(),
+            style: "ledger".into(),
+            substyle: "rule".into(),
         },
         fonts: Vec::new(),
-        contract: crate::styles::contract(&workspace(), "cl", "harvard").unwrap(),
+        contract: crate::styles::contract(&workspace(), "cl", "ledger").unwrap(),
     }
 }
 
@@ -433,11 +443,11 @@ fn recipient_counsel_uses_correspondence_locale_rules_without_duplicate_warnings
 #[test]
 fn empty_recipient_name_warns_but_stays_valid() {
     let workspace = workspace();
-    // Showcase records ship with an empty recipient: formal salutation
+    // Target-neutral records leave the recipient empty: formal salutation
     // stays valid, but measurement must surface a visible advisory.
     for locale in [
-        "cvl/cl/harvard/left-rule/de/ch/content.toml",
-        "cvl/cl/harvard/left-rule/en/ch/content.toml",
+        "cvl/cl/ledger/rule/de/ch/content.toml",
+        "cvl/cl/ledger/rule/en/ch/content.toml",
     ] {
         let spec = cover_letter_spec_with_application(locale);
         let warnings = recipient_warnings(&workspace, &spec).unwrap();
@@ -472,7 +482,7 @@ fn typst_salutation_helper_keeps_only_the_last_token() {
     // Typst-level coverage for the shared helper: the same edge cases
     // as the Rust mirror must hold inside the renderer.
     let engine = ctypst::Engine::builder()
-        .root(std::path::Path::new(env!("CARGO_MANIFEST_DIR")))
+        .root(crate::test_support::repository())
         .fonts(ctypst::fonts::documents())
         .build()
         .unwrap();
@@ -517,8 +527,8 @@ fn typst_salutation_helper_keeps_only_the_last_token() {
 fn summary_counsel_uses_shared_wording_and_leaf_exceptions_like_typst() {
     let directory = tempfile::tempdir().unwrap();
     let root = directory.path();
-    let leaf = "cvl/cv/harvard/standard/en/ch/content.toml";
-    let shared = "cvl/cv/harvard/content/en/ch/wording.toml";
+    let leaf = "cvl/cv/ledger/primary/en/ch/content.toml";
+    let shared = "cvl/cv/ledger/content/en/ch/wording.toml";
     for relative in [leaf, shared, ".agent/typst/application.typ"] {
         std::fs::create_dir_all(root.join(relative).parent().unwrap()).unwrap();
     }
@@ -530,11 +540,11 @@ fn summary_counsel_uses_shared_wording_and_leaf_exceptions_like_typst() {
         .to_string(),
     )
     .unwrap();
-    std::fs::write(root.join("cvl/cv/harvard/style.toml"),
-        "id = \"harvard\"\napi = 1\ndocuments = [\"cv\"]\nsupports_locales = [\"en-ch\"]\npages = [4]\ndefault_pages = 4\nsubstyles = [\"standard\"]\n"
+    std::fs::write(root.join("cvl/cv/ledger/style.toml"),
+        "id = \"ledger\"\napi = 1\ndocuments = [\"cv\"]\nsupports_locales = [\"en-ch\"]\npages = [4]\ndefault_pages = 4\nsubstyles = [\"primary\"]\n"
     ).unwrap();
     std::fs::copy(
-        workspace().path(".agent/typst/application.typ"),
+        crate::test_support::repository().join(".agent/typst/application.typ"),
         root.join(".agent/typst/application.typ"),
     )
     .unwrap();
