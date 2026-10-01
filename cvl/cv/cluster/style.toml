@@ -5,8 +5,8 @@ documents = ["cv"]
 supports_locales = ["de-ch", "en-ch"]
 pages = [1]
 default_pages = 1
-substyles = ["standard", "middle-three", "middle-three-spaced", "d-plus"]
-default_substyle = "d-plus"
+substyles = ["d-plus", "standard", "middle-three", "middle-three-spaced", "slot-5"]
+empty_substyles = ["slot-5"]
 defaults = "../../shared/cluster/defaults.toml"
 
 [paper.defaults]

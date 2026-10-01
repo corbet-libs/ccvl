@@ -108,6 +108,8 @@ enum Command {
     Build,
     /// List every registered document variant and its output as JSON.
     ListDocuments,
+    /// List each document's styles, substyles, empty slots and defaults as JSON.
+    ListStyles,
     /// Explain merged adapter settings and the source of each value as JSON.
     ExplainStyle {
         #[arg(value_parser = ["cv", "cl"])]
@@ -134,8 +136,8 @@ enum Command {
     BuildCv {
         locale: String,
         pages: Option<usize>,
-        /// CV substyle (one entry of cvl/cv/harvard/style.toml). Defaults to the
-        /// record's selection, then to the family default.
+        /// CV style, or `default`. Defaults to the record's selection, then to
+        /// the workspace default; `--substyle default` selects its first substyle.
         #[arg(long)]
         style: Option<String>,
         #[arg(long)]
@@ -155,8 +157,9 @@ enum Command {
         locale: String,
         #[arg(long)]
         pages: Option<usize>,
-        /// Cover-letter substyle (one entry of cvl/cl/harvard/style.toml). Defaults
-        /// to the record's selection, then to the family default.
+        /// Cover-letter style, or `default`. Defaults to the record's selection,
+        /// then to the workspace default; `--substyle default` selects its first
+        /// substyle.
         #[arg(long)]
         style: Option<String>,
         #[arg(long)]
@@ -356,6 +359,10 @@ pub fn run() -> Result<ExitCode> {
         Command::ListDocuments => println!(
             "{}",
             serde_json::to_string_pretty(&render::list_documents(&workspace)?)?
+        ),
+        Command::ListStyles => println!(
+            "{}",
+            serde_json::to_string_pretty(&crate::styles::list_styles(&workspace)?)?
         ),
         Command::ExplainStyle {
             document,
@@ -581,8 +588,8 @@ fn doctor(workspace: &Workspace) -> Result<()> {
     Ok(())
 }
 
-/// Explicit `--substyle` wins; otherwise the record at `application`
-/// selects; otherwise the family default renders.
+/// Explicit `--style`/`--substyle` win; otherwise the record at `application`
+/// selects; otherwise the workspace default style and its first substyle render.
 fn cli_selection(
     workspace: &Workspace,
     style: Option<&str>,

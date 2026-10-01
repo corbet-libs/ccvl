@@ -180,7 +180,6 @@ supports_locales = ["en-us"]
 pages = [1]
 default_pages = 1
 substyles = ["plain"]
-default_substyle = "plain"
 [paper.defaults]
 en-us = "card"
 [paper.sizes.card]

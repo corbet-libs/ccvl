@@ -23,7 +23,7 @@ fn fixture() -> (tempfile::TempDir, Workspace) {
             root,
             &format!("{prefix}/style.toml"),
             &format!(
-                "id = {style:?}\napi = 1\ndocuments = [{document:?}]\nsupports_locales = [\"en-ch\", \"en-us\"]\npages = [1]\ndefault_pages = 1\nsubstyles = [\"one\", \"two\"]\ndefault_substyle = \"one\"\n"
+                "id = {style:?}\napi = 1\ndocuments = [{document:?}]\nsupports_locales = [\"en-ch\", \"en-us\"]\npages = [1]\ndefault_pages = 1\nsubstyles = [\"one\", \"two\"]\n"
             ),
         );
         for locale in ["ch", "us"] {

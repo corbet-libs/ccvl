@@ -531,7 +531,7 @@ fn summary_counsel_uses_shared_wording_and_leaf_exceptions_like_typst() {
     )
     .unwrap();
     std::fs::write(root.join("cvl/cv/harvard/style.toml"),
-        "id = \"harvard\"\napi = 1\ndocuments = [\"cv\"]\nsupports_locales = [\"en-ch\"]\npages = [4]\ndefault_pages = 4\nsubstyles = [\"standard\"]\ndefault_substyle = \"standard\"\n"
+        "id = \"harvard\"\napi = 1\ndocuments = [\"cv\"]\nsupports_locales = [\"en-ch\"]\npages = [4]\ndefault_pages = 4\nsubstyles = [\"standard\"]\n"
     ).unwrap();
     std::fs::copy(
         workspace().path(".agent/typst/application.typ"),

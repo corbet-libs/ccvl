@@ -104,6 +104,12 @@ fn harvard_manifest_fixture() -> (TempDir, Workspace) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(&path, fs::read(repository.path(relative)).unwrap()).unwrap();
     }
+    // Only Harvard is copied, so each document offers a single style slot.
+    let mut manifest = repository.read_json("ccvl.json").unwrap();
+    for key in ["cv", "cover_letter"] {
+        manifest["documents"][key]["slots"]["styles"] = 1.into();
+    }
+    fs::write(temporary.path().join("ccvl.json"), format!("{manifest}\n")).unwrap();
     for leaf in cv_leaves(&repository)
         .unwrap()
         .into_iter()

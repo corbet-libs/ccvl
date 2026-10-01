@@ -6,8 +6,8 @@ documents = ["cv"]
 supports_locales = ["de-ch", "en-ch"]
 pages = [1]
 default_pages = 1
-substyles = ["standard", "timeline"]
-default_substyle = "standard"
+substyles = ["standard", "timeline", "slot-3", "slot-4", "slot-5"]
+empty_substyles = ["slot-3", "slot-4", "slot-5"]
 defaults = "../../shared/modern/defaults.toml"
 
 [paper.defaults]
