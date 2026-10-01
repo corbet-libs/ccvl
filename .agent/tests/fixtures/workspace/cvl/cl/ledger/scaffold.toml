@@ -1,0 +1,10 @@
+# Blank synthetic ledger letter fields: 3|5|5|5|5|3 lines and five highlights.
+highlights = ["", "", "", "", ""]
+paragraphs = [
+  ["", "", ""],
+  ["", "", "", "", ""],
+  ["", "", "", "", ""],
+  ["", "", "", "", ""],
+  ["", "", "", "", ""],
+  ["", "", ""],
+]

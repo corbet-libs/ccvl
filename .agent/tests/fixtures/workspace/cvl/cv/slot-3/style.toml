@@ -1,0 +1,6 @@
+# An empty synthetic style slot.
+id = "slot-3"
+api = 1
+documents = ["cv"]
+empty = true
+substyles = ["slot-1", "slot-2", "slot-3"]

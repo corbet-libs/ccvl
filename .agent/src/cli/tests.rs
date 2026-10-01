@@ -109,42 +109,42 @@ fn document_checks_accept_repeatable_style_filters() {
 
 #[test]
 fn reserved_default_resolves_command_line_and_record_selections() {
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
     let selected = cli_selection(&workspace, Some("default"), Some("default"), None, "cv").unwrap();
     assert_eq!(
         (selected.style.as_str(), selected.substyle.as_str()),
-        ("harvard", "d-plus")
+        ("ledger", "primary")
     );
     let selected = cli_selection(&workspace, Some("default"), Some("default"), None, "cl").unwrap();
     assert_eq!(
         (selected.style.as_str(), selected.substyle.as_str()),
-        ("harvard", "left-rule")
+        ("ledger", "rule")
     );
     // A record selecting `default` resolves the same way; explicit flags win.
     let directory = tempfile::tempdir_in(workspace.root()).unwrap();
     let record = directory.path().join("application.toml");
     let mut content = crate::content::read_record(
         &workspace,
-        workspace.path("cvl/cv/harvard/compact/en/ch/content.toml"),
+        workspace.path("cvl/cv/ledger/compact/en/ch/content.toml"),
     )
     .unwrap();
     content["options"]["cv_style"] = "default".into();
     content["options"]["cv_substyle"] = "default".into();
     std::fs::write(&record, toml::to_string(&content).unwrap()).unwrap();
     let selected = cli_selection(&workspace, None, None, Some(&record), "cv").unwrap();
-    assert_eq!(selected.substyle, "d-plus");
+    assert_eq!(selected.substyle, "primary");
     let selected = cli_selection(&workspace, None, Some("compact"), Some(&record), "cv").unwrap();
     assert_eq!(selected.substyle, "compact");
     for (style, substyle, message) in [
         (
-            Some("harvard"),
-            Some("slot-5"),
-            "cv harvard/slot-5 is an empty slot; it has no design yet",
+            Some("ledger"),
+            Some("slot-3"),
+            "cv ledger/slot-3 is an empty slot; it has no design yet",
         ),
         (
-            Some("slot-4"),
+            Some("slot-3"),
             None,
-            "cv slot-4 is an empty style slot; it has no design yet",
+            "cv slot-3 is an empty style slot; it has no design yet",
         ),
     ] {
         let error = cli_selection(&workspace, style, substyle, None, "cv")

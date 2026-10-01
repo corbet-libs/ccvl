@@ -58,22 +58,13 @@ impl Compiler {
     pub fn compile(&self, workspace: &Workspace, spec: &DocumentSpec) -> Result<Document> {
         let source = workspace.relative(&workspace.existing_inside(&spec.source)?)?;
         let source = source.to_string_lossy().replace('\\', "/");
-        let mut engines = self.font_engines.borrow_mut();
-        let engine = if spec.fonts.is_empty() {
-            &self.engine
-        } else {
-            if !engines.contains_key(&spec.fonts) {
-                engines.insert(spec.fonts.clone(), build_engine(workspace, &spec.fonts)?);
-            }
-            engines
-                .get(&spec.fonts)
-                .expect("selected font engine exists")
-        };
-        let report = engine.compile_tracked(
-            CompileRequest::new(source)
-                .inputs(spec.inputs.clone())
-                .pages(PageConstraint::Exactly(spec.expected_pages)),
-        );
+        let report = self.with_engine(workspace, &spec.fonts, |engine| {
+            Ok(engine.compile_tracked(
+                CompileRequest::new(source)
+                    .inputs(spec.inputs.clone())
+                    .pages(PageConstraint::Exactly(spec.expected_pages)),
+            ))
+        })?;
         for path in report.dependencies {
             workspace.observe_input(path);
         }
@@ -81,6 +72,51 @@ impl Compiler {
             .result
             .map(|output| output.document)
             .with_context(|| format!("cannot compile {}", spec.name))
+    }
+
+    /// Run `action` with the engine for the selected style's extra fonts.
+    fn with_engine<T>(
+        &self,
+        workspace: &Workspace,
+        fonts: &[PathBuf],
+        action: impl FnOnce(&Engine) -> Result<T>,
+    ) -> Result<T> {
+        if fonts.is_empty() {
+            return action(&self.engine);
+        }
+        let mut engines = self.font_engines.borrow_mut();
+        if !engines.contains_key(fonts) {
+            engines.insert(fonts.to_vec(), build_engine(workspace, fonts)?);
+        }
+        action(engines.get(fonts).expect("selected font engine exists"))
+    }
+
+    /// Compile the resolved customization copy that `build-opportunity` emits
+    /// for `spec`, without CLI inputs, and return its exported PDF bytes. The
+    /// copy compiles at its emitted location, so relative imports that would
+    /// break there break here too.
+    pub fn standalone_pdf(&self, workspace: &Workspace, spec: &DocumentSpec) -> Result<Vec<u8>> {
+        let source = workspace.existing_inside(&spec.source)?;
+        let display = workspace.relative(&source)?.display().to_string();
+        let template = fs::read_to_string(&source)
+            .with_context(|| format!("cannot read {}", source.display()))?;
+        let text = resolved_typ_text(&template, spec, &display, "check", "standalone");
+        let name = source
+            .file_name()
+            .and_then(|name| name.to_str())
+            .context("document source has no file name")?;
+        let path = format!("opportunities/check/standalone/typst/{name}");
+        let document = self.with_engine(workspace, &spec.fonts, |engine| {
+            engine
+                .compile(
+                    CompileRequest::new(path.as_str())
+                        .source_file(path.as_str(), text)
+                        .pages(PageConstraint::Exactly(spec.expected_pages)),
+                )
+                .map(|output| output.document)
+                .with_context(|| format!("cannot compile the resolved copy of {}", spec.name))
+        })?;
+        self.pdf_bytes(spec, &document)
     }
 
     pub fn render(&self, workspace: &Workspace, spec: &DocumentSpec) -> Result<PathBuf> {
@@ -92,6 +128,17 @@ impl Compiler {
     /// gate measure metrics off the first compilation and export its PDF from
     /// the same document instead of compiling a third time.
     pub fn export(&self, spec: &DocumentSpec, document: &Document) -> Result<PathBuf> {
+        let bytes = self.pdf_bytes(spec, document)?;
+        if let Some(parent) = spec.output.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("cannot create {}", parent.display()))?;
+        }
+        fs::write(&spec.output, bytes)
+            .with_context(|| format!("cannot write {}", spec.output.display()))?;
+        Ok(spec.output.clone())
+    }
+
+    fn pdf_bytes(&self, spec: &DocumentSpec, document: &Document) -> Result<Vec<u8>> {
         let bytes = self
             .engine
             .pdf(document, source_date_epoch()?)
@@ -101,14 +148,7 @@ impl Compiler {
             "Typst did not create a PDF for {}",
             spec.name
         );
-        let bytes = crate::pdf::lowercase_locales(&bytes)?;
-        if let Some(parent) = spec.output.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("cannot create {}", parent.display()))?;
-        }
-        fs::write(&spec.output, bytes)
-            .with_context(|| format!("cannot write {}", spec.output.display()))?;
-        Ok(spec.output.clone())
+        crate::pdf::lowercase_locales(&bytes)
     }
 }
 

@@ -1,0 +1,21 @@
+# Synthetic independent CV: own layout, one page, exportable as a bundle.
+id = "grid"
+api = 1
+settings_adapter = "document-v1"
+documents = ["cv"]
+supports_locales = ["en-ch"]
+pages = [1]
+default_pages = 1
+substyles = ["wide", "slot-2", "slot-3"]
+empty_substyles = ["slot-2", "slot-3"]
+defaults = "../../shared/ledger/defaults.toml"
+
+[paper.defaults]
+en-ch = "a4"
+
+[paper.sizes.a4]
+size_pt = [595.2756, 841.8898]
+label = "A4"
+
+[paper.sizes.a4.settings.page]
+paper = "a4"

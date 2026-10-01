@@ -39,12 +39,9 @@ fn language_shorthand_selects_the_selected_styles_only_declared_region() {
     assert!(leaf(&workspace, "cv", "en-ch", &selected).is_err());
     assert!(leaf(&workspace, "cv", "de", &selected).is_err());
 
-    let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let harvard = selection(&repository, "cv", Some("harvard"), None).unwrap();
-    assert_eq!(
-        leaf(&repository, "cv", "en", &harvard).unwrap().locale,
-        "en-ch"
-    );
+    let fixture = crate::test_support::fixture_view();
+    let ledger = selection(&fixture, "cv", Some("ledger"), None).unwrap();
+    assert_eq!(leaf(&fixture, "cv", "en", &ledger).unwrap().locale, "en-ch");
 }
 
 #[test]
@@ -74,11 +71,13 @@ fn write(root: &Path, path: &str, text: &str) {
     fs::write(path, text).unwrap();
 }
 
-/// This workspace deliberately contains no Harvard files or shared renderer.
+/// This workspace deliberately contains no shared family or renderer: two
+/// independent styles seeded from the synthetic fixture's profile and record.
 fn independent_workspace() -> (tempfile::TempDir, Workspace) {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path();
-    let original = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let fixture = crate::test_support::fixture_root();
+    let original = crate::test_support::repository();
     let manifest = json!({
         "format": "ccvl-workspace", "schema_version": 8,
         "documents": {
@@ -90,10 +89,10 @@ fn independent_workspace() -> (tempfile::TempDir, Workspace) {
     write(
         root,
         "cvl/profile.toml",
-        &fs::read_to_string(original.path("cvl/profile.toml")).unwrap(),
+        &fs::read_to_string(fixture.join("cvl/profile.toml")).unwrap(),
     );
     let mut record: toml::Value = toml::from_str(
-        &fs::read_to_string(original.path("cvl/cv/harvard/standard/en/ch/content.toml")).unwrap(),
+        &fs::read_to_string(fixture.join("cvl/cv/ledger/primary/en/ch/content.toml")).unwrap(),
     )
     .unwrap();
     record.as_table_mut().unwrap().remove("wording");
@@ -136,7 +135,7 @@ fn independent_workspace() -> (tempfile::TempDir, Workspace) {
     write(
         root,
         ".agent/scaffolds/opportunity/application.toml",
-        &fs::read_to_string(original.path(".agent/scaffolds/opportunity/application.toml"))
+        &fs::read_to_string(original.join(".agent/scaffolds/opportunity/application.toml"))
             .unwrap(),
     );
     let record = toml::to_string(&record).unwrap();
@@ -207,9 +206,9 @@ maximum = 1
 }
 
 #[test]
-fn independent_styles_render_without_harvard_geometry_content_or_sources() {
+fn independent_styles_render_without_shared_family_geometry_content_or_sources() {
     let (_temporary, workspace) = independent_workspace();
-    assert!(!workspace.path("cvl/cv/harvard").exists());
+    assert!(!workspace.path("cvl/cv/ledger").exists());
     assert!(!workspace.path("cvl/shared").exists());
     assert!(!workspace.path("interview/stations.toml").exists());
     let specs = render::cvl_specs(&workspace).unwrap();
@@ -261,7 +260,7 @@ fn selections_are_scoped_by_style_and_reject_missing_or_escaping_names() {
             substyle: "standard".into()
         }
     );
-    assert!(selection(&workspace, "cv", Some("harvard"), Some("standard")).is_err());
+    assert!(selection(&workspace, "cv", Some("ledger"), Some("primary")).is_err());
     assert!(selection(&workspace, "cv", Some("orbit"), Some("frame")).is_err());
     assert!(selection(&workspace, "cv", Some("../cl/postcard"), None).is_err());
     assert!(
@@ -311,7 +310,7 @@ fn new_opportunities_take_page_and_content_defaults_from_the_selected_styles() {
 #[test]
 fn full_workspace_check_accepts_independent_styles() {
     let (_temporary, workspace) = independent_workspace();
-    let original = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let original = Workspace::at(crate::test_support::repository()).unwrap();
     let mut manifest = original.read_json("ccvl.json").unwrap();
     manifest["documents"] = workspace.read_json("ccvl.json").unwrap()["documents"].clone();
     write(workspace.root(), "ccvl.json", &format!("{manifest}\n"));
@@ -339,6 +338,9 @@ fn full_workspace_check_accepts_independent_styles() {
     ] {
         write(workspace.root(), relative, "# Independent fixture\n");
     }
+    // Portable bundles of these exportable styles carry the license files.
+    crate::test_support::copy_repository(workspace.root(), "REUSE.toml");
+    crate::test_support::copy_repository(workspace.root(), "LICENSES");
     for directory in [".agent/skills", ".agent/typst/fonts", ".agent/typst/letter"] {
         for entry in walkdir::WalkDir::new(original.path(directory)) {
             let entry = entry.unwrap();
@@ -380,8 +382,8 @@ fn full_workspace_check_accepts_independent_styles() {
     crate::format::format_typst(&workspace, false).unwrap();
     render::render_cvl(&workspace).unwrap();
     crate::check::run(&workspace).unwrap();
-    assert!(!workspace.path("cvl/cv/harvard").exists());
-    assert!(!workspace.path("cvl/cl/harvard").exists());
+    assert!(!workspace.path("cvl/cv/ledger").exists());
+    assert!(!workspace.path("cvl/cl/ledger").exists());
     write(workspace.root(), "cvl/cv/broken/style.toml", "invalid = [");
     let error = crate::check::run(&workspace).unwrap_err();
     assert!(format!("{error:#}").contains("broken/style.toml"));
@@ -482,7 +484,7 @@ fn pdf_geometry_is_selected_per_locale_and_missing_locale_fails() {
 #[test]
 fn layout_input_changes_exported_paper_and_font_and_pdf_policy_is_enforced() {
     let (_temporary, workspace) = independent_workspace();
-    let original = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let original = Workspace::at(crate::test_support::repository()).unwrap();
     for (source, destination) in [
         (".agent/typst/document.typ", ".agent/typst/document.typ"),
         (
@@ -493,7 +495,6 @@ fn layout_input_changes_exported_paper_and_font_and_pdf_policy_is_enforced() {
             ".agent/typst/document-settings.json",
             ".agent/typst/document-settings.json",
         ),
-        ("cvl/shared/harvard/defaults.toml", "defaults.toml"),
     ] {
         write(
             workspace.root(),
@@ -501,6 +502,14 @@ fn layout_input_changes_exported_paper_and_font_and_pdf_policy_is_enforced() {
             &fs::read_to_string(original.path(source)).unwrap(),
         );
     }
+    write(
+        workspace.root(),
+        "defaults.toml",
+        &fs::read_to_string(
+            crate::test_support::fixture_root().join("cvl/shared/ledger/defaults.toml"),
+        )
+        .unwrap(),
+    );
     write(
         workspace.root(),
         "cvl/cv/orbit/standard/en/us/typst/cv.typ",
@@ -634,7 +643,7 @@ fn individual_build_validates_only_its_document_but_records_validate_enabled_doc
 #[test]
 fn extra_fonts_are_loaded_only_for_the_selected_style_even_with_a_shared_compiler() {
     let (_temporary, workspace) = independent_workspace();
-    let original = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let original = Workspace::at(crate::test_support::repository()).unwrap();
     let mut font = fs::read(original.path(".agent/typst/fonts/Archivo-Regular.ttf")).unwrap();
     // Give this fixture a family absent from the embedded font set. The name
     // replacement preserves the table lengths; no font file ships in the test.
@@ -724,7 +733,7 @@ fn extra_fonts_are_loaded_only_for_the_selected_style_even_with_a_shared_compile
 
 #[test]
 fn style_filter_limits_document_enumeration_to_selected_styles() {
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
     let all = StyleFilter::all();
     assert!(all.is_all());
     assert_eq!(all.to_string(), "every style");
@@ -829,36 +838,26 @@ fn orbit_substyles(workspace: &Workspace, declaration: &str) {
 
 #[test]
 fn reserved_default_resolves_the_manifest_style_and_its_first_substyle() {
-    let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let fixture = crate::test_support::fixture_view();
     for (document, style, substyle, expected) in [
         (
             "cv",
             Some("default"),
             Some("default"),
-            ("harvard", "d-plus"),
+            ("ledger", "primary"),
         ),
-        ("cv", None, None, ("harvard", "d-plus")),
+        ("cv", None, None, ("ledger", "primary")),
         (
             "cv",
             Some("default"),
             Some("compact"),
-            ("harvard", "compact"),
+            ("ledger", "compact"),
         ),
-        (
-            "cv",
-            Some("cluster"),
-            Some("default"),
-            ("cluster", "d-plus"),
-        ),
-        ("cv", Some("modern"), None, ("modern", "standard")),
-        (
-            "cl",
-            Some("default"),
-            Some("default"),
-            ("harvard", "left-rule"),
-        ),
+        ("cv", Some("grid"), Some("default"), ("grid", "wide")),
+        ("cv", Some("grid"), None, ("grid", "wide")),
+        ("cl", Some("default"), Some("default"), ("ledger", "rule")),
     ] {
-        let selected = selection(&repository, document, style, substyle).unwrap();
+        let selected = selection(&fixture, document, style, substyle).unwrap();
         assert_eq!(
             (selected.style.as_str(), selected.substyle.as_str()),
             expected
@@ -1075,15 +1074,15 @@ fn manifest_slots_fix_the_style_and_substyle_counts() {
     write(workspace.root(), "ccvl.json", &format!("{manifest}\n"));
     assert!(validate_slots(&workspace, "cv").is_err());
 
-    let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    validate_slots(&repository, "cv").unwrap();
-    validate_slots(&repository, "cl").unwrap();
+    let fixture = crate::test_support::fixture_view();
+    validate_slots(&fixture, "cv").unwrap();
+    validate_slots(&fixture, "cl").unwrap();
 }
 
 #[test]
 fn list_styles_orders_the_default_designed_styles_and_empty_slots() {
-    let repository = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let listing = list_styles(&repository).unwrap();
+    let fixture = crate::test_support::fixture_view();
+    let listing = list_styles(&fixture).unwrap();
     let ids = |document: &str| {
         listing[document]["styles"]
             .as_array()
@@ -1092,34 +1091,33 @@ fn list_styles_orders_the_default_designed_styles_and_empty_slots() {
             .map(|style| style["id"].as_str().unwrap().to_owned())
             .collect::<Vec<_>>()
     };
-    assert_eq!(ids("cv"), ["harvard", "cluster", "modern", "slot-4"]);
-    assert_eq!(ids("cl"), ["harvard", "slot-2", "slot-3", "slot-4"]);
+    // The default comes first even though "grid" sorts before "ledger".
+    assert_eq!(ids("cv"), ["ledger", "grid", "slot-3"]);
+    assert_eq!(ids("cl"), ["ledger", "slot-2", "slot-3"]);
     assert_eq!(
         listing["cv"]["default"],
-        json!({"style": "harvard", "substyle": "d-plus"})
+        json!({"style": "ledger", "substyle": "primary"})
     );
     assert_eq!(
         listing["cl"]["default"],
-        json!({"style": "harvard", "substyle": "left-rule"})
+        json!({"style": "ledger", "substyle": "rule"})
     );
     assert_eq!(
         listing["cv"]["styles"][0],
-        json!({"id": "harvard", "status": "designed", "substyles": [
-            {"id": "d-plus", "status": "designed", "default": true},
-            {"id": "standard", "status": "designed"},
+        json!({"id": "ledger", "status": "designed", "substyles": [
+            {"id": "primary", "status": "designed", "default": true},
             {"id": "compact", "status": "designed"},
-            {"id": "aligned", "status": "designed"},
-            {"id": "slot-5", "status": "empty"},
+            {"id": "slot-3", "status": "empty"},
         ]})
     );
-    assert_eq!(listing["cv"]["styles"][3]["status"], "empty");
-    assert_eq!(listing["cv"]["styles"][3]["substyles"][0]["default"], true);
-    assert_eq!(listing["cv"]["styles"][3]["substyles"][4]["id"], "slot-5");
+    assert_eq!(listing["cv"]["styles"][2]["status"], "empty");
+    assert_eq!(listing["cv"]["styles"][2]["substyles"][0]["default"], true);
+    assert_eq!(listing["cv"]["styles"][2]["substyles"][2]["id"], "slot-3");
     // Empty slots never become leaves or listed documents.
-    for leaf in leaves(&repository, "cv")
+    for leaf in leaves(&fixture, "cv")
         .unwrap()
         .into_iter()
-        .chain(leaves(&repository, "cl").unwrap())
+        .chain(leaves(&fixture, "cl").unwrap())
     {
         assert!(!leaf.style.starts_with("slot-") && !leaf.substyle.starts_with("slot-"));
     }

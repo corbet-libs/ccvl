@@ -4,29 +4,29 @@ use super::*;
 
 #[test]
 fn cvl_outputs_use_numeric_page_names() {
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
     for (locale, lang) in [("de-ch", "de"), ("en-ch", "en")] {
-        for substyle in ["standard", "compact"] {
+        for substyle in ["primary", "compact"] {
             for pages in [2, 3, 4] {
                 let spec =
                     cvl_cv_spec(&workspace, locale, pages, Some(&selection(substyle))).unwrap();
                 assert_eq!(
                     spec.output,
                     workspace.path(format!(
-                        "cvl/cv/harvard/{substyle}/{lang}/ch/pdf/cv-{pages}.pdf"
+                        "cvl/cv/ledger/{substyle}/{lang}/ch/pdf/cv-{pages}.pdf"
                     ))
                 );
                 assert_eq!(
                     spec.source,
-                    workspace.path(format!("cvl/cv/harvard/{substyle}/{lang}/ch/typst/cv.typ"))
+                    workspace.path(format!("cvl/cv/ledger/{substyle}/{lang}/ch/typst/cv.typ"))
                 );
             }
         }
-        for substyle in ["left-rule", "frame"] {
+        for substyle in ["rule", "frame"] {
             let spec = cvl_cl_spec(&workspace, locale, None, Some(&selection(substyle))).unwrap();
             assert_eq!(
                 spec.output,
-                workspace.path(format!("cvl/cl/harvard/{substyle}/{lang}/ch/pdf/cl.pdf"))
+                workspace.path(format!("cvl/cl/ledger/{substyle}/{lang}/ch/pdf/cl.pdf"))
             );
         }
     }
@@ -38,9 +38,9 @@ fn cvl_outputs_use_numeric_page_names() {
 
 #[test]
 fn opportunity_record_selects_its_locale_pages_and_documents() {
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let workspace = crate::test_support::fixture_view();
     let mut document =
-        crate::content::read_record(&workspace, "cvl/cv/harvard/standard/en/ch/content.toml")
+        crate::content::read_record(&workspace, "cvl/cv/ledger/primary/en/ch/content.toml")
             .unwrap();
     document["options"]["language"] = "en-ch".into();
     document["options"]["pages"] = 3.into();
@@ -148,7 +148,7 @@ fn named_opportunity_workspace() -> (tempfile::TempDir, Workspace) {
         .to_string(),
     );
     write("cvl/profile.toml", "name = \"Sample Taylor\"\n");
-    let original = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let original = crate::test_support::repository();
     let mut record: toml::Value = toml::from_str(
         &fs::read_to_string(original.join(".agent/scaffolds/opportunity/application.toml"))
             .unwrap(),
@@ -367,8 +367,8 @@ fn input_default_rewrite_points_copy_at_record() {
 
 #[test]
 fn resolved_copy_carries_provenance_and_record_defaults() {
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let leaf = cv_leaf(&workspace, "en-ch", &selection("standard")).unwrap();
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
+    let leaf = cv_leaf(&workspace, "en-ch", &selection("primary")).unwrap();
     let output = tempdir().unwrap().path().join("pdfs").join("cv.pdf");
     let mut spec = cv_spec(
         &workspace,
@@ -377,7 +377,7 @@ fn resolved_copy_carries_provenance_and_record_defaults() {
         &leaf.content(),
         &workspace.path("cvl/profile.toml"),
         &output,
-        &selection("standard"),
+        &selection("primary"),
     )
     .unwrap();
     spec.inputs.insert(
@@ -388,14 +388,14 @@ fn resolved_copy_carries_provenance_and_record_defaults() {
     let text = resolved_typ_text(
         &template,
         &spec,
-        "cvl/cv/harvard/standard/en/ch/typst/cv.typ",
+        "cvl/cv/ledger/primary/en/ch/typst/cv.typ",
         "acme",
         "lead",
     );
     assert!(text.starts_with(
         "// Resolved customization copy emitted by `ccvl build-opportunity acme lead`."
     ));
-    assert!(text.contains("Template: cvl/cv/harvard/standard/en/ch/typst/cv.typ"));
+    assert!(text.contains("Template: cvl/cv/ledger/primary/en/ch/typst/cv.typ"));
     assert!(text.contains("application: /opportunities/acme/lead/application.toml"));
     assert!(text.contains("pages: 3"));
     assert!(text.contains("// strings: "));
@@ -403,24 +403,32 @@ fn resolved_copy_carries_provenance_and_record_defaults() {
     assert!(text.contains("// shared-defaults: "));
     assert!(!text.contains("| style: "));
     assert!(text.ends_with('\n'));
-    assert!(!text.contains("default: \"/cvl/cv/harvard/standard/en/ch/content.toml\""));
+    assert!(!text.contains("default: \"/cvl/cv/ledger/primary/en/ch/content.toml\""));
     assert!(text.contains("sys.inputs.at(\"pages\", default: \"3\")"));
 }
 
 #[test]
 fn emitted_copies_compile_without_cli_inputs() {
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
     let compiler = Compiler::new(&workspace).unwrap();
     for locale in ["de-ch", "en-ch"] {
         let mut specs = Vec::new();
-        for substyle in ["standard", "compact"] {
+        for substyle in ["primary", "compact"] {
             specs.push(cvl_cv_spec(&workspace, locale, 3, Some(&selection(substyle))).unwrap());
         }
-        for substyle in ["left-rule", "frame"] {
+        for substyle in ["rule", "frame"] {
             specs.push(cvl_cl_spec(&workspace, locale, None, Some(&selection(substyle))).unwrap());
         }
         for spec in specs {
             let original = compiler.compile(&workspace, &spec).unwrap();
+            let standalone = compiler.standalone_pdf(&workspace, &spec).unwrap();
+            assert_eq!(
+                compiler.pdf_bytes(&spec, &original).unwrap(),
+                standalone,
+                "standalone copy differs: {}",
+                spec.name,
+            );
+            // The emitted copy carries its provenance and no CLI inputs.
             let template = fs::read_to_string(&spec.source).unwrap();
             let text = resolved_typ_text(&template, &spec, "fixture", "acme", "lead");
             let standalone = compiler
@@ -443,20 +451,20 @@ fn emitted_copies_compile_without_cli_inputs() {
 
 #[test]
 fn cvl_specs_carry_their_leaf_paths() {
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
     for pages in [2, 3, 4] {
         let spec = cvl_cv_spec(&workspace, "en-ch", pages, Some(&selection("compact"))).unwrap();
         assert_eq!(
             spec.inputs.get("strings").map(String::as_str),
-            Some("/cvl/cv/harvard/compact/en/ch/strings.toml")
+            Some("/cvl/cv/ledger/compact/en/ch/strings.toml")
         );
         assert_eq!(
             spec.inputs.get("substyle").map(String::as_str),
-            Some("/cvl/cv/harvard/compact/substyle.toml")
+            Some("/cvl/cv/ledger/compact/substyle.toml")
         );
         assert_eq!(
             spec.inputs.get("shared-defaults").map(String::as_str),
-            Some("/cvl/shared/harvard/defaults.toml")
+            Some("/cvl/shared/ledger/defaults.toml")
         );
         assert!(!spec.inputs.contains_key("style"));
     }
@@ -464,26 +472,26 @@ fn cvl_specs_carry_their_leaf_paths() {
     let spec = cvl_cv_spec(&workspace, "en-ch", 4, None).unwrap();
     assert_eq!(
         spec.inputs.get("substyle").map(String::as_str),
-        Some("/cvl/cv/harvard/d-plus/substyle.toml")
+        Some("/cvl/cv/ledger/primary/substyle.toml")
     );
     let spec = cvl_cl_spec(&workspace, "de-ch", None, None).unwrap();
     assert_eq!(
         spec.inputs.get("substyle").map(String::as_str),
-        Some("/cvl/cl/harvard/left-rule/substyle.toml")
+        Some("/cvl/cl/ledger/rule/substyle.toml")
     );
     let spec = cvl_cl_spec(&workspace, "de-ch", None, Some(&selection("frame"))).unwrap();
     assert_eq!(
         spec.inputs.get("strings").map(String::as_str),
-        Some("/cvl/cl/harvard/frame/de/ch/strings.toml")
+        Some("/cvl/cl/ledger/frame/de/ch/strings.toml")
     );
 }
 
 #[test]
 fn mismatched_record_selection_fails_before_compiling() {
-    // A record selecting compact must not render through the standard
+    // A record selecting compact must not render through the primary
     // leaf: the mismatch fails in Rust with both names.
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let leaf = cv_leaf(&workspace, "en-ch", &selection("standard")).unwrap();
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
+    let leaf = cv_leaf(&workspace, "en-ch", &selection("primary")).unwrap();
     let directory = tempfile::tempdir_in(workspace.root()).unwrap();
     let record = directory.path().join("application.toml");
     let mut resolved = crate::content::read_record(&workspace, leaf.content()).unwrap();
@@ -498,103 +506,17 @@ fn mismatched_record_selection_fails_before_compiling() {
         &record,
         &workspace.path("cvl/profile.toml"),
         &output,
-        &selection("standard"),
+        &selection("primary"),
     )
     .unwrap_err()
     .to_string();
     assert!(error.contains("compact"), "unexpected error: {error}");
-    assert!(error.contains("standard"), "unexpected error: {error}");
-}
-
-#[test]
-fn style_major_leaves_compile() {
-    // The default leaves render end to end through the shared renderers
-    // under exact page constraints.
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let compiler = Compiler::new(&workspace).unwrap();
-    let cv = cvl_cv_spec(&workspace, "de-ch", 2, None).unwrap();
-    compiler.compile(&workspace, &cv).unwrap();
-    let cl = cvl_cl_spec(&workspace, "de-ch", None, None).unwrap();
-    compiler.compile(&workspace, &cl).unwrap();
-}
-
-#[test]
-fn compact_substyles_pass_the_same_measurement_gates() {
-    use crate::measure::{document_metrics, line_failure, summary_failures};
-
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let compiler = Compiler::new(&workspace).unwrap();
-    // Two-page CV exercises pages 1-2; the cover letter exercises the
-    // vertical-rhythm gate. Both compile under an exact page constraint.
-    let mut cv = cvl_cv_spec(&workspace, "en-ch", 2, Some(&selection("compact"))).unwrap();
-    cv.inputs
-        .insert("line-contracts".to_owned(), "report".to_owned());
-    let document = compiler.compile(&workspace, &cv).unwrap();
-    let metrics = document_metrics(&workspace, &cv, &document).unwrap();
-    assert_eq!(
-        summary_failures(&workspace, &cv, &metrics).unwrap(),
-        Vec::<String>::new()
-    );
-    for (index, metric) in metrics.iter().enumerate() {
-        assert!(
-            line_failure(&cv, index, metric).unwrap().is_none(),
-            "compact CV failure at #{index}: {metric}"
-        );
-    }
-
-    for substyle in ["left-rule", "frame"] {
-        let mut cl = cvl_cl_spec(&workspace, "en-ch", None, Some(&selection(substyle))).unwrap();
-        cl.inputs
-            .insert("line-contracts".to_owned(), "report".to_owned());
-        let document = compiler.compile(&workspace, &cl).unwrap();
-        let metrics = document_metrics(&workspace, &cl, &document).unwrap();
-        for (index, metric) in metrics.iter().enumerate() {
-            assert!(
-                line_failure(&cl, index, metric).unwrap().is_none(),
-                "{substyle} cover-letter failure at #{index}: {metric}"
-            );
-        }
-    }
-}
-
-#[test]
-fn compact_delta_keeps_horizontal_measure_and_accents() {
-    // Horizontal measure feeds every fill percentage, so the compact
-    // delta may only tighten vertical whitespace. Pin the invariant
-    // between the shared base knobs and the delta; the gates above prove
-    // the result still passes.
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let base = workspace
-        .read_toml_value("cvl/shared/harvard/defaults.toml")
-        .unwrap();
-    let compact = workspace
-        .read_toml_value("cvl/cv/harvard/compact/substyle.toml")
-        .unwrap();
-    let delta = compact.as_object().unwrap();
-    for forbidden in ["page", "text", "accents"] {
-        assert!(
-            !delta.contains_key(forbidden),
-            "horizontal section changed by the delta: {forbidden}"
-        );
-    }
-    let cv = delta.get("cv").and_then(|value| value.as_object());
-    assert!(
-        cv.is_none_or(|table| !table.contains_key("bullet_indent_pt")),
-        "horizontal knob changed by the delta: bullet_indent_pt"
-    );
-    let fill = |style: &serde_json::Value, pointer: &str| {
-        style.pointer(pointer).and_then(serde_json::Value::as_f64)
-    };
-    assert!(
-        fill(&compact, "/cv/entry_spacing_pt") < fill(&base, "/cv/entry_spacing_pt"),
-        "compact must tighten vertical whitespace"
-    );
-    assert!(!delta.is_empty());
+    assert!(error.contains("primary"), "unexpected error: {error}");
 }
 
 fn selection(substyle: &str) -> Selection {
     Selection {
-        style: "harvard".to_owned(),
+        style: "ledger".to_owned(),
         substyle: substyle.to_owned(),
     }
 }

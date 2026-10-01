@@ -2,8 +2,9 @@ use serde_json::json;
 
 use super::*;
 
+/// Records validate against the synthetic fixture's default styles.
 fn workspace() -> Workspace {
-    Workspace::at(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap()
+    crate::test_support::fixture_view()
 }
 
 fn lines(count: usize) -> Vec<Value> {
@@ -486,7 +487,7 @@ fn salutation_override_is_optional_but_must_be_a_single_line() {
 }
 
 #[test]
-fn substyles_default_to_the_first_d_plus_and_left_rule() {
+fn substyles_default_to_each_default_styles_first_substyle() {
     // The fixture carries no selection keys, like records written before
     // per-document selection existed: validation accepts it and
     // resolution yields each default style's first substyle.
@@ -495,11 +496,11 @@ fn substyles_default_to_the_first_d_plus_and_left_rule() {
     validate_record(&workspace, &draft, "fixture", true).unwrap();
     assert_eq!(
         resolve_cv_substyle(&workspace, &draft, "fixture").unwrap(),
-        "d-plus"
+        "primary"
     );
     assert_eq!(
         resolve_cl_substyle(&workspace, &draft, "fixture").unwrap(),
-        "left-rule"
+        "rule"
     );
 
     let mut empty = draft.clone();
@@ -508,11 +509,11 @@ fn substyles_default_to_the_first_d_plus_and_left_rule() {
     validate_record(&workspace, &empty, "fixture", true).unwrap();
     assert_eq!(
         resolve_cv_substyle(&workspace, &empty, "fixture").unwrap(),
-        "d-plus"
+        "primary"
     );
     assert_eq!(
         resolve_cl_substyle(&workspace, &empty, "fixture").unwrap(),
-        "left-rule"
+        "rule"
     );
 
     let mut selected = draft.clone();
@@ -538,17 +539,17 @@ fn substyles_default_to_the_first_d_plus_and_left_rule() {
     let cv = crate::styles::record_selection(&workspace, "cv", &reserved, "fixture").unwrap();
     assert_eq!(
         (cv.style.as_str(), cv.substyle.as_str()),
-        ("harvard", "d-plus")
+        ("ledger", "primary")
     );
     let cl = crate::styles::record_selection(&workspace, "cl", &reserved, "fixture").unwrap();
     assert_eq!(
         (cl.style.as_str(), cl.substyle.as_str()),
-        ("harvard", "left-rule")
+        ("ledger", "rule")
     );
-    reserved["options"]["cv_style"] = json!("cluster");
+    reserved["options"]["cv_style"] = json!("grid");
     assert_eq!(
         resolve_cv_substyle(&workspace, &reserved, "fixture").unwrap(),
-        "d-plus"
+        "wide"
     );
 
     let mut slot = draft.clone();
@@ -558,7 +559,7 @@ fn substyles_default_to_the_first_d_plus_and_left_rule() {
         validate_record(&workspace, &slot, "fixture", true).unwrap_err()
     );
     assert!(
-        error.contains("cl harvard/slot-3 is an empty slot; it has no design yet"),
+        error.contains("cl ledger/slot-3 is an empty slot; it has no design yet"),
         "{error}"
     );
 }
@@ -567,7 +568,7 @@ fn substyles_default_to_the_first_d_plus_and_left_rule() {
 fn retired_style_selection_is_rejected() {
     let workspace = workspace();
     let mut draft = application(&[3, 5, 5, 5, 5, 3]);
-    draft["options"]["style"] = json!("harvard");
+    draft["options"]["style"] = json!("ledger");
     let error = validate_record(&workspace, &draft, "fixture", true)
         .unwrap_err()
         .to_string();
@@ -590,7 +591,7 @@ fn unknown_substyle_fails_with_available_list() {
     let error = resolve_cv_substyle(&workspace, &draft, "fixture")
         .unwrap_err()
         .to_string();
-    assert!(error.contains("standard"), "unexpected error: {error}");
+    assert!(error.contains("primary"), "unexpected error: {error}");
 
     draft["options"]
         .as_object_mut()
@@ -613,7 +614,7 @@ fn style_leaves_cover_every_substyle_and_locale() {
     // every style has one complete leaf per supported locale, and every leaf
     // renders each of its style's page presets. Adding a style or a substyle
     // changes the expectation, never this test.
-    let workspace = workspace();
+    let (_directory, workspace) = crate::test_support::fixture_workspace();
     let mut expected_documents = 0;
     let mut expected_pages = 0;
     for document in ["cv", "cl"] {
@@ -668,66 +669,35 @@ fn style_leaves_cover_every_substyle_and_locale() {
             .sum::<usize>(),
         expected_pages
     );
-    let cv = cv_leaves(&workspace)
-        .unwrap()
-        .into_iter()
-        .filter(|leaf| leaf.style == "harvard")
-        .collect::<Vec<_>>();
-    assert_eq!(cv.len(), 8);
-    for (substyle, locale) in [
-        ("standard", "de-ch"),
-        ("standard", "en-ch"),
-        ("compact", "de-ch"),
-        ("compact", "en-ch"),
-        ("aligned", "de-ch"),
-        ("aligned", "en-ch"),
-        ("d-plus", "de-ch"),
-        ("d-plus", "en-ch"),
-    ] {
-        let leaf = cv
-            .iter()
-            .find(|leaf| leaf.substyle == substyle && leaf.locale == locale)
-            .unwrap_or_else(|| panic!("missing CV leaf {substyle} {locale}"));
-        assert!(leaf.content().is_file());
-        assert!(leaf.strings().is_file());
-        assert!(leaf.adapter().is_file());
-        assert!(leaf.substyle_file().is_file());
-    }
-    let cluster = cv_leaves(&workspace)
-        .unwrap()
-        .into_iter()
-        .filter(|leaf| leaf.style == "cluster")
-        .collect::<Vec<_>>();
-    for substyle in ["standard", "middle-three", "middle-three-spaced", "d-plus"] {
-        for locale in ["de-ch", "en-ch"] {
-            let leaf = cluster
-                .iter()
-                .find(|leaf| leaf.substyle == substyle && leaf.locale == locale)
-                .unwrap_or_else(|| panic!("missing cluster leaf {substyle} {locale}"));
-            assert!(leaf.content().is_file());
-            assert!(leaf.strings().is_file());
-            assert!(leaf.adapter().is_file());
-            assert!(leaf.substyle_file().is_file());
-        }
-    }
-    let cl = cl_leaves(&workspace)
-        .unwrap()
-        .into_iter()
-        .filter(|leaf| leaf.style == "harvard")
-        .collect::<Vec<_>>();
-    assert_eq!(cl.len(), 4);
-    for (substyle, locale) in [
-        ("left-rule", "de-ch"),
-        ("left-rule", "en-ch"),
-        ("frame", "de-ch"),
-        ("frame", "en-ch"),
-    ] {
-        assert!(
-            cl.iter()
-                .any(|leaf| leaf.substyle == substyle && leaf.locale == locale),
-            "missing cover-letter leaf {substyle} {locale}"
-        );
-    }
+    let leaf_names = |leaves: Vec<crate::styles::StyleLeaf>| {
+        leaves
+            .into_iter()
+            .map(|leaf| format!("{}/{}/{}", leaf.style, leaf.substyle, leaf.locale))
+            .collect::<std::collections::BTreeSet<_>>()
+    };
+    assert_eq!(
+        leaf_names(cv_leaves(&workspace).unwrap()),
+        [
+            "grid/wide/en-ch",
+            "ledger/compact/de-ch",
+            "ledger/compact/en-ch",
+            "ledger/primary/de-ch",
+            "ledger/primary/en-ch",
+        ]
+        .map(str::to_owned)
+        .into()
+    );
+    assert_eq!(
+        leaf_names(cl_leaves(&workspace).unwrap()),
+        [
+            "ledger/frame/de-ch",
+            "ledger/frame/en-ch",
+            "ledger/rule/de-ch",
+            "ledger/rule/en-ch",
+        ]
+        .map(str::to_owned)
+        .into()
+    );
 }
 
 #[test]

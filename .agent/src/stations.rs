@@ -504,8 +504,9 @@ mod tests {
 
     use super::*;
 
+    /// Station plans assess against the synthetic fixture's default CV contract.
     fn workspace() -> Workspace {
-        Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap()
+        crate::test_support::fixture_view()
     }
 
     fn station(index: usize, page: Option<u8>, status: &str, experience: bool) -> Value {
@@ -589,7 +590,7 @@ mod tests {
     }
 
     fn validate_source(source: &str) -> Result<SourceLayout> {
-        let workspace = workspace();
+        let (_fixture, workspace) = crate::test_support::fixture_workspace();
         let directory = tempdir_in(workspace.root()).unwrap();
         let path = directory.path().join("cv.typ");
         fs::write(&path, source).unwrap();
@@ -756,9 +757,83 @@ mod tests {
         assert!(error.contains("every visible entry needs one unique owner"));
     }
 
+    /// A marked four-page source whose page-1 and page-2 entries use the
+    /// fixture plan's station IDs.
+    fn plan_source(projects: &[&str]) -> String {
+        let entries = |marker: &str, ids: Vec<String>, bullets: usize| {
+            ids.iter()
+                .map(|id| source_entry(marker, id, bullets))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let page_one = entries("station", (1..=6).map(|i| format!("role-{i}")).collect(), 1);
+        let page_two = entries(
+            "station",
+            (1..=10).map(|i| format!("course-{i}")).collect(),
+            2,
+        );
+        let page_three = entries(
+            "project",
+            projects.iter().map(|id| (*id).to_owned()).collect(),
+            2,
+        );
+        let groups = (0..3)
+            .map(|group| {
+                format!(
+                    "#cv-spacious-heading[Group {group}]\n{}",
+                    entries(
+                        "competency",
+                        (0..3).map(|i| format!("skill-{group}-{i}")).collect(),
+                        3
+                    )
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!(
+            "{page_one}\n#cv-pagebreak()\n{page_two}\n#cv-pagebreak()\n{page_three}\n#cv-pagebreak()\n{groups}"
+        )
+    }
+
     #[test]
-    fn checked_in_interview_plan_matches_both_locales() {
-        let result = validate_interview(&workspace(), true).unwrap();
-        assert_eq!(result.page_counts, BTreeMap::from([(1, 8), (2, 10)]));
+    fn source_markers_match_the_plan_and_agree_across_locales() {
+        let (_fixture, workspace) = crate::test_support::fixture_workspace();
+        let result = validate_interview(&workspace, true).unwrap();
+        assert_eq!(result.page_counts, BTreeMap::from([(1, 6), (2, 10)]));
+        let contract_path = workspace.path("cvl/cv/ledger/contract.toml");
+        let contract = fs::read_to_string(&contract_path).unwrap();
+        fs::write(
+            &contract_path,
+            contract.replace(
+                "presets = [2, 3, 4]",
+                "presets = [2, 3, 4]\nsource_files = [\"src/de.typ\", \"src/en.typ\"]",
+            ),
+        )
+        .unwrap();
+        let projects = (1..=10).map(|i| format!("project-{i}")).collect::<Vec<_>>();
+        let projects = projects.iter().map(String::as_str).collect::<Vec<_>>();
+        let write = |name: &str, source: &str| {
+            let path = workspace.path(format!("cvl/cv/ledger/src/{name}"));
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, source).unwrap();
+        };
+        write("de.typ", &plan_source(&projects));
+        write("en.typ", &plan_source(&projects));
+        validate_style(&workspace, "ledger", true).unwrap();
+        let mut reordered = projects.clone();
+        reordered.swap(0, 1);
+        write("en.typ", &plan_source(&reordered));
+        let error = validate_style(&workspace, "ledger", true)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("different page-3 project IDs"), "{error}");
+        write(
+            "en.typ",
+            &plan_source(&projects).replace("ccvl-station: role-1", "ccvl-station: role-9"),
+        );
+        let error = validate_style(&workspace, "ledger", true)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("station source IDs differ"), "{error}");
     }
 }

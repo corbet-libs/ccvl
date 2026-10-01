@@ -229,10 +229,24 @@ fn missing_pdf_is_rejected() {
     );
 }
 
+/// Render a real two-page engine PDF from the synthetic fixture.
+fn rendered_fixture_pdf(directory: &Path) -> std::path::PathBuf {
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
+    let selection =
+        crate::styles::selection(&workspace, "cv", Some("ledger"), Some("primary")).unwrap();
+    let leaf = crate::styles::leaf(&workspace, "cv", "de-ch", &selection).unwrap();
+    let mut spec = crate::render::cvl_spec(&workspace, &leaf, 2).unwrap();
+    spec.output = directory.join("cv-2.pdf");
+    crate::render::Compiler::new(&workspace)
+        .unwrap()
+        .render(&workspace, &spec)
+        .unwrap()
+}
+
 #[test]
 fn rendition_identifier_is_not_document_content() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let original = root.join("cvl/cv/harvard/standard/de/ch/pdf/cv-2.pdf");
+    let source = tempdir().unwrap();
+    let original = rendered_fixture_pdf(source.path());
     let original_bytes = fs::read(&original).unwrap();
     let trailer_id = BytesRegex::new(r"(/ID\[\([^)]*\)\()[^)]*(\)\]\s*>>)").unwrap();
     let changed = INSTANCE_ID
@@ -254,8 +268,8 @@ fn rendition_identifier_is_not_document_content() {
 
 #[test]
 fn metadata_change_is_detected() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let original = root.join("cvl/cv/harvard/standard/de/ch/pdf/cv-2.pdf");
+    let source = tempdir().unwrap();
+    let original = rendered_fixture_pdf(source.path());
     let original_bytes = fs::read(&original).unwrap();
     let metadata = BytesRegex::new("<dc:language>").unwrap();
     let changed = metadata

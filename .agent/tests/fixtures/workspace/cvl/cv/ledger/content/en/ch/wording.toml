@@ -1,0 +1,4 @@
+# Synthetic shared wording; it describes no real person.
+[cv]
+summary = "Synthetic summary for engine tests. It names no person, employer or result and only exercises wording resolution."
+allow_thin = false

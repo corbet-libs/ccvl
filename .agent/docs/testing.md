@@ -21,9 +21,8 @@ whitespace, and bundled font integrity. It discovers **36 registered PDF variant
 Each leaf record selects its showcase paper; checks also render its other
 supported paper selections for validation, without requiring another set of
 tracked showcase PDFs. A text-only Rust probe verifies A4/US Letter and
-portrait/landscape selection in a temporary workspace. Settings tests use
-Harvard; portable bundle tests render all four Cluster substyles in both locales.
-The retired demonstration designs are deleted, including their fixture sources.
+portrait/landscape selection in a temporary workspace. The retired
+demonstration designs are deleted, including their fixture sources.
 
 For every style it checks the requested page count, valid PDF geometry,
 usable text, embedded Unicode-mapped fonts, repeat-render reproducibility and
@@ -38,6 +37,12 @@ paragraphs, five highlights, fixed station allocation and paragraph-role
 budgets. Its 2/3/4-page CV presets require identical shared pages. These are
 Harvard rules, not assumptions about every document style. The independent
 styles own different fields and page geometry and do not need Harvard metrics.
+`check` pins those frozen budgets and the compact delta's horizontal measure,
+requires letter metrics to carry the contract's fill bounds, rejects measurement
+code vendored under `cvl/`, requires every build to read nothing in the other
+document's tree, compiles every leaf's resolved customization copy without CLI
+inputs to the same PDF, and renders the portable bundles of styles declaring
+`portable_bundle` (Cluster) to the same PDF.
 `public-check` adds the public/private boundary and secret checks. Linux's
 `check-linux-deep.sh` independently uses Poppler, QPDF and page images.
 It runs `public-check --artifacts <new-directory>` once and reuses those
@@ -49,14 +54,14 @@ The artifact directory must not exist, and no PDFs are exported until all
 document checks, including nondefault papers, pass. It is temporary evidence for that invocation, not a
 persistent cache that could bypass current source checks.
 
-Regression fixtures verify a complete workspace without Harvard; selected
-style/content/page defaults; actual paper and font changes through layout
-inputs; locale-specific geometry; incorrect PDF policy rejection; and wrapped
-contact names. All newly added or affected pages also need visual review.
+Regression fixtures verify a complete workspace without a shared family;
+selected style/content/page defaults; actual paper and font changes through
+layout inputs; locale-specific geometry; incorrect PDF policy rejection; and
+wrapped contact names. All newly added or affected pages also need visual review.
 Additional fixtures compare resolved shared wording with direct Typst loading,
-check source ownership and leaf overrides, and build actual Harvard documents
-with an unrelated document's contract missing or malformed. A selected build
-must succeed independently; full workspace checks still reject broken styles.
+check source ownership and leaf overrides, and build the fixture's shared-family
+documents with an unrelated document's contract missing or malformed. A selected
+build must succeed independently; full workspace checks still reject broken styles.
 Selected font fixtures compile different styles in one compiler without
 loading each other's extra fonts. Watcher fixtures exercise actual transitive
 reads, missing and changing dependencies, invalid metadata, font recovery,
@@ -96,6 +101,28 @@ and REUSE. See [Releases](releases.md) for cache and identity details.
 The same line contract is available directly with `bash ./ccvl measure` or
 `.\ccvl.cmd measure`. It reports all violations in one pass so underfill or
 overflow causes an editorial iteration instead of a one-error-at-a-time loop.
+
+### Rust test fixtures
+
+`cargo test` never reads the showcase under `cvl/` (only its README). Engine
+tests copy the synthetic workspace in
+[`.agent/tests/fixtures/workspace`](../tests/fixtures/workspace/README.md) into
+a temporary directory with the engine's Typst library, scaffolds and schemas
+(`test_support.rs`). Its default `ledger` CV and letter share one family
+renderer and wording, carry the frozen station, Summary and AIDA contracts and
+emit fixed, contract-conforming metrics; `grid` is an independent, portable
+one-page CV; empty slots complete the grid. Records, selection, slots, settings,
+paper, wording, rendering paths, resolved copies, measurement, stations, PDF
+signatures, bundles, the review smoke test and the new check gates, including a
+full `check` of the fixture, run on it. Fixture content is synthetic: never copy
+showcase wording or a real profile into it, and never copy fixture text into an
+application.
+
+Real-data invariants of the showcase are not `cargo test` cases: `check`
+enforces them for the selected styles, and in full on `main`, the daily
+schedule and manual dispatch; see [Selecting CI checks](ci.md). Tests may still
+read engine-owned repository paths outside `cvl/`, such as skills, docs,
+scaffolds, schemas, `REUSE.toml`, `LICENSES/` and the data-root READMEs.
 
 ## Small-model skill evaluation
 

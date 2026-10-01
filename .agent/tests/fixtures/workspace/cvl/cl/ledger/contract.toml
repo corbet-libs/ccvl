@@ -1,0 +1,135 @@
+# Synthetic letter contract with the frozen AIDA structure: six paragraphs of
+# 3|5|5|5|5|3 lines, five highlights, fill and rhythm budgets.
+id = "ledger"
+api = 1
+content_fields = ["paragraphs", "highlights"]
+keep_paragraphs_together = true
+justify_body = true
+widow_or_orphan_lines = 0
+
+[[paragraphs]]
+number = 1
+aida_stage = "attention"
+role = "synthetic-1"
+purpose = "Synthetic paragraph 1."
+
+[paragraphs.lines]
+minimum = 3
+target = 3
+maximum = 3
+
+[[paragraphs]]
+number = 2
+aida_stage = "interest"
+role = "synthetic-2"
+purpose = "Synthetic paragraph 2."
+
+[paragraphs.lines]
+minimum = 5
+target = 5
+maximum = 5
+
+[[paragraphs]]
+number = 3
+aida_stage = "interest"
+role = "synthetic-3"
+purpose = "Synthetic paragraph 3."
+
+[paragraphs.lines]
+minimum = 5
+target = 5
+maximum = 5
+
+[[paragraphs]]
+number = 4
+aida_stage = "desire"
+role = "synthetic-4"
+purpose = "Synthetic paragraph 4."
+
+[paragraphs.lines]
+minimum = 5
+target = 5
+maximum = 5
+
+[[paragraphs]]
+number = 5
+aida_stage = "desire"
+role = "synthetic-5"
+purpose = "Synthetic paragraph 5."
+
+[paragraphs.lines]
+minimum = 5
+target = 5
+maximum = 5
+
+[[paragraphs]]
+number = 6
+aida_stage = "action"
+role = "synthetic-6"
+purpose = "Synthetic paragraph 6."
+
+[paragraphs.lines]
+minimum = 3
+target = 3
+maximum = 3
+
+[body_lines]
+minimum = 26
+target = 26
+maximum = 26
+
+[highlights]
+count = 5
+lines_each = 1
+position = "between-paragraphs-3-and-4"
+
+[line_fill.body]
+minimum = 75
+non_final_minimum = 95
+target = 97
+maximum = 100
+
+[line_fill.highlight]
+minimum = 70
+target = 82
+maximum = 100
+
+[vertical_rhythm.gap_pt]
+minimum = 12
+target = 20
+maximum = 30
+
+[vertical_rhythm.highlight_center_percent]
+minimum = 50
+target = 56
+maximum = 60
+
+[pdf]
+version = "1.7"
+tagged = true
+font_pattern = "^[A-Z]{6}\\+Archivo-(Bold|Italic|Medium|Regular)$"
+required_profile_fields = ["name", "email", "phone_label"]
+minimum_text_chars = 100
+
+[[metric_rules]]
+kind = "cl-body"
+minimum = 26
+maximum = 26
+
+[[metric_rules]]
+kind = "cl-highlight"
+minimum = 5
+maximum = 5
+
+[[metric_rules]]
+kind = "cl-vertical-gap"
+minimum = 1
+maximum = 1
+
+[[metric_rules]]
+kind = "cl-highlight-center"
+minimum = 1
+maximum = 1
+
+[editorial]
+structure = "aida"

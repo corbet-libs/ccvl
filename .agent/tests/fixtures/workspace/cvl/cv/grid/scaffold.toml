@@ -1,0 +1,4 @@
+# Blank synthetic grid fields for a new opportunity.
+allow_thin = false
+summary = ""
+items = []

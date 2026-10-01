@@ -1,0 +1,49 @@
+# Synthetic CV contract carrying the frozen station-protocol and summary
+# budgets, so contract and measurement code runs without showcase files.
+id = "ledger"
+api = 1
+content_fields = ["summary", "allow_thin"]
+shared_pages = [1, 2]
+presets = [2, 3, 4]
+summary_lines = 5
+last_line_maximum = 102
+
+[summary_fill]
+minimum = 95
+target = 97
+maximum = 100
+
+[layout_contract]
+definition = "One synthetic entry per station."
+verified_only = true
+unique_fact_assignment = true
+
+[layout_contract.page_1.entries]
+minimum = 6
+target = 7
+maximum = 8
+
+[layout_contract.page_2]
+entries = 10
+bullets_per_entry = 2
+
+[layout_contract.page_3]
+entries = 10
+bullets_per_entry = 2
+
+[layout_contract.page_4]
+groups = 3
+entries_per_group = 3
+bullets_per_entry = 3
+
+[pdf]
+version = "1.7"
+tagged = true
+font_pattern = "^[A-Z]{6}\\+Archivo-(Bold|Italic|Medium|Regular)$"
+required_profile_fields = ["name", "email", "phone_label"]
+minimum_text_chars = 40
+
+[[metric_rules]]
+kind = "cv-summary"
+minimum = 5
+maximum = 5

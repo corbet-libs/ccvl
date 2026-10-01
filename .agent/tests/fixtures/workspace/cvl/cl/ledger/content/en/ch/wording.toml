@@ -1,0 +1,11 @@
+# Synthetic shared letter wording; it describes no real person.
+[cl]
+highlights = ["Synthetic highlight 1", "Synthetic highlight 2", "Synthetic highlight 3", "Synthetic highlight 4", "Synthetic highlight 5"]
+paragraphs = [
+  ["Synthetic paragraph 1, line 1.", "Synthetic paragraph 1, line 2.", "Synthetic paragraph 1, line 3."],
+  ["Synthetic paragraph 2, line 1.", "Synthetic paragraph 2, line 2.", "Synthetic paragraph 2, line 3.", "Synthetic paragraph 2, line 4.", "Synthetic paragraph 2, line 5."],
+  ["Synthetic paragraph 3, line 1.", "Synthetic paragraph 3, line 2.", "Synthetic paragraph 3, line 3.", "Synthetic paragraph 3, line 4.", "Synthetic paragraph 3, line 5."],
+  ["Synthetic paragraph 4, line 1.", "Synthetic paragraph 4, line 2.", "Synthetic paragraph 4, line 3.", "Synthetic paragraph 4, line 4.", "Synthetic paragraph 4, line 5."],
+  ["Synthetic paragraph 5, line 1.", "Synthetic paragraph 5, line 2.", "Synthetic paragraph 5, line 3.", "Synthetic paragraph 5, line 4.", "Synthetic paragraph 5, line 5."],
+  ["Synthetic paragraph 6, line 1.", "Synthetic paragraph 6, line 2.", "Synthetic paragraph 6, line 3."],
+]

@@ -4,7 +4,10 @@ use super::*;
 
 #[test]
 fn actual_prepare_exports_readable_pdf_text_and_every_page_image() {
-    let workspace = Workspace::at(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    // Render the synthetic fixture's grid style with the real editorial rubric.
+    let (_fixture, workspace) = crate::test_support::fixture_workspace();
+    crate::test_support::copy_repository(workspace.root(), ".agent/docs/editorial.md");
+    crate::test_support::copy_runtime_sources(workspace.root());
     // Own the whole temporary opportunity so all created parents disappear,
     // including after a panic. Never leave cache directories in tested source.
     let opportunity = tempfile::Builder::new()
@@ -39,10 +42,10 @@ fn actual_prepare_exports_readable_pdf_text_and_every_page_image() {
             document: "cv".into(),
             locale: "en-ch".into(),
             pages: 1,
-            application: "cvl/cv/cluster/d-plus/en/ch/content.toml".into(),
+            application: "cvl/cv/grid/wide/en/ch/content.toml".into(),
             profile: "cvl/profile.toml".into(),
-            style: Some("cluster".into()),
-            substyle: Some("d-plus".into()),
+            style: Some("grid".into()),
+            substyle: Some("wide".into()),
             paper: None,
         }],
         sources: vec![Source {

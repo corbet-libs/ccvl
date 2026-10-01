@@ -1,0 +1,11 @@
+# Synthetic shared letter wording; it describes no real person.
+[cl]
+highlights = ["Synthetischer Schwerpunkt 1", "Synthetischer Schwerpunkt 2", "Synthetischer Schwerpunkt 3", "Synthetischer Schwerpunkt 4", "Synthetischer Schwerpunkt 5"]
+paragraphs = [
+  ["Synthetischer Absatz 1, Zeile 1.", "Synthetischer Absatz 1, Zeile 2.", "Synthetischer Absatz 1, Zeile 3."],
+  ["Synthetischer Absatz 2, Zeile 1.", "Synthetischer Absatz 2, Zeile 2.", "Synthetischer Absatz 2, Zeile 3.", "Synthetischer Absatz 2, Zeile 4.", "Synthetischer Absatz 2, Zeile 5."],
+  ["Synthetischer Absatz 3, Zeile 1.", "Synthetischer Absatz 3, Zeile 2.", "Synthetischer Absatz 3, Zeile 3.", "Synthetischer Absatz 3, Zeile 4.", "Synthetischer Absatz 3, Zeile 5."],
+  ["Synthetischer Absatz 4, Zeile 1.", "Synthetischer Absatz 4, Zeile 2.", "Synthetischer Absatz 4, Zeile 3.", "Synthetischer Absatz 4, Zeile 4.", "Synthetischer Absatz 4, Zeile 5."],
+  ["Synthetischer Absatz 5, Zeile 1.", "Synthetischer Absatz 5, Zeile 2.", "Synthetischer Absatz 5, Zeile 3.", "Synthetischer Absatz 5, Zeile 4.", "Synthetischer Absatz 5, Zeile 5."],
+  ["Synthetischer Absatz 6, Zeile 1.", "Synthetischer Absatz 6, Zeile 2.", "Synthetischer Absatz 6, Zeile 3."],
+]

@@ -2,6 +2,16 @@
 # Map changed paths to the CI checks they require. A false skip is worse than a
 # slow run: unknown paths, unusable ranges and other events select everything.
 #
+# Rust tests never read the showcase styles, shared families, profile or assets
+# under cvl/: they use the synthetic workspace in .agent/tests/fixtures, and the
+# real-data invariants they used to check (frozen contracts, leaf inventory,
+# tracked outputs, measurement ownership, document isolation, portable copies,
+# the station plan) are enforced by `ccvl check`, which the document job runs.
+# So cvl/ style, family, profile and asset changes select only the document
+# job. cvl/README.md and every path outside cvl/ that Rust tests still read
+# (skills, scaffolds, schemas, fixtures, data-root READMEs, licenses bundled
+# by style exports, CI scripts) select the Rust job.
+#
 #   ci-changes.sh classify        read changed paths, one per line, from stdin
 #   ci-changes.sh range BASE HEAD classify `git diff BASE...HEAD` (merge base)
 #   ci-changes.sh github          select from the GitHub event; write GITHUB_OUTPUT
@@ -64,6 +74,19 @@ touch_family() {
   [[ "$found" == true ]] || select_everything "unreferenced shared family cvl/shared/$family"
 }
 
+# The interview station plan is rendered into, and validated by, every CV
+# style whose contract declares the station layout protocol.
+touch_station_plan() {
+  local contract style
+  for contract in "$repo_root"/cvl/cv/*/contract.toml; do
+    [[ -f "$contract" ]] || continue
+    if grep -q '^\[layout_contract' "$contract"; then
+      style="${contract%/contract.toml}"
+      add_style "cv/${style##*/}"
+    fi
+  done
+}
+
 classify_path() {
   local path="$1" rest
   case "$path" in
@@ -74,18 +97,23 @@ classify_path() {
     .agent/src/* | .agent/core/* | .agent/build.rs | .agent/typst/* | \
       Cargo.toml | Cargo.lock | rust-toolchain.toml | ccvl.json)
       select_everything "engine input changed: $path" ;;
+    # Showcase styles and shared families: their documents only.
     cvl/cv/*/* | cvl/cl/*/*)
-      rust=true
       rest="${path#cvl/*/}"
       touch_style "${path:4:2}" "${rest%%/*}" ;;
     cvl/shared/*/*)
-      rust=true
       rest="${path#cvl/shared/}"
       touch_family "${rest%%/*}" ;;
     # Read by Rust tests (existence), never rendered.
     cvl/README.md) rust=true ;;
-    # Profile, assets and any other presentation input: every document.
-    cvl/*) select_everything "shared presentation input changed: $path" ;;
+    # The profile and assets reach every document, but no Rust test.
+    cvl/profile.toml | cvl/assets/*) all_styles=true ;;
+    # Any other cvl input could be a new data root: everything.
+    cvl/*) select_everything "unclassified presentation input changed: $path" ;;
+    # Read by Rust tests (README) and rendered into station-protocol CVs.
+    interview/stations.toml)
+      rust=true
+      touch_station_plan ;;
     # Real-workspace inputs that Rust tests read, plus the Rust job's own
     # scripts and release-gate inputs.
     .agent/skills/* | .agent/scaffolds/* | .agent/schemas/* | \
