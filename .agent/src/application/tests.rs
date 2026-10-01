@@ -573,16 +573,16 @@ fn unknown_substyle_fails_with_available_list() {
 #[test]
 fn style_leaves_cover_every_substyle_and_locale() {
     let workspace = workspace();
-    assert_eq!(cv_leaves(&workspace).unwrap().len(), 16);
+    assert_eq!(cv_leaves(&workspace).unwrap().len(), 20);
     assert_eq!(cl_leaves(&workspace).unwrap().len(), 4);
     let documents = crate::render::cvl_specs(&workspace).unwrap();
-    assert_eq!(documents.len(), 36);
+    assert_eq!(documents.len(), 40);
     assert_eq!(
         documents
             .iter()
             .map(|spec| spec.expected_pages)
             .sum::<usize>(),
-        84
+        88
     );
     let cv = cv_leaves(&workspace)
         .unwrap()
