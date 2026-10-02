@@ -28,6 +28,15 @@ and Windows x86_64/ARM64; their presence is not native release evidence. Use
 `.\ccvl.cmd setup --from-source` on Windows only for an explicitly requested
 developer build.
 
+For cloud sessions, `.agent/scripts/web-session-setup.sh` prepares a container:
+it installs missing CI packages (`file`, Poppler, QPDF, `jq`, ShellCheck), CI's
+pinned actionlint, and the precompiled runtime matching the checkout through
+`bash ./ccvl setup`. When the engine source has no matching release yet, it
+says so and leaves the explicit developer build, `bash ./ccvl setup
+--from-source`, to the session. In Claude Code on the web, call it from the
+environment's setup script, e.g. `bash <repository>/.agent/scripts/web-session-setup.sh`.
+Agent configuration stays in `.agent/`; `check` rejects a `.claude/` directory.
+
 ## Line measurement
 
 Run `bash ./ccvl measure` or `.\ccvl.cmd measure` after changing CV or
