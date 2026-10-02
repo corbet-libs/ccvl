@@ -63,6 +63,8 @@ expect false true all cvl/assets/signature.png
 # Other cvl inputs could be new data roots; the README is read by Rust tests.
 expect true true all cvl/cv/README.md
 expect true false '' cvl/README.md
+# The web session hook is shellchecked by the lint job only.
+expect false false '' .claude/hooks/session-start.sh .claude/settings.json
 # The station plan feeds the CVs declaring the station layout protocol.
 expect true true cv/harvard interview/stations.toml
 expect true true 'cl/harvard cv/harvard' interview/stations.toml cvl/cl/harvard/left-rule/en/ch/strings.toml

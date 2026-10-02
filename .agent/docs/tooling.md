@@ -28,6 +28,14 @@ and Windows x86_64/ARM64; their presence is not native release evidence. Use
 `.\ccvl.cmd setup --from-source` on Windows only for an explicitly requested
 developer build.
 
+Claude Code on the web runs `.claude/hooks/session-start.sh` at session start
+(registered in `.claude/settings.json`; it does nothing outside the web). It
+installs missing CI packages (`file`, Poppler, QPDF, `jq`, ShellCheck), CI's
+pinned actionlint into `.agent/cache/tools/bin`, and the precompiled runtime
+matching the checkout through `bash ./ccvl setup`. When the engine source has
+no matching release yet, it says so and leaves the explicit developer build,
+`bash ./ccvl setup --from-source`, to the session.
+
 ## Line measurement
 
 Run `bash ./ccvl measure` or `.\ccvl.cmd measure` after changing CV or

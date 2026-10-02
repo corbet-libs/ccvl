@@ -141,7 +141,7 @@ classify_path() {
       .agent/scripts/downstream-check.py | .agent/scripts/candidate-date.py | \
       .agent/scripts/build-cluster-comparison.sh | .agent/scripts/tool-versions.sh | \
       .agent/scripts/tool-assets.csv | .ci/* | .crow/* | justfile | ccvl | \
-      ccvl.cmd | ccvl.ps1) ;;
+      ccvl.cmd | ccvl.ps1 | .claude/*) ;;
     *) select_everything "unclassified path: $path" ;;
   esac
 }
