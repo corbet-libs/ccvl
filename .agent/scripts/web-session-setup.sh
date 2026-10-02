@@ -2,18 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Julian Y. Richard Corbet
 # SPDX-License-Identifier: FSL-1.1-ALv2
 
-# Claude Code on the web: install the matching ccvl runtime and the tools the
-# checks and CI use. Local sessions are left untouched.
+# Cloud session setup (e.g. the Claude Code on the web environment setup
+# script): install the matching ccvl runtime and the tools the checks and CI
+# use. Idempotent; a ready container finishes in about a second.
 set -euo pipefail
 
-[[ "${CLAUDE_CODE_REMOTE:-}" == true ]] || exit 0
-
-repo_root="${CLAUDE_PROJECT_DIR:-$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)}"
+repo_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 # Keep these in step with .github/workflows/ci.yml.
 actionlint_version=1.7.12
 actionlint_sha256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
-tool_bin="$repo_root/.agent/cache/tools/bin"
+# A system bin directory when writable, so every later shell finds actionlint.
+if [[ -w /usr/local/bin ]]; then tool_bin=/usr/local/bin; else tool_bin="$repo_root/.agent/cache/tools/bin"; fi
 summary=()
 
 probe() { command -v "$1" 2>/dev/null; }
@@ -45,9 +45,10 @@ if [[ "$("$tool_bin/actionlint" -version 2>/dev/null | head -n 1)" != "$actionli
   rm -f "$archive"
   summary+=("installed actionlint $actionlint_version")
 fi
-if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
-  echo "export PATH=\"$tool_bin:\$PATH\"" >> "$CLAUDE_ENV_FILE"
-fi
+case ":$PATH:" in
+  *":$tool_bin:"*) ;;
+  *) summary+=("add $tool_bin to PATH for actionlint") ;;
+esac
 
 # The runtime whose embedded identity matches this checkout. A missing release
 # is reported, never compiled here: that is an explicit developer action.

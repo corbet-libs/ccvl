@@ -36,7 +36,7 @@ for check in "$@"; do
       # The two legacy private workflows deliberately keep their jobs disabled.
       actionlint -ignore '^constant expression "false" in condition\. remove the if: section$' \
         -shellcheck shellcheck .github/workflows/*.yml
-      shellcheck .agent/scripts/*.sh .agent/tests/*.sh .claude/hooks/*.sh ccvl
+      shellcheck .agent/scripts/*.sh .agent/tests/*.sh ccvl
       reuse lint
       bash .agent/tests/test_bootstrap.sh
       bash .agent/tests/test_ci_changes.sh

@@ -140,8 +140,8 @@ classify_path() {
       .agent/scripts/check-release-archive.sh | .agent/scripts/skill-eval-ci.sh | \
       .agent/scripts/downstream-check.py | .agent/scripts/candidate-date.py | \
       .agent/scripts/build-cluster-comparison.sh | .agent/scripts/tool-versions.sh | \
-      .agent/scripts/tool-assets.csv | .ci/* | .crow/* | justfile | ccvl | \
-      ccvl.cmd | ccvl.ps1 | .claude/*) ;;
+      .agent/scripts/tool-assets.csv | .agent/scripts/web-session-setup.sh | .ci/* | .crow/* | justfile | ccvl | \
+      ccvl.cmd | ccvl.ps1) ;;
     *) select_everything "unclassified path: $path" ;;
   esac
 }

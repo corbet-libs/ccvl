@@ -178,7 +178,7 @@ jobs:
           # The legacy private workflows intentionally remain disabled.
           actionlint -ignore '^constant expression "false" in condition\. remove the if: section$' \
             -shellcheck shellcheck .github/workflows/*.yml
-          shellcheck .agent/scripts/*.sh .agent/tests/*.sh .claude/hooks/*.sh ccvl
+          shellcheck .agent/scripts/*.sh .agent/tests/*.sh ccvl
 
       - name: Verify bootstrap, change selection and existing compiler selection
         run: |
